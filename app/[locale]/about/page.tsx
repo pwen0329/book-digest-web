@@ -41,74 +41,80 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           </h2>
 
           {/* Reason 1 - A New Book Every Month */}
-          <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start mb-16">
-            <div className="flex-shrink-0 relative w-40 md:w-48 h-40 md:h-48">
-              <Image 
-                src="/images/elements/whyus-06.png" 
-                alt="" 
-                fill
-                sizes="(max-width: 768px) 160px, 192px"
-                className="object-contain"
-                loading="lazy"
-                placeholder="blur"
-                blurDataURL={BLUR_SQUARE}
-              />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-2xl font-bold font-outfit text-white mb-3">
-                {t('reason1Title')}
-              </h3>
-              <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
-                {t('reason1Desc')}
-              </p>
+          <div className="flex justify-center mb-16">
+            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10 max-w-4xl">
+              <div className="flex-shrink-0 relative w-56 md:w-72 h-56 md:h-72">
+                <Image 
+                  src="/images/elements/whyus-06.png" 
+                  alt="" 
+                  fill
+                  sizes="(max-width: 768px) 224px, 288px"
+                  className="object-contain"
+                  loading="lazy"
+                  placeholder="blur"
+                  blurDataURL={BLUR_SQUARE}
+                />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-2xl font-bold font-outfit text-white mb-3">
+                  {t('reason1Title')}
+                </h3>
+                <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
+                  {t('reason1Desc')}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Reason 2 - Deep, delightful and diverse conversations */}
-          <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start mb-16">
-            <div className="flex-shrink-0 relative w-40 md:w-48 h-40 md:h-48">
-              <Image 
-                src="/images/elements/whyus-07.png" 
-                alt="" 
-                fill
-                sizes="(max-width: 768px) 160px, 192px"
-                className="object-contain"
-                loading="lazy"
-                placeholder="blur"
-                blurDataURL={BLUR_SQUARE}
-              />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-2xl font-bold font-outfit text-white mb-3">
-                {t('reason2Title')}
-              </h3>
-              <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
-                {t('reason2Desc')}
-              </p>
+          <div className="flex justify-center mb-16">
+            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10 max-w-4xl">
+              <div className="flex-shrink-0 relative w-56 md:w-72 h-56 md:h-72">
+                <Image 
+                  src="/images/elements/whyus-07.png" 
+                  alt="" 
+                  fill
+                  sizes="(max-width: 768px) 224px, 288px"
+                  className="object-contain"
+                  loading="lazy"
+                  placeholder="blur"
+                  blurDataURL={BLUR_SQUARE}
+                />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-2xl font-bold font-outfit text-white mb-3">
+                  {t('reason2Title')}
+                </h3>
+                <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
+                  {t('reason2Desc')}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Reason 3 - Chill Vibes, No Pressure */}
-          <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start mb-16">
-            <div className="flex-shrink-0 relative w-40 md:w-48 h-40 md:h-48">
-              <Image 
-                src="/images/elements/why us-08.png" 
-                alt="" 
-                fill
-                sizes="(max-width: 768px) 160px, 192px"
-                className="object-contain"
-                loading="lazy"
-                placeholder="blur"
-                blurDataURL={BLUR_SQUARE}
-              />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-2xl font-bold font-outfit text-white mb-3">
-                {t('reason3Title')}
-              </h3>
-              <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
-                {t('reason3Desc')}
-              </p>
+          <div className="flex justify-center mb-16">
+            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10 max-w-4xl">
+              <div className="flex-shrink-0 relative w-56 md:w-72 h-56 md:h-72">
+                <Image 
+                  src="/images/elements/why us-08.png" 
+                  alt="" 
+                  fill
+                  sizes="(max-width: 768px) 224px, 288px"
+                  className="object-contain"
+                  loading="lazy"
+                  placeholder="blur"
+                  blurDataURL={BLUR_SQUARE}
+                />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-2xl font-bold font-outfit text-white mb-3">
+                  {t('reason3Title')}
+                </h3>
+                <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
+                  {t('reason3Desc')}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -116,7 +122,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           <div className="text-center mt-12">
             <Link
               href="/joinus"
-              className="inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-brand-navy font-bold text-lg hover:brightness-110 transition-all uppercase tracking-wider"
+              className="inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-bold text-lg hover:brightness-110 transition-all uppercase tracking-wider"
             >
               {t('joinUsBtn')}
             </Link>

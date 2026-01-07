@@ -207,7 +207,7 @@ export default function BookCarousel({
         <div className="mt-6 text-center md:hidden">
           <Link
             href="/books"
-            className="inline-flex items-center rounded-full bg-brand-pink px-5 py-2.5 font-semibold text-brand-navy uppercase tracking-wider text-sm font-outfit"
+            className="inline-flex items-center rounded-full bg-brand-pink px-5 py-2.5 font-semibold text-white uppercase tracking-wider text-sm font-outfit hover:brightness-110 transition-all"
           >
             Browse Books
           </Link>

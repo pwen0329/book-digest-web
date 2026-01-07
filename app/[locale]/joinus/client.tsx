@@ -20,47 +20,54 @@ function JoinUsContent() {
     }
   }, [searchParams]);
 
+  // Check if location is locked (from direct link)
+  const locationLocked = searchParams.get('location') !== null;
+
   // Form background colors - unified white background with 20% opacity
   const formBgClass = 'bg-white/20 backdrop-blur-xl rounded-2xl';
 
   return (
     <section className="bg-brand-navy text-white min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold font-outfit">
-            {tJoin('title')}
-          </h1>
-          <p className="mt-2 text-white/70">
-            {tJoin('subtitle')}
-          </p>
-        </div>
+        {/* Page Header - Only show if not locked */}
+        {!locationLocked && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-2xl md:text-3xl font-bold font-outfit">
+                {tJoin('title')}
+              </h1>
+              <p className="mt-2 text-white/70">
+                {tJoin('subtitle')}
+              </p>
+            </div>
 
-        {/* Location Toggle */}
-        <div className="mb-8">
-          <div className="inline-flex bg-white/10 rounded-full p-1">
-            <button
-              onClick={() => setActiveLocation('TW')}
-              className={`px-5 py-2 rounded-full font-medium transition-all text-sm ${
-                activeLocation === 'TW'
-                  ? 'bg-brand-pink text-brand-navy'
-                  : 'text-white/80 hover:text-white'
-              }`}
-            >
-              {t('taiwan')}
-            </button>
-            <button
-              onClick={() => setActiveLocation('NL')}
-              className={`px-5 py-2 rounded-full font-medium transition-all text-sm ${
-                activeLocation === 'NL'
-                  ? 'bg-brand-pink text-brand-navy'
-                  : 'text-white/80 hover:text-white'
-              }`}
-            >
-              {t('netherlands')}
-            </button>
-          </div>
-        </div>
+            {/* Location Toggle */}
+            <div className="mb-8">
+              <div className="inline-flex bg-white/10 rounded-full p-1">
+                <button
+                  onClick={() => setActiveLocation('TW')}
+                  className={`px-5 py-2 rounded-full font-medium transition-all text-sm ${
+                    activeLocation === 'TW'
+                      ? 'bg-brand-pink text-brand-navy'
+                      : 'text-white/80 hover:text-white'
+                  }`}
+                >
+                  {t('taiwan')}
+                </button>
+                <button
+                  onClick={() => setActiveLocation('NL')}
+                  className={`px-5 py-2 rounded-full font-medium transition-all text-sm ${
+                    activeLocation === 'NL'
+                      ? 'bg-brand-pink text-brand-navy'
+                      : 'text-white/80 hover:text-white'
+                  }`}
+                >
+                  {t('netherlands')}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Book Club Registration Section */}
         <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">

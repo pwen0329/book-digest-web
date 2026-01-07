@@ -16,7 +16,7 @@ export default async function NotFound() {
         </p>
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-brand-pink text-brand-navy font-semibold rounded-full hover:brightness-110 transition-all"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-brand-pink text-white font-semibold rounded-full hover:brightness-110 transition-all"
         >
           ← {t('backHome')}
         </Link>

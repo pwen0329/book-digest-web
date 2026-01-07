@@ -188,7 +188,7 @@ export type Registration = {
   profession: string;
   email: string;
   instagram?: string;
-  referral: 'Instagram' | 'Facebook' | 'Others';
+  referral: 'BookDigestIG' | 'BookDigestFB' | 'OtherIG' | 'OtherFB' | 'Others';
   referralOther?: string;
   consent: boolean;
 };

@@ -107,7 +107,7 @@
   "footer": {
     "events": "Events",
     "bookClub": "Book Club",
-    "unplugProject": "Unplug Project",
+    "unplugProject": "Digital Detox",
     "getInvolved": "Get Involved",
     "beAHost": "Be a Host",
     "signUpForms": "Sign Up Forms",
@@ -122,12 +122,12 @@
     "copyright": "© 2025 BOOK DIGEST"
   },
   "form": {
-    "nameLabel": "Hello! How should we address you?",
+    "nameLabel": "Hi, what's your name?",
     "ageLabel": "How old are you?",
-    "professionLabel": "What's your profession?",
+    "professionLabel": "What do you do?",
     "emailLabel": "What's your email?",
     "instagramLabel": "Your Instagram for us to contact and tag you!",
-    "referralLabel": "Where did you find us?",
+    "referralLabel": "How did you find us?",
     "referralOthers": "Others",
     "referralOtherLabel": "If others, tell us how you found Book Digest!",
     "referralOtherPlaceholder": "e.g. Friend referral...",
@@ -147,6 +147,9 @@
     "maybeLater": "Maybe later"
   },
   "sidebar": {
+    "nextEvent": "Next Event",
+    "nextEventDesc": "Join our next book club or digital detox event.",
+    "viewEvents": "View Events",
     "podcast": "Podcast",
     "podcastDesc": "Listen to our discussion and extended thoughts on this book",
     "listenPodcast": "Listen to Podcast",

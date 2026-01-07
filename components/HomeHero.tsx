@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import PageFlipAnimation from '@/components/PageFlipAnimation';
 
 // Dynamically import Modal (non-critical, only shown on user interaction)
@@ -12,8 +12,14 @@ const Modal = dynamic(() => import('@/components/Modal'), {
 
 export default function HomeHero() {
   const [open, setOpen] = useState(false);
+  const locale = useLocale();
   const t = useTranslations('home');
   const tModal = useTranslations('modal');
+
+  const heroFlipClassName =
+    locale === 'en'
+      ? 'w-full max-w-full md:max-w-2xl mx-auto md:ml-auto md:mr-0'
+      : 'w-full max-w-full md:max-w-3xl mx-auto md:ml-auto md:mr-0';
   
   return (
     <>
@@ -26,24 +32,24 @@ export default function HomeHero() {
 
         <div className="relative mx-auto max-w-6xl px-6 pt-18 pb-18 lg:pt-22 lg:pb-22">
           <div className="grid items-center gap-8 lg:gap-12 md:grid-cols-2 text-center md:text-left">
-            <div>
-              <h1 className="mt-6 text-[2.5rem] md:text-[3rem] font-bold text-white font-display leading-[1.2] tracking-[0.01em] whitespace-pre-line">
-                {t('hero.title')}
+            <div className={locale === 'en' ? 'relative z-30' : undefined}>
+              <h1 className="mt-6 text-2xl md:text-3xl lg:text-4xl font-bold text-white font-display leading-[1.2] tracking-[0.01em]">
+                <span className={locale === 'zh' ? "whitespace-nowrap" : ""}>{t('hero.title')}</span>
                 <br /> {t('hero.titleLine2')}
               </h1>
               <p className="mt-4 text-base md:text-lg text-white/90 max-w-2xl mx-auto md:mx-0 leading-relaxed font-outfit">
                 {t('hero.subtitle')}
               </p>
               <div className="mt-8 flex flex-col sm:flex-row items-center md:items-start justify-center md:justify-start gap-3">
-                <a href="/events" className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy shadow hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy uppercase tracking-wider font-outfit">{t('hero.ctaBookClub')}</a>
-                <button onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center rounded-full border border-white/30 px-6 py-3 font-semibold text-white hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy uppercase tracking-wider font-outfit">{t('hero.ctaDetox')}</button>
+                <a href="/events" className="inline-flex min-h-11 items-center rounded-full bg-brand-navy px-6 py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-brand-navy hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy uppercase tracking-wider font-outfit transition-all">{t('hero.ctaBookClub')}</a>
+                <button onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center rounded-full bg-brand-navy px-6 py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy uppercase tracking-wider font-outfit transition-all">{t('hero.ctaDetox')}</button>
               </div>
             </div>
             {/* Page Flip Animation - enlarged for better visibility */}
             <div className="mt-10 md:mt-0 w-full overflow-hidden">
               <PageFlipAnimation
                 gifSrc="/images/notebook/notebook.gif"
-                className="w-full max-w-full md:max-w-3xl mx-auto md:ml-auto md:mr-0"
+                className={heroFlipClassName}
               />
             </div>
           </div>
@@ -82,7 +88,7 @@ export default function HomeHero() {
               <li>{tModal('detoxFeature3')}</li>
             </ul>
             <div className="mt-5 flex flex-wrap gap-3">
-              <a href="/events#detox" className="inline-flex items-center rounded-full bg-brand-pink text-brand-navy px-4 py-2 font-semibold">{tModal('imIn')}</a>
+              <a href="/events#detox" className="inline-flex items-center rounded-full bg-brand-pink text-white px-4 py-2 font-semibold hover:brightness-110 transition-all">{tModal('imIn')}</a>
               <button onClick={() => setOpen(false)} className="inline-flex items-center rounded-full border border-white/30 px-4 py-2 font-semibold text-white">{tModal('maybeLater')}</button>
             </div>
           </div>

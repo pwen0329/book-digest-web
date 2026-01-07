@@ -71,7 +71,7 @@ export default function WhyUs() {
             </button>
 
             {/* Main Content: Image Left + Text Right - Fixed height container */}
-            <div className="flex-1 flex flex-col md:flex-row items-center gap-6 md:gap-10 min-h-[280px] md:min-h-[240px]">
+            <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10 min-h-[280px] md:min-h-[240px]">
               {/* Large Image on Left - Fixed size container */}
               <div className="flex-shrink-0 w-40 md:w-56 lg:w-64 h-40 md:h-56 lg:h-64 relative">
                 <Image 
@@ -102,7 +102,7 @@ export default function WhyUs() {
                 <h3 className="font-bold text-white font-outfit text-xl md:text-2xl lg:text-3xl">
                   {t(currentItem.titleKey)}
                 </h3>
-                <p className="text-white/80 text-sm md:text-base lg:text-lg mt-3 md:mt-4 leading-relaxed whitespace-pre-line max-w-lg line-clamp-5 font-outfit">
+                <p className="text-white/80 text-sm md:text-base lg:text-lg mt-3 md:mt-4 leading-relaxed whitespace-pre-line max-w-lg font-outfit">
                   {t(currentItem.descKey)}
                 </p>
               </div>

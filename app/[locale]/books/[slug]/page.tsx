@@ -137,22 +137,6 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
             </div>
           </div>
         </div>
-
-        {/* Decorative wave - soft pink gradient for visual separation */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <svg viewBox="0 0 1440 60" className="w-full h-10 md:h-14" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#FFA6C3" stopOpacity="0.15" />
-                  <stop offset="50%" stopColor="#FFFFFF" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#113A7A" stopOpacity="0.1" />
-                </linearGradient>
-              </defs>
-              <path fill="url(#waveGradient)" d="M0,30 C360,60 720,0 1080,30 C1260,45 1380,40 1440,30 L1440,60 L0,60 Z" />
-            </svg>
-          </div>
-        </div>
       </header>
 
       {/* Main Content - clean white background */}
@@ -180,7 +164,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
                 </p>
                 <Link
                   href="/events"
-                  className="inline-flex items-center mt-4 px-4 py-2 bg-brand-pink text-brand-navy font-semibold rounded-full hover:brightness-110 transition-all"
+                  className="inline-flex items-center mt-4 px-4 py-2 bg-brand-pink text-white font-semibold rounded-full hover:brightness-110 transition-all"
                   prefetch={false}
                 >
                   {t('register')}

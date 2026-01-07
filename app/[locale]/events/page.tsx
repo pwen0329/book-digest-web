@@ -57,7 +57,7 @@ function EventSection({
         <div className="mt-8">
           <Link
             href={signupUrl}
-            className="inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-brand-navy font-semibold hover:brightness-110 transition-all uppercase tracking-wider text-sm"
+            className="inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all uppercase tracking-wider text-sm"
             prefetch={false}
           >
             {signupText}

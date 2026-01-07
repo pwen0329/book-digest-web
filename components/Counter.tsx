@@ -63,10 +63,11 @@ export default function Counter({ target, label }: { target: number; label: stri
       <div 
         className="tabular-nums font-outfit" 
         style={{ 
-          fontSize: 'clamp(80px, 15vw, 130px)', 
+          fontSize: 'clamp(60px, 12vw, 100px)', 
           fontWeight: 100, 
           lineHeight: '1', 
-          letterSpacing: '-0.02em' 
+          letterSpacing: '-0.02em',
+          fontVariationSettings: '"wght" 100'
         }}
       >
         {value.toLocaleString()}

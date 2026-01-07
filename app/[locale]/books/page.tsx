@@ -59,10 +59,9 @@ export default async function BooksPage({ params }: { params: Promise<{ locale: 
                 </div>
                 <div className="mt-3 text-sm group-hover:opacity-50 transition-opacity">
                   <div className="flex items-center gap-2">
-                    <span className="text-brand-pink font-bold text-xs">#{b.sortOrder}</span>
-                    <span className="font-semibold line-clamp-2 tracking-wide flex-1">{b.displayTitle}</span>
+                    <span className="font-semibold line-clamp-2 tracking-wide flex-1 text-base md:text-lg">{b.displayTitle}</span>
                   </div>
-                  <div className="text-white/70 mt-1">{b.author}</div>
+                  <div className="text-white/70 mt-1 text-sm">{b.author}</div>
                 </div>
               </Link>
             </li>

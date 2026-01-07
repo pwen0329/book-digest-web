@@ -17,7 +17,7 @@ export default async function NotebookStrip() {
             ))}
           </div>
           <div className="mt-4 text-center">
-            <Link href="/events#detox" className="inline-flex items-center rounded-full bg-brand-pink px-5 py-2.5 font-semibold text-brand-navy">{tModal('imIn')}</Link>
+            <Link href="/events#detox" className="inline-flex items-center rounded-full bg-brand-pink px-5 py-2.5 font-semibold text-white hover:brightness-110 transition-all">{tModal('imIn')}</Link>
           </div>
         </div>
       </div>

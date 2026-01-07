@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useCallback, memo } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 // Use memo to optimize navigation link component
 const NavLink = memo(function NavLink({ 
@@ -17,10 +17,10 @@ const NavLink = memo(function NavLink({
   children: React.ReactNode;
   prefetch?: boolean;
 }) {
-  const linkClass = `flex items-center justify-center font-medium transition-colors tracking-[0.3em] ${
+  const linkClass = `flex items-center justify-center font-outfit font-normal transition-colors tracking-normal ${
     isActive 
       ? 'text-brand-pink font-bold' 
-      : 'text-white/95 hover:text-brand-pink'
+      : 'text-white/95 hover:text-brand-pink hover:font-bold'
   }`;
   
   return (
@@ -42,10 +42,10 @@ const MobileNavLink = memo(function MobileNavLink({
   children: React.ReactNode;
   onClick: () => void;
 }) {
-  const mobileLinkClass = `py-2 px-3 rounded-lg transition-colors ${
+  const mobileLinkClass = `py-2 px-3 rounded-lg font-outfit transition-colors ${
     isActive
       ? 'text-brand-pink font-bold bg-white/5'
-      : 'text-white hover:bg-white/10'
+      : 'text-white hover:bg-white/10 hover:text-brand-pink hover:font-bold'
   }`;
   
   return (
@@ -62,14 +62,19 @@ const MobileNavLink = memo(function MobileNavLink({
 
 export default function Header() {
   const t = useTranslations('nav');
+  const locale = useLocale();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
   // Helper to check if link is active
   const isActive = useCallback((href: string) => {
-    if (href === '/') return pathname === '/';
-    return pathname.startsWith(href);
-  }, [pathname]);
+    // pathname is like /zh/books or /en/events
+    // href is like /books or /events
+    const fullHref = `/${locale}${href}`;
+    
+    if (href === '/') return pathname === `/${locale}` || pathname === '/';
+    return pathname.startsWith(fullHref);
+  }, [pathname, locale]);
 
   // Optimize close menu function with useCallback
   const closeMobileMenu = useCallback(() => {
@@ -85,13 +90,13 @@ export default function Header() {
       <div className="mx-auto max-w-6xl px-6 h-[60px] md:h-[100px] relative">
         {/* Desktop/tablet: grid layout with equal width nav items */}
         <div className="hidden md:grid grid-cols-5 items-center h-full">
-          <NavLink href="/books" isActive={isActive('/books')}>{t('books')}</NavLink>
-          <NavLink href="/events" isActive={isActive('/events')}>{t('events')}</NavLink>
-          <Link href="/" className="flex items-center justify-center" aria-label="Home" prefetch={true}>
+          <NavLink href={`/${locale}/books`} isActive={isActive('/books')}>{t('books')}</NavLink>
+          <NavLink href={`/${locale}/events`} isActive={isActive('/events')}>{t('events')}</NavLink>
+          <Link href={`/${locale}`} className="flex items-center justify-center" aria-label="Home" prefetch={true}>
             <Image src="/images/logo/logo-t.gif" alt="Book Digest logo" width={88} height={70} className="h-[70px] w-auto" unoptimized priority />
           </Link>
-          <NavLink href="/about" isActive={isActive('/about')} prefetch={false}>{t('about')}</NavLink>
-          <NavLink href="/joinus" isActive={isActive('/joinus')} prefetch={false}>{t('joinUs')}</NavLink>
+          <NavLink href={`/${locale}/about`} isActive={isActive('/about')} prefetch={false}>{t('about')}</NavLink>
+          <NavLink href={`/${locale}/joinus`} isActive={isActive('/joinus')} prefetch={false}>{t('joinUs')}</NavLink>
         </div>
 
         {/* Mobile: hamburger button on left, logo centered */}
@@ -116,7 +121,7 @@ export default function Header() {
           
           {/* Centered logo */}
           <div className="flex-1 flex justify-center">
-            <Link href="/" className="inline-flex items-center" aria-label="Home">
+            <Link href={`/${locale}`} className="inline-flex items-center" aria-label="Home">
               <Image src="/images/logo/logo-t.gif" alt="Book Digest logo" width={50} height={40} className="h-10 w-auto" unoptimized priority />
             </Link>
           </div>
@@ -130,16 +135,16 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-white/10 bg-brand-navy/98 backdrop-blur">
           <nav aria-label="Primary mobile" className="mx-auto max-w-6xl px-6 py-4 flex flex-col gap-3">
-            <MobileNavLink href="/books" isActive={isActive('/books')} onClick={closeMobileMenu}>
+            <MobileNavLink href={`/${locale}/books`} isActive={isActive('/books')} onClick={closeMobileMenu}>
               {t('books')}
             </MobileNavLink>
-            <MobileNavLink href="/events" isActive={isActive('/events')} onClick={closeMobileMenu}>
+            <MobileNavLink href={`/${locale}/events`} isActive={isActive('/events')} onClick={closeMobileMenu}>
               {t('events')}
             </MobileNavLink>
-            <MobileNavLink href="/about" isActive={isActive('/about')} onClick={closeMobileMenu}>
+            <MobileNavLink href={`/${locale}/about`} isActive={isActive('/about')} onClick={closeMobileMenu}>
               {t('about')}
             </MobileNavLink>
-            <MobileNavLink href="/joinus" isActive={isActive('/joinus')} onClick={closeMobileMenu}>
+            <MobileNavLink href={`/${locale}/joinus`} isActive={isActive('/joinus')} onClick={closeMobileMenu}>
               {t('joinUs')}
             </MobileNavLink>
           </nav>

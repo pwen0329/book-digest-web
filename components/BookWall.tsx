@@ -50,7 +50,7 @@ export default async function BookWall() {
         </ul>
 
         <div className="mt-6 text-center md:hidden">
-          <Link href="/books" className="inline-flex items-center rounded-full bg-brand-pink px-5 py-2.5 font-semibold text-brand-navy">{t('browseBooks')}</Link>
+          <Link href="/books" className="inline-flex items-center rounded-full bg-brand-pink px-5 py-2.5 font-semibold text-white hover:brightness-110 transition-all">{t('browseBooks')}</Link>
         </div>
       </div>
     </section>

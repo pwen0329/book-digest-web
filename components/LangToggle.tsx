@@ -10,23 +10,17 @@ export default memo(function LangToggle() {
   const router = useRouter();
 
   const switchLocale = (newLocale: string) => {
-    // Get current path without locale prefix
-    const segments = pathname.split('/');
-    const currentLocale = segments[1];
-    
-    // Check if path starts with a locale
-    const hasLocalePrefix = ['en', 'zh'].includes(currentLocale);
-    
-    let newPath: string;
-    if (hasLocalePrefix) {
-      // Replace locale in path
-      segments[1] = newLocale;
-      newPath = segments.join('/');
-    } else {
-      // Add locale prefix
-      newPath = `/${newLocale}${pathname}`;
+    // Remove locale prefix from pathname
+    let pathWithoutLocale = pathname;
+    if (pathname.startsWith('/en/')) {
+      pathWithoutLocale = pathname.slice(3);
+    } else if (pathname.startsWith('/zh/')) {
+      pathWithoutLocale = pathname.slice(3);
+    } else if (pathname === '/en' || pathname === '/zh') {
+      pathWithoutLocale = '/';
     }
     
+    const newPath = newLocale === 'en' ? `/en${pathWithoutLocale}` : `/zh${pathWithoutLocale}`;
     router.push(newPath);
   };
 

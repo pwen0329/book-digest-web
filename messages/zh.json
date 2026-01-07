@@ -107,7 +107,7 @@
   "footer": {
     "events": "活動",
     "bookClub": "讀書會",
-    "unplugProject": "斷線計畫",
+    "unplugProject": "數位排毒",
     "getInvolved": "參與方式",
     "beAHost": "成為主持人",
     "signUpForms": "報名表單",
@@ -122,12 +122,12 @@
     "copyright": "© 2025 BOOK DIGEST"
   },
   "form": {
-    "nameLabel": "您好！請問如何稱呼？",
+    "nameLabel": "嗨，請問怎麼稱呼你？",
     "ageLabel": "今年幾歲～",
-    "professionLabel": "請問您從事什麼職業呢？",
+    "professionLabel": "你做什麼工作呢？",
     "emailLabel": "請問你的 E-mail 是？",
     "instagramLabel": "可以留下您的 Instagram 讓我們方便聯繫及標註您！",
-    "referralLabel": "在哪裡找到我們的呢？",
+    "referralLabel": "你怎麼找到我們的呢？",
     "referralOthers": "其他",
     "referralOtherLabel": "如果填其他，歡迎告訴我們從哪裡找到吃書反芻的！",
     "referralOtherPlaceholder": "例如：朋友介紹...",
@@ -147,6 +147,9 @@
     "maybeLater": "下次再說"
   },
   "sidebar": {
+    "nextEvent": "下個活動",
+    "nextEventDesc": "加入我們的下一場讀書會或數位排毒活動。",
+    "viewEvents": "查看活動",
     "podcast": "Podcast",
     "podcastDesc": "聽我們聊聊這本書的心得與延伸討論",
     "listenPodcast": "收聽 Podcast",
