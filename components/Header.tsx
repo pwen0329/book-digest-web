@@ -17,14 +17,14 @@ const NavLink = memo(function NavLink({
   children: React.ReactNode;
   prefetch?: boolean;
 }) {
-  const linkClass = `flex items-center justify-center font-outfit font-normal transition-colors tracking-normal ${
+  const linkClass = `flex items-center justify-center font-outfit transition-colors tracking-normal ${
     isActive 
       ? 'text-brand-pink font-bold' 
       : 'text-white/95 hover:text-brand-pink hover:font-bold'
   }`;
   
   return (
-    <Link href={href} className={linkClass} prefetch={prefetch}>
+    <Link href={href} className={linkClass} prefetch={prefetch} aria-current={isActive ? 'page' : undefined}>
       {children}
     </Link>
   );
@@ -68,12 +68,22 @@ export default function Header() {
 
   // Helper to check if link is active
   const isActive = useCallback((href: string) => {
-    // pathname is like /zh/books or /en/events
-    // href is like /books or /events
-    const fullHref = `/${locale}${href}`;
-    
-    if (href === '/') return pathname === `/${locale}` || pathname === '/';
-    return pathname.startsWith(fullHref);
+    // Support both localized (/zh/books) and non-localized (/books) paths
+    const localized = `/${locale}${href}`;
+
+    if (href === '/') {
+      return (
+        pathname === `/${locale}` ||
+        pathname === '/' ||
+        pathname.startsWith(localized)
+      );
+    }
+
+    return (
+      pathname.startsWith(localized) ||
+      pathname === href ||
+      pathname.startsWith(`${href}/`)
+    );
   }, [pathname, locale]);
 
   // Optimize close menu function with useCallback

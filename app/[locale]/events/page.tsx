@@ -105,7 +105,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
             image="/images/elements/AD-16.png"
             title={t('taiwanTitle')}
             description={t('taiwanDesc')}
-            signupUrl="/joinus?location=TW"
+            signupUrl="/signup?location=TW"
             signupText={t('signUp')}
             imagePosition="left"
             priority={true}
@@ -123,7 +123,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
             image="/images/elements/AD-15.png"
             title={t('nlTitle')}
             description={t('nlDesc')}
-            signupUrl="/joinus?location=NL"
+            signupUrl="/signup?location=NL"
             signupText={t('signUp')}
             imagePosition="right"
           />
@@ -140,7 +140,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
             image="/images/elements/AD-17.png"
             title={t('detoxTitle')}
             description={t('detoxDesc')}
-            signupUrl="/joinus"
+            signupUrl="/detox"
             signupText={t('signUp')}
             imagePosition="left"
           />

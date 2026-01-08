@@ -97,6 +97,16 @@ export default function SignupForm({ location, endpoint }: SignupFormProps) {
 
     try {
       if (endpoint) {
+        // Map client referral values to API expected values
+        let apiReferral: 'Instagram' | 'Facebook' | 'Others' = 'Instagram';
+        if (values.referral === 'BookDigestIG' || values.referral === 'OtherIG') {
+          apiReferral = 'Instagram';
+        } else if (values.referral === 'BookDigestFB' || values.referral === 'OtherFB') {
+          apiReferral = 'Facebook';
+        } else {
+          apiReferral = 'Others';
+        }
+
         const resp = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -107,7 +117,7 @@ export default function SignupForm({ location, endpoint }: SignupFormProps) {
             profession: values.profession,
             email: values.email,
             instagram: values.instagram || undefined,
-            referral: values.referral,
+            referral: apiReferral,
             referralOther: values.referral === 'Others' ? values.referralOther : undefined,
             timestamp: new Date().toISOString(),
           }),

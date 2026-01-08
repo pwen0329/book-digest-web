@@ -1,162 +1,167 @@
 'use client';
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, Suspense } from 'react';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
-import SignupForm from '@/components/SignupForm';
+import { useTranslations, useLocale } from 'next-intl';
 import { BLUR_POSTER } from '@/lib/constants';
 
+function HostFAQItem({ 
+  title, 
+  children,
+  isOpen,
+  onToggle,
+}: { 
+  title: React.ReactNode;
+  children: React.ReactNode;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="border-b border-white/10 last:border-b-0">
+      <button
+        onClick={onToggle}
+        className="w-full py-4 flex items-center justify-between text-left hover:bg-white/5 transition-colors px-4 -mx-4"
+      >
+        <h3 className="font-semibold text-white text-lg">{title}</h3>
+        <svg 
+          className={`w-6 h-6 text-brand-pink transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="px-4 pb-4 text-white/80 space-y-3 leading-relaxed">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function JoinUsContent() {
-  const t = useTranslations('events');
   const tJoin = useTranslations('joinus');
-  const searchParams = useSearchParams();
-  const [activeLocation, setActiveLocation] = useState<'TW' | 'NL'>('TW');
+  const locale = useLocale();
+  
+  // Track which FAQ items are open
+  const [openItems, setOpenItems] = useState<{ [key: string]: boolean }>({
+    whatDo: true,
+    whyJoin: false,
+    where: false,
+    uncertain: false,
+    apply: false,
+  });
 
-  // Read location from URL query param on mount
-  useEffect(() => {
-    const loc = searchParams.get('location');
-    if (loc === 'NL' || loc === 'TW') {
-      setActiveLocation(loc);
-    }
-  }, [searchParams]);
+  const toggleItem = (key: string) => {
+    setOpenItems(prev => {
+      const allClosed = {
+        whatDo: false,
+        whyJoin: false,
+        where: false,
+        uncertain: false,
+        apply: false,
+      };
+      // 若目前已開，則全部收合；否則只開所選，其餘收合
+      if (prev[key]) return allClosed;
+      return { ...allClosed, [key]: true };
+    });
+  };
 
-  // Check if location is locked (from direct link)
-  const locationLocked = searchParams.get('location') !== null;
-
-  // Form background colors - unified white background with 20% opacity
-  const formBgClass = 'bg-white/20 backdrop-blur-xl rounded-2xl';
+  const postItImage = locale === 'zh' ? '/images/elements/post-it-23.png' : '/images/elements/post-it-24.png';
 
   return (
     <section className="bg-brand-navy text-white min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
-        {/* Page Header - Only show if not locked */}
-        {!locationLocked && (
-          <>
-            <div className="mb-8">
-              <h1 className="text-2xl md:text-3xl font-bold font-outfit">
-                {tJoin('title')}
-              </h1>
-              <p className="mt-2 text-white/70">
-                {tJoin('subtitle')}
-              </p>
-            </div>
+        {/* Page Header */}
+        <div className="mb-12">
+          <h1 className="text-3xl md:text-4xl font-bold font-outfit">
+            {tJoin('title')}
+          </h1>
+        </div>
 
-            {/* Location Toggle */}
-            <div className="mb-8">
-              <div className="inline-flex bg-white/10 rounded-full p-1">
-                <button
-                  onClick={() => setActiveLocation('TW')}
-                  className={`px-5 py-2 rounded-full font-medium transition-all text-sm ${
-                    activeLocation === 'TW'
-                      ? 'bg-brand-pink text-brand-navy'
-                      : 'text-white/80 hover:text-white'
-                  }`}
-                >
-                  {t('taiwan')}
-                </button>
-                <button
-                  onClick={() => setActiveLocation('NL')}
-                  className={`px-5 py-2 rounded-full font-medium transition-all text-sm ${
-                    activeLocation === 'NL'
-                      ? 'bg-brand-pink text-brand-navy'
-                      : 'text-white/80 hover:text-white'
-                  }`}
-                >
-                  {t('netherlands')}
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Book Club Registration Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
-          {/* Left: Event Poster - 750x570 aspect ratio */}
-          <div className="flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-[750px] lg:w-[750px] h-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '750/570' }}>
-              <Image
-                src={activeLocation === 'TW' ? '/images/elements/AD-16.png' : '/images/elements/AD-15.png'}
-                alt={activeLocation === 'TW' ? 'Taiwan Book Club' : 'Netherlands Book Club'}
-                fill
-                sizes="(max-width: 1024px) 420px, 50vw"
-                className="object-cover"
-                placeholder="blur"
-                blurDataURL={BLUR_POSTER}
-              />
-            </div>
-          </div>
-
-          {/* Right: Signup Form */}
+        {/* Main Content: Left Side Note + Right Side FAQ */}
+        <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 lg:gap-16 items-start">
+          {/* Left: Post-it Note Style */}
           <div className="flex justify-center lg:justify-start">
-            <div className={`w-full max-w-[600px] rounded-2xl p-6 lg:p-8 transition-colors duration-300 ${formBgClass}`}>
-              <SignupForm
-                key={activeLocation}
-                location={activeLocation}
-                endpoint={
-                  activeLocation === 'TW'
-                    ? process.env.NEXT_PUBLIC_FORMS_ENDPOINT_TW || '/api/submit?loc=TW'
-                    : process.env.NEXT_PUBLIC_FORMS_ENDPOINT_NL || '/api/submit?loc=NL'
-                }
+            <div className="relative w-full lg:w-[400px] h-auto">
+              <Image
+                src={postItImage}
+                alt="Host Note"
+                width={400}
+                height={500}
+                className="w-full h-auto"
+                priority
               />
             </div>
           </div>
-        </div>
 
-        {/* Decorative Divider */}
-        <div className="my-20 relative h-px">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
-        </div>
+          {/* Right: Accordion FAQ */}
+          <div className="space-y-0">
+            {/* What does a host do */}
+            <HostFAQItem
+              title={tJoin('hostTitle')}
+              isOpen={openItems.whatDo}
+              onToggle={() => toggleItem('whatDo')}
+            >
+              <p className="font-medium text-white mb-3">{tJoin('hostIntro')}</p>
+              <ul className="space-y-2">
+                <li>{tJoin('hostPoint1')}</li>
+                <li>{tJoin('hostPoint2')}</li>
+                <li>{tJoin('hostPoint3')}</li>
+                <li>{tJoin('hostPoint4')}</li>
+                <li>{tJoin('hostPoint5')}</li>
+              </ul>
+              <p className="mt-4 text-white/80 text-sm">{tJoin('hostKitTitle')}</p>
+            </HostFAQItem>
 
-        {/* Digital Detox Section */}
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold font-outfit mb-10">
-            {t('digitalDetox.title')}
-          </h2>
+            {/* Why join us */}
+            <HostFAQItem
+              title={tJoin('whyJoinTitle')}
+              isOpen={openItems.whyJoin}
+              onToggle={() => toggleItem('whyJoin')}
+            >
+              <div className="space-y-3 whitespace-pre-line">{tJoin('whyJoinDesc')}</div>
+            </HostFAQItem>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
-            {/* Left: Detox Content */}
-            <div className="space-y-8">
-              <p className="text-white/85 text-lg leading-relaxed">
-                {t('digitalDetox.description')}
-              </p>
-              
-              <div className="space-y-5">
-                <div className="flex items-start gap-4">
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-pink text-brand-navy flex items-center justify-center font-bold">1</span>
-                  <p className="text-white/80 pt-1">{t('digitalDetox.step1')}</p>
-                </div>
-                <div className="flex items-start gap-4">
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-pink text-brand-navy flex items-center justify-center font-bold">2</span>
-                  <p className="text-white/80 pt-1">{t('digitalDetox.step2')}</p>
-                </div>
-                <div className="flex items-start gap-4">
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-pink text-brand-navy flex items-center justify-center font-bold">3</span>
-                  <p className="text-white/80 pt-1">{t('digitalDetox.step3')}</p>
-                </div>
+            {/* Where can you host */}
+            <HostFAQItem
+              title={tJoin('whereTitle')}
+              isOpen={openItems.where}
+              onToggle={() => toggleItem('where')}
+            >
+              <div className="space-y-3 whitespace-pre-line">{tJoin('whereDesc')}</div>
+            </HostFAQItem>
+
+            {/* Not sure yet */}
+            <HostFAQItem
+              title={tJoin('uncertainTitle')}
+              isOpen={openItems.uncertain}
+              onToggle={() => toggleItem('uncertain')}
+            >
+              <div className="space-y-3 whitespace-pre-line">{tJoin('uncertainDesc')}</div>
+            </HostFAQItem>
+
+            {/* How to apply */}
+            <HostFAQItem
+              title={tJoin('applyTitle')}
+              isOpen={openItems.apply}
+              onToggle={() => toggleItem('apply')}
+            >
+              <div className="space-y-4">
+                <p className="whitespace-pre-line">{tJoin('applyDesc')}</p>
               </div>
-
-              <div className="bg-white/5 rounded-xl p-5 border border-white/10">
-                <p className="text-brand-pink">
-                  <span className="font-semibold">💡 Tip:</span>{' '}
-                  <span className="text-white/80">{t('digitalDetox.tip').replace('Tip: ', '')}</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Right: Detox Poster */}
-            <div>
-              <div className="relative rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '750/570' }}>
-                <Image
-                  src="/images/elements/AD-17.png"
-                  alt="Digital Detox"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover"
-                  loading="lazy"
-                  placeholder="blur"
-                  blurDataURL={BLUR_POSTER}
-                />
-              </div>
+            </HostFAQItem>
+            {/* 固定顯示的 JOIN US CTA */}
+            <div className="mt-6">
+              <a
+                href="https://forms.gle/GjiBkX56ktwtnY2b7"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all uppercase tracking-wider text-sm"
+              >
+                {tJoin('joinUsBtn')}
+              </a>
             </div>
           </div>
         </div>
