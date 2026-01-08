@@ -8,6 +8,19 @@ type Location = 'TW' | 'NL';
 export type SignupFormProps = {
   location: Location;
   endpoint?: string;
+  // When provided, form will validate and call onComplete instead of submitting.
+  onComplete?: (values: SignupFormValues) => void;
+};
+
+export type SignupFormValues = {
+  name: string;
+  age: string;
+  profession: string;
+  email: string;
+  instagram?: string;
+  referral: 'BookDigestIG' | 'BookDigestFB' | 'Others';
+  referralOther?: string;
+  website?: string; // honeypot
 };
 
 // Move schema to module level for better performance (only created once)
@@ -25,7 +38,7 @@ const baseSchema = z.object({
     .min(1, 'Email is required')
     .email('Please enter a valid email'),
   instagram: z.string().optional(),
-  referral: z.enum(['BookDigestIG', 'BookDigestFB', 'OtherIG', 'OtherFB', 'Others']),
+  referral: z.enum(['BookDigestIG', 'BookDigestFB', 'Others']),
   referralOther: z.string().optional(),
   website: z.string().optional(),
 });
@@ -43,19 +56,19 @@ const formSchema = baseSchema.superRefine((data, ctx) => {
   }
 });
 
-export default function SignupForm({ location, endpoint }: SignupFormProps) {
+export default function SignupForm({ location, endpoint, onComplete }: SignupFormProps) {
   const t = useTranslations('form');
   const tEvents = useTranslations('events');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<null | 'ok' | 'error'>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [values, setValues] = useState({
+  const [values, setValues] = useState<SignupFormValues>({
     name: '',
     age: '',
     profession: '',
     email: '',
     instagram: '',
-    referral: 'BookDigestIG' as 'BookDigestIG' | 'BookDigestFB' | 'OtherIG' | 'OtherFB' | 'Others',
+    referral: 'BookDigestIG',
     referralOther: '',
     website: '',
   });
@@ -95,13 +108,20 @@ export default function SignupForm({ location, endpoint }: SignupFormProps) {
       return;
     }
 
+    // If onComplete is provided (wizard mode), just validate and pass values up
+    if (typeof onComplete === 'function') {
+      onComplete(values);
+      setSubmitting(false);
+      return;
+    }
+
     try {
       if (endpoint) {
         // Map client referral values to API expected values
         let apiReferral: 'Instagram' | 'Facebook' | 'Others' = 'Instagram';
-        if (values.referral === 'BookDigestIG' || values.referral === 'OtherIG') {
+        if (values.referral === 'BookDigestIG') {
           apiReferral = 'Instagram';
-        } else if (values.referral === 'BookDigestFB' || values.referral === 'OtherFB') {
+        } else if (values.referral === 'BookDigestFB') {
           apiReferral = 'Facebook';
         } else {
           apiReferral = 'Others';
@@ -158,11 +178,11 @@ export default function SignupForm({ location, endpoint }: SignupFormProps) {
         </span>
       </div>
 
-      {success === 'ok' ? (
+      {(!onComplete && success === 'ok') ? (
         <div className="rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-200 p-4" role="status">
           {t('success')}
         </div>
-      ) : success === 'error' ? (
+      ) : (!onComplete && success === 'error') ? (
         <div className="rounded-lg bg-red-500/15 border border-red-400/30 text-red-200 p-4" role="status">
           {t('error')}
         </div>
@@ -233,11 +253,9 @@ export default function SignupForm({ location, endpoint }: SignupFormProps) {
             id="referral" name="referral" value={values.referral} onChange={onChange}
             className={`${inputClass(false)} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%23666%22%3E%3Cpath%20stroke-linecap%3D%22round%20stroke-linejoin%3D%22round%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_1rem_center] bg-[length:1.25rem]`}
           >
-            <option value="BookDigestIG">Book Digest IG</option>
-            <option value="BookDigestFB">Book Digest FB</option>
-            <option value="OtherIG">Other IG accounts</option>
-            <option value="OtherFB">Other FB accounts</option>
-            <option value="Others">Other</option>
+            <option value="BookDigestIG">{t('referralBookDigestIG')}</option>
+            <option value="BookDigestFB">{t('referralBookDigestFB')}</option>
+            <option value="Others">{t('referralOthers')}</option>
           </select>
         </div>
 

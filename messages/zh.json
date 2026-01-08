@@ -145,6 +145,8 @@
     "emailLabel": "請問你的 E-mail 是？",
     "instagramLabel": "可以留下您的 Instagram 讓我們方便聯繫及標註您！",
     "referralLabel": "你怎麼找到我們的呢？",
+    "referralBookDigestIG": "吃書反芻 Instagram",
+    "referralBookDigestFB": "吃書反芻 Facebook",
     "referralOthers": "其他",
     "referralOtherLabel": "如果填其他，歡迎告訴我們從哪裡找到吃書反芻的！",
     "referralOtherPlaceholder": "例如：朋友介紹...",
@@ -188,5 +190,28 @@
     "title": "頁面不存在",
     "description": "抱歉，您要找的頁面不存在或已被移動。",
     "backHome": "返回首頁"
+  },
+  "signupFlow": {
+    "thanksTitle": "THANKS FOR YOUR INTEREST!",
+    "thanksBody": "為了讓每位參與者都有充足的討論時間與互動空間，我們每場讀書會皆設定人數上限。自 2026 年起，我們會酌收 NT$50 報名費，用於場地租借、網站維運與行政成本，也能提高報名者的出席意願。\n\n這樣的安排能讓活動品質更穩定，也讓每一位到場的你，都能享有一段豐富且值得的讀書時光。感謝你的理解與支持！",
+    "next": "下一步",
+    "remitTitle": "匯款資訊",
+    "bank": "銀行：台新銀行（812）",
+    "account": "帳號：2888-1006-7763-04",
+    "richartPrefix": "或點此用 Richart APP 直接帶入帳號：",
+    "richartLinkText": "開啟 Richart 轉帳",
+    "remitPrompt": "請匯款後填寫下方資訊以利我們確認匯款：",
+    "last5Label": "匯款末五碼",
+    "last5Placeholder": "例如：12345",
+    "last5Error": "請輸入 5 碼數字",
+    "submitting": "提交中...",
+    "submitPayment": "提交",
+    "genericError": "出了點問題，請稍後再試。",
+    "successTitle": "報名成功！",
+    "successBody": "感謝你的報名，我們會在活動前一週寄出「報名成功通知信」，內含活動地址與注意事項，請留意信箱。",
+    "cancelTitle": "取消與退費說明（溫馨提醒）",
+    "cancelBody": "由於名額有限且需提前安排場地與行政作業，報名確認後原則上不提供退費。\n若遇突發事件或不可抗力因素，請儘早聯絡我們，我們將視情況協助辦理名額轉讓或將報名費保留至下一場次使用。",
+    "contact": "有任何想法都歡迎私訊粉專或寄信跟我們說：",
+    "finalNote": "我們通常會在舉辦讀書會的前一週寄出地點通知郵件，再幫我們留意，期待在當天見到你們！"
   }
 }

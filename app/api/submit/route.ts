@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       instagram: body.instagram ? String(body.instagram) : undefined,
       referral: body.referral as RegistrationInput['referral'],
       referralOther: body.referralOther ? String(body.referralOther) : undefined,
+      bankAccount: typeof body.bankAccount === 'string' ? String(body.bankAccount).trim() : undefined,
       timestamp: body.timestamp,
       visitorId: visitorId || undefined,
     };
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
         ID: cryptoRandomId(),
         Title: `${payload.name} — ${payload.location}`.trim(),
         visitorId: visitorId || '',
-        bankAccount: '',
+        bankAccount: payload.bankAccount || '',
         // Timestamps for convenience (Tally can also store submission time)
         'Created Date': payload.timestamp || new Date().toISOString(),
         'Updated Date': new Date().toISOString(),

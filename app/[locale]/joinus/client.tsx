@@ -2,7 +2,6 @@
 import { useState, Suspense } from 'react';
 import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
-import { BLUR_POSTER } from '@/lib/constants';
 
 function HostFAQItem({ 
   title, 

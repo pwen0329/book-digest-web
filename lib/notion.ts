@@ -15,8 +15,9 @@ export type RegistrationInput = {
   profession: string;
   email: string;
   instagram?: string;
-  referral: 'BookDigestIG' | 'BookDigestFB' | 'OtherIG' | 'OtherFB' | 'Others';
+  referral: 'BookDigestIG' | 'BookDigestFB' | 'Others';
   referralOther?: string;
+  bankAccount?: string;
   timestamp?: string; // ISO
   visitorId?: string;
 };
@@ -74,6 +75,7 @@ export async function saveRegistrationToNotion(dbId: string, data: RegistrationI
     findingUsOthers: RichTextProp;
     ID: RichTextProp;
     visitorId?: RichTextProp;
+    bankAccount?: RichTextProp;
     [key: string]: unknown;
   };
   const properties: Properties = {
@@ -97,6 +99,10 @@ export async function saveRegistrationToNotion(dbId: string, data: RegistrationI
 
   if (data.visitorId) {
     properties.visitorId = { rich_text: [{ type: 'text', text: { content: data.visitorId } }] };
+  }
+
+  if (data.bankAccount) {
+    properties.bankAccount = { rich_text: [{ type: 'text', text: { content: data.bankAccount } }] };
   }
 
   // Optional created timestamp override by adding a simple property if it exists

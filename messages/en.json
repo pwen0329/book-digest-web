@@ -145,6 +145,8 @@
     "emailLabel": "What's your email?",
     "instagramLabel": "Your Instagram for us to contact and tag you!",
     "referralLabel": "How did you find us?",
+    "referralBookDigestIG": "Book Digest Instagram",
+    "referralBookDigestFB": "Book Digest Facebook",
     "referralOthers": "Others",
     "referralOtherLabel": "If others, tell us how you found Book Digest!",
     "referralOtherPlaceholder": "e.g. Friend referral...",
@@ -188,5 +190,28 @@
     "title": "Page Not Found",
     "description": "Sorry, the page you're looking for doesn't exist or has been moved.",
     "backHome": "Back to Home"
+  },
+  "signupFlow": {
+    "thanksTitle": "THANKS FOR YOUR INTEREST!",
+    "thanksBody": "To make sure everyone has enough time and space for meaningful discussion, we limit the number of participants per session. Starting in 2026, we will collect a small NT$50 registration fee to help cover venue, website, and admin costs, and to encourage attendance.\n\nThis helps us keep the quality of each gathering consistent — so that every one of you who comes can enjoy a rich and worthwhile book club experience. Thank you for your understanding and support!",
+    "next": "Next",
+    "remitTitle": "Payment Details",
+    "bank": "Bank: Taishin Bank (812)",
+    "account": "Account: 2888-1006-7763-04",
+    "richartPrefix": "Or tap to open the Richart app with the account prefilled:",
+    "richartLinkText": "Open Richart",
+    "remitPrompt": "After you transfer, please fill this in so we can confirm your payment:",
+    "last5Label": "Last 5 digits of remittance",
+    "last5Placeholder": "e.g. 12345",
+    "last5Error": "Please enter exactly 5 digits",
+    "submitting": "Submitting...",
+    "submitPayment": "Submit",
+    "genericError": "Something went wrong. Please try again later.",
+    "successTitle": "Registration Successful!",
+    "successBody": "Thanks for signing up! We'll send a confirmation email one week before the event with the venue and important notes. Please keep an eye on your inbox.",
+    "cancelTitle": "Cancellation & Refund Policy (Friendly Reminder)",
+    "cancelBody": "Because spots are limited and we need to arrange the venue and admin in advance, we generally do not offer refunds after confirmation.\nIf unexpected events or force majeure arise, please contact us as early as possible, and we can help transfer your spot or carry your fee to the next session, depending on the situation.",
+    "contact": "Questions or ideas? DM our page or email us:",
+    "finalNote": "We usually send the venue details about a week before the event — please keep an eye out. Looking forward to seeing you there!"
   }
 }
