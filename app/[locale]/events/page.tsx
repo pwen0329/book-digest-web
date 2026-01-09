@@ -19,6 +19,7 @@ function EventSection({
   signupText = 'Sign Up',
   imagePosition = 'left',
   priority = false,
+  ctaClass,
 }: {
   image: string;
   title: string;
@@ -27,10 +28,11 @@ function EventSection({
   signupText?: string;
   imagePosition?: 'left' | 'right';
   priority?: boolean;
+  ctaClass?: string;
 }) {
   const imageBlock = (
     <div className="w-full lg:w-1/2">
-      <div className="relative rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '750/570' }}>
+      <div className="relative rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
         <Image
           src={image}
           alt={title}
@@ -57,7 +59,7 @@ function EventSection({
         <div className="mt-8">
           <Link
             href={signupUrl}
-            className="inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all uppercase tracking-wider text-sm"
+            className={ctaClass || "inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all uppercase tracking-wider text-sm"}
             prefetch={false}
           >
             {signupText}
@@ -88,12 +90,13 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('events');
+  const ctaClass = `inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all text-sm ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`;
 
   return (
     <section className="bg-brand-navy text-white min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-16">
         {/* Stats Counters - Client Component for animation */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-8 mb-16">
+        <div className="grid grid-cols-3 gap-6 mb-16">
           <Counter target={stats.readingDays} label={t('readingDays')} />
           <Counter target={stats.clubsHeld} label={t('clubsHeld')} />
           <Counter target={stats.readersJoined} label={t('readersJoined')} />
@@ -109,6 +112,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
             signupText={t('signUp')}
             imagePosition="left"
             priority={true}
+            ctaClass={ctaClass}
           />
         </div>
 
@@ -126,6 +130,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
             signupUrl="/signup?location=NL"
             signupText={t('signUp')}
             imagePosition="right"
+            ctaClass={ctaClass}
           />
         </div>
 
@@ -143,6 +148,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
             signupUrl="/detox"
             signupText={t('signUp')}
             imagePosition="left"
+            ctaClass={ctaClass}
           />
         </div>
       </div>

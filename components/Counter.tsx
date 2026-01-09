@@ -63,7 +63,7 @@ export default function Counter({ target, label }: { target: number; label: stri
       <div 
         className="tabular-nums font-outfit" 
         style={{ 
-          fontSize: 'clamp(60px, 12vw, 100px)', 
+          fontSize: 'clamp(40px, 8vw, 80px)', 
           fontWeight: 100, 
           lineHeight: '1', 
           letterSpacing: '-0.02em',

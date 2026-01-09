@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 
 export default async function NotFound() {
   const t = await getTranslations('notFound');
+  const locale = await getLocale();
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-brand-navy to-brand-blue">
@@ -16,7 +17,7 @@ export default async function NotFound() {
         </p>
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-brand-pink text-white font-semibold rounded-full hover:brightness-110 transition-all"
+          className={`inline-flex items-center gap-2 px-6 py-3 bg-brand-pink text-white font-semibold rounded-full hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
         >
           ← {t('backHome')}
         </Link>

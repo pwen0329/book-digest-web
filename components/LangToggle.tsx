@@ -26,10 +26,10 @@ export default memo(function LangToggle() {
 
   return (
     <div
-      className="fixed top-2 right-4 md:right-4 z-50 flex items-start"
+      className="fixed top-2 right-2 md:right-4 z-50 flex items-start"
     >
       <div
-        className="inline-flex rounded-full border border-white/20 p-0.5 bg-brand-navy/90 backdrop-blur text-[10px] md:text-xs"
+        className="inline-flex rounded-full border border-white/20 p-0.5 bg-brand-navy/90 backdrop-blur text-[10px] md:text-xs shadow-lg"
         role="tablist"
         aria-label="Language selector"
       >

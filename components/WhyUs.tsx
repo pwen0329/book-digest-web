@@ -19,7 +19,7 @@ const ITEMS = [
   {
     titleKey: 'reason3Title',
     descKey: 'reason3Desc',
-    icon: '/images/elements/why us-08.png',
+    icon: '/images/elements/whyus-08.png',
   },
 ] as const;
 
@@ -97,14 +97,16 @@ export default function WhyUs() {
                 />
               </div>
               
-              {/* Text Content on Right - Fixed height */}
-              <div className="flex-1 text-center md:text-left min-h-[120px] md:min-h-[140px] flex flex-col justify-center">
-                <h3 className="font-bold text-white font-outfit text-xl md:text-2xl lg:text-3xl">
-                  {t(currentItem.titleKey)}
-                </h3>
-                <p className="text-white/80 text-sm md:text-base lg:text-lg mt-3 md:mt-4 leading-relaxed whitespace-pre-line max-w-lg font-outfit">
-                  {t(currentItem.descKey)}
-                </p>
+              {/* Text Content - 手機靠左、桌面置中 */}
+              <div className="flex-1 min-h-[120px] md:min-h-[140px] flex flex-col justify-center">
+                <div className="text-left md:text-center md:mx-auto md:max-w-lg">
+                  <h3 className="font-bold text-white font-outfit text-xl md:text-2xl lg:text-3xl">
+                    {t(currentItem.titleKey)}
+                  </h3>
+                  <p className="text-white text-sm md:text-base lg:text-lg mt-3 md:mt-4 leading-relaxed whitespace-pre-line font-outfit">
+                    {t(currentItem.descKey)}
+                  </p>
+                </div>
               </div>
             </div>
 

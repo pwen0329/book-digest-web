@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { z } from 'zod';
 
 type Location = 'TW' | 'NL';
@@ -29,8 +29,8 @@ const baseSchema = z.object({
   age: z
     .string()
     .transform((v) => (v.trim() === '' ? NaN : Number(v)))
-    .refine((n) => Number.isInteger(n) && n >= 13 && n <= 120, {
-      message: 'Age must be an integer between 13 and 120',
+    .refine((n) => Number.isInteger(n) && n >= 18 && n <= 100, {
+      message: 'Age must be an integer between 18 and 100',
     }),
   profession: z.string().min(1, 'Profession is required').max(120),
   email: z
@@ -59,6 +59,7 @@ const formSchema = baseSchema.superRefine((data, ctx) => {
 export default function SignupForm({ location, endpoint, onComplete }: SignupFormProps) {
   const t = useTranslations('form');
   const tEvents = useTranslations('events');
+  const locale = useLocale();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<null | 'ok' | 'error'>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -192,7 +193,7 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
         {/* Honeypot */}
         <input type="text" name="website" value={values.website} onChange={onChange} className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
-        <div className="grid grid-cols-2 gap-4 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
           {/* Name */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-white mb-2">{t('nameLabel')}</label>
@@ -277,7 +278,7 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all disabled:opacity-60"
+            className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all disabled:opacity-60 ${locale === 'zh' ? 'tracking-widest' : ''}`}
           >
             {submitting ? t('submitting') : t('submit')}
           </button>

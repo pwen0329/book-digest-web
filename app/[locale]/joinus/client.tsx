@@ -21,17 +21,15 @@ function HostFAQItem({
         className="w-full py-4 flex items-center justify-between text-left hover:bg-white/5 transition-colors px-4 -mx-4"
       >
         <h3 className="font-semibold text-white text-lg">{title}</h3>
-        <svg 
-          className={`w-6 h-6 text-brand-pink transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
+        <svg
+          className={`w-6 h-6 text-brand-pink transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          <path d="M9 5l7 7-7 7" />
         </svg>
       </button>
       {isOpen && (
-        <div className="px-4 pb-4 text-white/80 space-y-3 leading-relaxed">
+        <div className="px-4 pb-4 text-white space-y-3 leading-relaxed">
           {children}
         </div>
       )}
@@ -45,7 +43,7 @@ function JoinUsContent() {
   
   // Track which FAQ items are open
   const [openItems, setOpenItems] = useState<{ [key: string]: boolean }>({
-    whatDo: true,
+    whatDo: false,
     whyJoin: false,
     where: false,
     uncertain: false,
@@ -67,14 +65,14 @@ function JoinUsContent() {
     });
   };
 
-  const postItImage = locale === 'zh' ? '/images/elements/post-it-23.png' : '/images/elements/post-it-24.png';
+  const postItImage = locale === 'zh' ? '/images/elements/post-it-11.png' : '/images/elements/post-it-12.png';
 
   return (
     <section className="bg-brand-navy text-white min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
         {/* Page Header */}
-        <div className="mb-12">
-          <h1 className="text-3xl md:text-4xl font-bold font-outfit">
+        <div className="mb-12 text-center">
+          <h1 className="text-2xl md:text-3xl font-bold font-outfit">
             {tJoin('title')}
           </h1>
         </div>
@@ -152,12 +150,12 @@ function JoinUsContent() {
               </div>
             </HostFAQItem>
             {/* 固定顯示的 JOIN US CTA */}
-            <div className="mt-6">
+            <div className="mt-8 pt-8 border-t border-white/10">
               <a
                 href="https://forms.gle/GjiBkX56ktwtnY2b7"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all uppercase tracking-wider text-sm"
+                className={`inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all text-sm ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}
               >
                 {tJoin('joinUsBtn')}
               </a>

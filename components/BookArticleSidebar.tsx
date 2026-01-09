@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 type SidebarProps = {
   articles?: { slug: string; title: string }[];
@@ -10,6 +10,7 @@ export default function BookArticleSidebar({
   articles = [],
 }: SidebarProps) {
   const t = useTranslations('sidebar');
+  const locale = useLocale();
   return (
     <aside className="space-y-5" aria-label="Sidebar">
       {/* Next Event Section */}
@@ -20,7 +21,7 @@ export default function BookArticleSidebar({
         </p>
         <a
           href="/events"
-          className="mt-3 inline-flex items-center gap-2 rounded-full bg-brand-pink px-4 py-2 text-sm font-semibold text-white hover:brightness-110 transition-all"
+          className={`mt-3 inline-flex items-center gap-2 rounded-full bg-brand-pink px-4 py-2 text-sm font-semibold text-white hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
         >
           {t('viewEvents')}
         </a>

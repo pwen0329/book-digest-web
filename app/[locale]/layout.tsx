@@ -66,9 +66,9 @@ export default async function LocaleLayout({ children, params }: Props) {
         
           {/* Favicon 根據語系切換（ico 格式） */}
           {locale === 'en' ? (
-            <link rel="icon" href="/images/favicon-en.ico" type="image/x-icon" />
+            <link rel="icon" href="/eyes2.ico" type="image/x-icon" />
           ) : (
-            <link rel="icon" href="/images/favicon-zh.ico" type="image/x-icon" />
+            <link rel="icon" href="/eyes1.ico" type="image/x-icon" />
           )}
           <link rel="manifest" href="/site.webmanifest" />
         {/* Alternate languages */}

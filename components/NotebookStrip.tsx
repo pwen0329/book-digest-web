@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 
 export default async function NotebookStrip() {
   const tModal = await getTranslations('modal');
+  const locale = await getLocale();
   const frames = [1, 2, 3, 4, 5, 6].map((n) => `/images/notebook/notebook-0${n}.png`);
   return (
     <section className="bg-brand-navy">
@@ -17,7 +18,7 @@ export default async function NotebookStrip() {
             ))}
           </div>
           <div className="mt-4 text-center">
-            <Link href="/events#detox" className="inline-flex items-center rounded-full bg-brand-pink px-5 py-2.5 font-semibold text-white hover:brightness-110 transition-all">{tModal('imIn')}</Link>
+            <Link href="/events#detox" className={`inline-flex items-center rounded-full bg-brand-pink px-5 py-2.5 font-semibold text-white hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}>{tModal('imIn')}</Link>
           </div>
         </div>
       </div>

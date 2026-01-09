@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import Link from 'next/link';
 import Image from 'next/image';
 import { BLUR_SQUARE } from '@/lib/constants';
@@ -11,6 +11,7 @@ export function generateStaticParams() {
 export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const currentLocale = await getLocale();
   const t = await getTranslations('about');
 
   return (
@@ -42,7 +43,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
           {/* Reason 1 - A New Book Every Month */}
           <div className="flex justify-center mb-16">
-            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10 max-w-4xl">
+            <div className="w-full flex flex-col md:flex-row items-center gap-6 md:gap-10 max-w-4xl">
               <div className="flex-shrink-0 relative w-56 md:w-72 h-56 md:h-72">
                 <Image 
                   src="/images/elements/whyus-06.png" 
@@ -68,7 +69,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
           {/* Reason 2 - Deep, delightful and diverse conversations */}
           <div className="flex justify-center mb-16">
-            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10 max-w-4xl">
+            <div className="w-full flex flex-col md:flex-row items-center gap-6 md:gap-10 max-w-4xl">
               <div className="flex-shrink-0 relative w-56 md:w-72 h-56 md:h-72">
                 <Image 
                   src="/images/elements/whyus-07.png" 
@@ -94,10 +95,10 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
           {/* Reason 3 - Chill Vibes, No Pressure */}
           <div className="flex justify-center mb-16">
-            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10 max-w-4xl">
+            <div className="w-full flex flex-col md:flex-row items-center gap-6 md:gap-10 max-w-4xl">
               <div className="flex-shrink-0 relative w-56 md:w-72 h-56 md:h-72">
                 <Image 
-                  src="/images/elements/why us-08.png" 
+                  src="/images/elements/whyus-08.png" 
                   alt="" 
                   fill
                   sizes="(max-width: 768px) 224px, 288px"
@@ -121,8 +122,8 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           {/* Join Us Button */}
           <div className="text-center mt-12">
             <Link
-              href="/joinus"
-              className="inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-bold text-lg hover:brightness-110 transition-all uppercase tracking-wider"
+              href="/events"
+              className={`inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all text-sm ${currentLocale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}
             >
               {t('joinUsBtn')}
             </Link>

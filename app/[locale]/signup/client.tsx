@@ -2,13 +2,14 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import SignupForm, { SignupFormValues } from '@/components/SignupForm';
 import { BLUR_POSTER } from '@/lib/constants';
 
 function SignupContent() {
   const t = useTranslations('events');
   const tSignup = useTranslations('signupFlow');
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const [activeLocation, setActiveLocation] = useState<'TW' | 'NL'>('TW');
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
@@ -119,7 +120,7 @@ function SignupContent() {
         {/* 舊版：左海報 + 右表單 */}
         <div className="grid grid-cols-1 lg:grid-cols-[600px_1fr] gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
           <div className="flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-[600px] lg:w-[600px] h-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '750/570' }}>
+            <div className="relative w-full max-w-[600px] lg:w-[600px] h-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
               <Image
                 src={activeLocation === 'TW' ? '/images/elements/AD-16.png' : '/images/elements/AD-15.png'}
                 alt={activeLocation === 'TW' ? 'Taiwan Book Club' : 'Netherlands Book Club'}
@@ -146,13 +147,15 @@ function SignupContent() {
               )}
 
               {step === 1 && (
-                <div className="text-white">
-                  <h3 className="text-xl font-bold mb-4">{tSignup('thanksTitle')}</h3>
-                  <p className="whitespace-pre-line text-white/90">{tSignup('thanksBody')}</p>
+                <div className="text-white flex flex-col min-h-[300px] justify-between py-6">
+                  <div>
+                    <h3 className="text-xl font-bold mb-4">{tSignup('thanksTitle')}</h3>
+                    <p className="whitespace-pre-line text-white">{tSignup('thanksBody')}</p>
+                  </div>
                   <div className="pt-6">
                     <button
                       onClick={() => setStep(2)}
-                      className="inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all"
+                      className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
                     >
                       {tSignup('next')}
                     </button>
@@ -191,7 +194,7 @@ function SignupContent() {
                     <button
                       onClick={handleFinalize}
                       disabled={sending}
-                      className="inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all disabled:opacity-60"
+                      className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all disabled:opacity-60 ${locale === 'zh' ? 'tracking-widest' : ''}`}
                     >
                       {sending ? tSignup('submitting') : tSignup('submitPayment')}
                     </button>
@@ -202,12 +205,11 @@ function SignupContent() {
               {step === 3 && (
                 <div className="text-white">
                   <h3 className="text-xl font-bold mb-4">{tSignup('successTitle')}</h3>
-                  <p className="whitespace-pre-line text-white/90">{tSignup('successBody')}</p>
+                  <p className="whitespace-pre-line text-white">{tSignup('successBody')}</p>
                   <h4 className="mt-6 font-semibold">{tSignup('cancelTitle')}</h4>
-                  <p className="mt-1 whitespace-pre-line text-white/90">{tSignup('cancelBody')}</p>
-                  <p className="mt-4 text-white/90">{tSignup('contact')}</p>
-                  <p className="text-white/90">📩 bookdigest2020@gmail.com</p>
-                  <p className="mt-4 text-white/90">{tSignup('finalNote')}</p>
+                  <p className="mt-1 whitespace-pre-line text-white">{tSignup('cancelBody')}</p>
+                  <p className="mt-4 text-white">{tSignup('contact')}</p>
+                  <p className="text-white">📩 bookdigest2020@gmail.com</p>
                 </div>
               )}
             </div>

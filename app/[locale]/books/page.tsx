@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { getTranslations } from 'next-intl/server';
 import { getBooksSync, getLocalizedBook } from '@/lib/books';
 import { BLUR_BOOK_COVER } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
@@ -12,7 +11,6 @@ export function generateStaticParams() {
 export default async function BooksPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations('books');
 
   // Sort by coverUrl number (extracted from filename), smaller numbers last
   const data = getBooksSync()
@@ -24,8 +22,7 @@ export default async function BooksPage({ params }: { params: Promise<{ locale: 
   return (
     <section className="bg-brand-navy text-white">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <h1 className="text-3xl font-bold tracking-wide">{t('title')}</h1>
-        <p className="text-white/80 mt-2">Past reads from our book club.</p>
+        {/* 移除標題與副標說明 */}
 
         <ul className="mt-8 grid gap-x-6 gap-y-10 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           {data.map((b, index) => (

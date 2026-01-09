@@ -16,8 +16,8 @@ export default async function Footer() {
         </div>
       </div>
 
-      {/* Four-column navigation - with better spacing */}
-      <div className="mx-auto max-w-6xl px-6 py-10 grid gap-8 md:grid-cols-4 text-sm text-white/80 font-outfit">
+      {/* Four-column navigation - mobile 橫向（2欄），桌面 4 欄 */}
+      <div className="mx-auto max-w-6xl px-6 py-10 grid gap-8 grid-cols-2 md:grid-cols-4 text-sm text-white/80 font-outfit">
         <div>
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{t('events')}</div>
           <ul className="mt-3 space-y-2">
@@ -29,7 +29,6 @@ export default async function Footer() {
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{t('getInvolved')}</div>
           <ul className="mt-3 space-y-2">
             <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/joinus">{t('beAHost')}</a></li>
-            <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/joinus">{t('signUpForms')}</a></li>
           </ul>
         </div>
         <div>

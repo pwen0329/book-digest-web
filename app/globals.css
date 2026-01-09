@@ -6,6 +6,18 @@
   color-scheme: light dark;
 }
 
+/* Prevent horizontal scroll on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Ensure all sections respect viewport width */
+section {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 /* Smooth focus ring */
 .focus-ring {
   @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy;
