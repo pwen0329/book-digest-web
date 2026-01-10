@@ -69,11 +69,7 @@ export const defaultSEO: Metadata = {
       'Come join the conversation! Put your phone down, pick a book up. Join our book club and digital detox community.',
     images: ['/images/og-image.png'],
   },
-  icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png',
-  },
+  icons: '/eyes2.ico',
   manifest: '/site.webmanifest',
   alternates: {
     canonical: siteUrl,

@@ -71,7 +71,7 @@ export default function WhyUs() {
             </button>
 
             {/* Main Content: Image Left + Text Right - Fixed height container */}
-            <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10 min-h-[280px] md:min-h-[240px]">
+            <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-6 md:gap-14 min-h-[280px] md:min-h-[240px]">
               {/* Large Image on Left - Fixed size container */}
               <div className="flex-shrink-0 w-40 md:w-56 lg:w-64 h-40 md:h-56 lg:h-64 relative">
                 <Image 
@@ -97,9 +97,9 @@ export default function WhyUs() {
                 />
               </div>
               
-              {/* Text Content - 手機靠左、桌面置中 */}
+              {/* Text Content - 手機靠左、桌面靠左 */}
               <div className="flex-1 min-h-[120px] md:min-h-[140px] flex flex-col justify-center">
-                <div className="text-left md:text-center md:mx-auto md:max-w-lg">
+                <div className="text-left md:max-w-lg">
                   <h3 className="font-bold text-white font-outfit text-xl md:text-2xl lg:text-3xl">
                     {t(currentItem.titleKey)}
                   </h3>

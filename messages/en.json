@@ -14,8 +14,8 @@
   },
   "home": {
     "hero": {
-        "title": "A space to rest, read,",
-        "titleLine2": "and reconnect, one page at a time.",
+      "title": "A space to rest, read,",
+      "titleLine2": "and reconnect,\none page at a time.",
       "subtitle": "Come join the conversation!",
       "ctaBookClub": "Book Club",
       "ctaDetox": "Digital Detox"
@@ -85,7 +85,7 @@
     "uncertainTitle": "Not sure yet?",
     "uncertainDesc": "It's okay to try before you commit!\n\nYou're welcome to join an upcoming book club session first, get a feel for the vibe, and then decide if hosting is right for you.",
     "applyTitle": "How to apply",
-    "applyDesc": "Fill out our short Host Application Form, tell us your ideas and where you're based,\nand we'll be in touch via email when we're ready to welcome you into the Book Digest crew!",
+    "applyDesc": "Fill out our short Host Application Form, tell us your ideas and where you're based, and we'll be in touch via email when we're ready to welcome you into the Book Digest crew!",
     "joinUsBtn": "JOIN US"
   },
   "books": {

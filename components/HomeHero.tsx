@@ -32,29 +32,29 @@ export default function HomeHero() {
 
         <div className="relative mx-auto max-w-6xl px-6 sm:px-8 md:px-6 pt-18 pb-18 lg:pt-22 lg:pb-22">
           <div className="grid items-center gap-8 lg:gap-12 md:grid-cols-2 text-center md:text-left">
-            <div className={`${locale === 'en' ? 'relative z-30' : ''} order-2 md:order-1 px-2 sm:px-0`}>
+            <div className={`${locale === 'en' ? 'relative z-30' : ''} order-2 md:order-1 px-2 sm:px-0 md:pl-12`}>
               <h1 
                 className={`mt-6 font-bold text-white font-display tracking-[0.01em] ${
                   locale === 'zh'
                     ? 'text-xl md:text-2xl lg:text-3xl'
-                    : 'text-2xl md:text-3xl lg:text-4xl leading-[1.1]'
+                    : 'text-2xl md:text-3xl lg:text-4xl leading-[1.1] whitespace-pre-line'
                 }`}
-                style={locale === 'zh' ? { lineHeight: '1.0' } : undefined}
+                style={locale === 'zh' ? { lineHeight: '1.6' } : undefined}
               >
                 <span>{t('hero.title')}</span>
-                <br />
-                <span className={locale === 'zh' ? 'md:mt-4 md:inline-block' : ''}>{t('hero.titleLine2')}</span>
+                <br /> 
+                <span className={`${locale === 'zh' ? 'inline-block mt-0.1 md:mt-0.1' : 'whitespace-pre-line'}`}>{t('hero.titleLine2')}</span>
               </h1>
-              <p className="mt-4 text-base md:text-lg text-white/90 max-w-2xl mx-auto md:mx-0 leading-loose font-outfit">
+              <p className="mt-4 text-base md:text-lg text-white/90 max-w-2xl mx-auto md:mx-0 leading-loose md:leading-snug font-outfit whitespace-pre-line">
                 {t('hero.subtitle')}
               </p>
               <div className="mt-8 flex flex-row flex-wrap items-center md:items-start justify-center md:justify-start gap-2 sm:gap-3">
-                <a href="/events" className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}>{t('hero.ctaBookClub')}</a>
-                <button onClick={() => setOpen(true)} className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy px-3 sm:px-6 py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}>{t('hero.ctaDetox')}</button>
+                <a href="/events" className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy px-6 sm:px-8 py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}>{t('hero.ctaBookClub')}</a>
+                <button onClick={() => setOpen(true)} className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy px-6 sm:px-8 py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}>{t('hero.ctaDetox')}</button>
               </div>
             </div>
             {/* Page Flip Animation - enlarged for better visibility */}
-            <div className="mt-10 md:mt-0 w-full max-w-[calc(100vw-3rem)] mx-auto px-4 sm:px-0 order-1 md:order-2">
+            <div className="mt-0 md:mt-0 w-full max-w-[calc(100vw-3rem)] mx-auto px-4 sm:px-0 order-1 md:order-2">
               <PageFlipAnimation
                 gifSrc="/images/notebook/notebook.gif"
                 className={heroFlipClassName}

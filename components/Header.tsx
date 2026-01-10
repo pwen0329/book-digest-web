@@ -132,7 +132,7 @@ export default function Header() {
           {/* Centered logo */}
           <div className="flex-1 flex justify-center">
             <Link href={`/${locale}`} className="inline-flex items-center" aria-label="Home">
-              <Image src="/images/logo/logo-t.gif" alt="Book Digest logo" width={50} height={40} className="h-10 w-auto" unoptimized priority />
+              <Image src="/images/logo/logo-t.gif" alt="Book Digest logo" width={70} height={56} className="h-14 w-auto" unoptimized priority />
             </Link>
           </div>
           

@@ -22,8 +22,8 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           {t('ourStory')}
         </h1>
 
-        {/* Story Paragraphs - Centered */}
-        <div className="space-y-6 text-white/90 leading-relaxed text-center font-outfit">
+        {/* Story Paragraphs - Left aligned and horizontally aligned with "A New Book Every Month" text block */}
+        <div className="space-y-6 text-white/90 leading-relaxed text-left font-outfit md:pl-72 lg:pl-80">
           <p className="whitespace-pre-line">
             {t('storyPara1')}
           </p>

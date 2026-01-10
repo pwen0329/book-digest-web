@@ -57,7 +57,7 @@ export default function Counter({ target, label }: { target: number; label: stri
 
   return (
     <div ref={ref} className="text-center">
-      <div className="text-sm text-white/70 font-outfit uppercase tracking-wider mb-4">
+      <div className="text-[10px] sm:text-sm text-white/70 font-outfit uppercase tracking-wider mb-4 whitespace-nowrap">
         {label}
       </div>
       <div 

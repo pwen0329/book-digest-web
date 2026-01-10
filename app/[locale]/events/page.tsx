@@ -31,7 +31,7 @@ function EventSection({
   ctaClass?: string;
 }) {
   const imageBlock = (
-    <div className="w-full lg:w-1/2">
+    <div className="w-full lg:w-5/12">
       <div className="relative rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
         <Image
           src={image}
@@ -97,9 +97,9 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
       <div className="mx-auto max-w-6xl px-6 py-16">
         {/* Stats Counters - Client Component for animation */}
         <div className="grid grid-cols-3 gap-6 mb-16">
-          <Counter target={stats.readingDays} label={t('readingDays')} />
+          <div className="translate-x-4"><Counter target={stats.readingDays} label={t('readingDays')} /></div>
           <Counter target={stats.clubsHeld} label={t('clubsHeld')} />
-          <Counter target={stats.readersJoined} label={t('readersJoined')} />
+          <div className="-translate-x-4"><Counter target={stats.readersJoined} label={t('readersJoined')} /></div>
         </div>
 
         {/* Taiwan Book Club */}

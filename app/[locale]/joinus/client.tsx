@@ -102,7 +102,7 @@ function JoinUsContent() {
               onToggle={() => toggleItem('whatDo')}
             >
               <p className="font-medium text-white mb-3">{tJoin('hostIntro')}</p>
-              <ul className="space-y-2">
+              <ul className="space-y-2 list-disc pl-5">
                 <li>{tJoin('hostPoint1')}</li>
                 <li>{tJoin('hostPoint2')}</li>
                 <li>{tJoin('hostPoint3')}</li>
