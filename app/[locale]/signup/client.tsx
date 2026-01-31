@@ -78,7 +78,7 @@ function SignupContent() {
   return (
     <section className="bg-brand-navy text-white min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
-        {!locationLocked && (
+        {!locationLocked && step === 0 && (
           <>
             <div className="mb-8">
               <h1 className="text-2xl md:text-3xl font-bold font-outfit">
@@ -170,8 +170,8 @@ function SignupContent() {
                     <p>{tSignup('bank')}</p>
                     <p>{tSignup('account')}</p>
                     <p>
-                      {tSignup('richartPrefix')}{' '}
-                      <a href="https://mobile.richart.tw/TSDIB_RichartWeb/RC04/RC040300?token=88084B8A2C7A93B4DC6FB4D553667015" target="_blank" rel="noopener noreferrer" className="underline text-brand-pink">
+                      <span className="block">{tSignup('richartPrefix')}</span>
+                      <a href="https://mobile.richart.tw/TSDIB_RichartWeb/RC04/RC040300?token=88084B8A2C7A93B4DC6FB4D553667015" target="_blank" rel="noopener noreferrer" className="underline text-brand-pink inline-block mt-1">
                         {tSignup('richartLinkText')}
                       </a>
                     </p>

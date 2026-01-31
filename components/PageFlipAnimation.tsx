@@ -103,8 +103,8 @@ export default function PageFlipAnimation({
     return (
       <div className={`relative ${className}`}>
         <div 
-          className="relative w-full max-w-full mx-auto transform rotate-[-3deg] hover:rotate-[-1deg] transition-transform duration-300" 
-          style={{ aspectRatio: '4/3', minHeight: '350px' }}
+          className="relative w-full max-w-full mx-auto min-h-[220px] sm:min-h-[280px] md:min-h-[320px] transform rotate-[-3deg] hover:rotate-[-1deg] transition-transform duration-300" 
+          style={{ aspectRatio: '4/3' }}
         >
           <Image
             src={gifSrc}

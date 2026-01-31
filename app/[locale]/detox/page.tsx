@@ -15,40 +15,25 @@ export default async function DetoxPage({ params }: { params: Promise<{ locale: 
   return (
     <section className="bg-brand-navy text-white min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
-        <div className="mb-10">
-          <h1 className="text-3xl md:text-4xl font-bold font-outfit">{t('digitalDetox.title')}</h1>
-          <p className="mt-3 text-white/80 max-w-3xl">{t('digitalDetox.description')}</p>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
-          {/* Content */}
-          <div className="space-y-8">
-            <div className="space-y-5">
-              <div className="flex items-start gap-4">
-                <span className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-pink text-brand-navy flex items-center justify-center font-bold">1</span>
-                <p className="text-white/80 pt-1">{t('digitalDetox.step1')}</p>
-              </div>
-              <div className="flex items-start gap-4">
-                <span className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-pink text-brand-navy flex items-center justify-center font-bold">2</span>
-                <p className="text-white/80 pt-1">{t('digitalDetox.step2')}</p>
-              </div>
-              <div className="flex items-start gap-4">
-                <span className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-pink text-brand-navy flex items-center justify-center font-bold">3</span>
-                <p className="text-white/80 pt-1">{t('digitalDetox.step3')}</p>
-              </div>
+          {/* Left Copy */}
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold font-outfit">{t('detoxPage.leftTitle')}</h1>
+              <p className="mt-2 text-brand-pink/90 font-outfit">{t('detoxPage.leftSubtitle')}</p>
             </div>
-
-            <div className="bg-white/5 rounded-xl p-5 border border-white/10">
-              <p className="text-brand-pink">
-                <span className="font-semibold">💡 Tip:</span>{' '}
-                <span className="text-white/80">{t('digitalDetox.tip').replace('Tip: ', '')}</span>
-              </p>
-            </div>
+            <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
+              {t('detoxPage.leftBody')}
+            </p>
+            <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
+              {t('detoxPage.rightBody')}
+            </p>
           </div>
 
-          {/* Poster */}
-          <div>
-            <div className="relative rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '750/570' }}>
+          {/* Right Copy + Poster */}
+          <div className="space-y-6">
+            <div />
+            <div className="relative w-full max-w-[340px] sm:max-w-[380px] lg:max-w-[520px] mx-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
               <Image
                 src="/images/elements/AD-17.png"
                 alt="Digital Detox"

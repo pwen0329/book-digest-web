@@ -23,7 +23,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         </h1>
 
         {/* Story Paragraphs - Left aligned and horizontally aligned with "A New Book Every Month" text block */}
-        <div className="space-y-6 text-white/90 leading-relaxed text-left font-outfit md:pl-72 lg:pl-80">
+        <div className="space-y-6 text-white/90 leading-relaxed text-left font-outfit max-w-3xl mx-auto">
           <p className="whitespace-pre-line">
             {t('storyPara1')}
           </p>
@@ -56,7 +56,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                   blurDataURL={BLUR_SQUARE}
                 />
               </div>
-              <div className="flex-1 text-center md:text-left">
+              <div className={`flex-1 ${currentLocale === 'en' ? 'text-left' : 'text-center'} md:text-left`}>
                 <h3 className="text-2xl font-bold font-outfit text-white mb-3">
                   {t('reason1Title')}
                 </h3>
@@ -82,7 +82,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                   blurDataURL={BLUR_SQUARE}
                 />
               </div>
-              <div className="flex-1 text-center md:text-left">
+              <div className={`flex-1 ${currentLocale === 'en' ? 'text-left' : 'text-center'} md:text-left`}>
                 <h3 className="text-2xl font-bold font-outfit text-white mb-3">
                   {t('reason2Title')}
                 </h3>
@@ -108,7 +108,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                   blurDataURL={BLUR_SQUARE}
                 />
               </div>
-              <div className="flex-1 text-center md:text-left">
+              <div className={`flex-1 ${currentLocale === 'en' ? 'text-left' : 'text-center'} md:text-left`}>
                 <h3 className="text-2xl font-bold font-outfit text-white mb-3">
                   {t('reason3Title')}
                 </h3>

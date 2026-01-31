@@ -57,13 +57,13 @@ export default function Counter({ target, label }: { target: number; label: stri
 
   return (
     <div ref={ref} className="text-center">
-      <div className="text-[10px] sm:text-sm text-white/70 font-outfit uppercase tracking-wider mb-4 whitespace-nowrap">
+      <div className="text-[11px] sm:text-sm md:text-base text-white/70 font-outfit uppercase tracking-wider mb-3 leading-snug whitespace-normal max-w-[12ch] sm:max-w-none mx-auto">
         {label}
       </div>
       <div 
         className="tabular-nums font-outfit" 
         style={{ 
-          fontSize: 'clamp(40px, 8vw, 80px)', 
+          fontSize: 'clamp(48px, 10vw, 92px)', 
           fontWeight: 100, 
           lineHeight: '1', 
           letterSpacing: '-0.02em',

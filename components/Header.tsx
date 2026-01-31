@@ -96,8 +96,8 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-40 border-b border-white/10 py-2 md:py-4">
-      <div className="mx-auto max-w-6xl px-6 h-[60px] md:h-[100px] relative">
+    <header className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-40 border-b border-white/10 py-3 md:py-4">
+      <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
         {/* Desktop/tablet: grid layout with equal width nav items */}
         <div className="hidden md:grid grid-cols-5 items-center h-full">
           <NavLink href={`/${locale}/books`} isActive={isActive('/books')}>{t('books')}</NavLink>

@@ -30,9 +30,12 @@ function EventSection({
   priority?: boolean;
   ctaClass?: string;
 }) {
+  const imageOrderClass = imagePosition === 'left' ? 'order-1 lg:order-1' : 'order-1 lg:order-2';
+  const contentOrderClass = imagePosition === 'left' ? 'order-2 lg:order-2' : 'order-2 lg:order-1';
+
   const imageBlock = (
-    <div className="w-full lg:w-5/12">
-      <div className="relative rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
+    <div className={`w-full lg:w-4/12 flex justify-center ${imageOrderClass}`}>
+      <div className="relative w-full max-w-[320px] sm:max-w-[360px] lg:max-w-none rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
         <Image
           src={image}
           alt={title}
@@ -48,7 +51,7 @@ function EventSection({
   );
 
   const contentBlock = (
-    <div className="w-full lg:w-1/2 flex flex-col justify-center">
+    <div className={`w-full lg:w-1/2 flex flex-col justify-center ${contentOrderClass}`}>
       <h3 className="text-2xl md:text-3xl font-bold text-white font-outfit">
         {title}
       </h3>
@@ -90,7 +93,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('events');
-  const ctaClass = `inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all text-sm ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`;
+  const ctaClass = `inline-flex items-center px-8 md:px-9 py-2.5 md:py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all text-sm md:text-base ${locale === 'zh' ? 'tracking-[0.24em] md:tracking-[0.3em]' : 'uppercase tracking-wider'}`;
 
   return (
     <section className="bg-brand-navy text-white min-h-screen">
@@ -130,6 +133,24 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
             signupUrl="/signup?location=NL"
             signupText={t('signUp')}
             imagePosition="right"
+            ctaClass={ctaClass}
+          />
+        </div>
+
+        {/* Decorative Line */}
+        <div className="relative h-px my-4">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
+        </div>
+
+        {/* Online English Book Club */}
+        <div className="py-12">
+          <EventSection
+            image="/images/elements/_.png"
+            title={t('onlineTitle')}
+            description={t('onlineDesc')}
+            signupUrl="/signup"
+            signupText={t('signUp')}
+            imagePosition="left"
             ctaClass={ctaClass}
           />
         </div>

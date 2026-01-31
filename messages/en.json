@@ -18,7 +18,8 @@
       "titleLine2": "and reconnect,\none page at a time.",
       "subtitle": "Come join the conversation!",
       "ctaBookClub": "Book Club",
-      "ctaDetox": "Digital Detox"
+      "ctaDetox": "Digital Detox",
+      "ctaInstagram": "Follow us on IG"
     },
     "recentReads": "Recent Reads",
     "viewAll": "View All",
@@ -54,6 +55,8 @@
     "taiwanDesc": "From bang to thud, this book traces how language grew from sensory experience into a uniquely human skill.\n\nWith Pok\u00e9mon, Japanese sounds, and child development as examples, it explores how meaning is built.\n\nPerfect for fans of linguistics, kids' minds, or human vs. AI thinking.\nRead with us this August!",
     "nlTitle": "Upcoming Book Club in Netherlands",
     "nlDesc": "When you think of the Netherlands, what comes to mind? Windmills, bikes, tulips?\n\nThis book bursts the romanticised bubble and offers a sharp, accessible look into Dutch society \u2014 from social clique and gender diversity to workplace culture and sustainability.\n\nNot perfect \u2014 but honest.",
+    "onlineTitle": "Online English Book Club",
+    "onlineDesc": "No commute needed—just bring your book and your curiosity.\n\nJoin our monthly online English book club to read, reflect, and exchange ideas with readers across different cities.",
     "detoxTitle": "Upcoming Digital Detox",
     "detoxDesc": "For a few hours, we all unplugged.\nWe ate together, read together, laughed together, and most importantly, we are present.\n\nCome unplug with us, your cozy little digital detox awaits!",
     "signUp": "Sign Up",
@@ -64,6 +67,12 @@
       "step2": "Place your phone out of reach; set it to Do Not Disturb.",
       "step3": "Read a book or reflect in a notebook. That's it.",
       "tip": "Tip: Start small, be consistent. We'll check in weekly at the book club."
+    },
+    "detoxPage": {
+      "leftTitle": "Unplug, Relax, Share.",
+      "leftSubtitle": "Welcome to Bookdigest’s cozy little Digital Detox!",
+      "leftBody": "For a few hours, we all unplug.\nNo screens, no scrolling, just books, shared food, and brilliant strangers who might become your next favourite conversation.\nWe wanted a space to slow down, where sharing a book feels like sharing a piece of yourself, and being present is the only thing that matters.\nCome unplug with us, your cosy little digital detox awaits.",
+      "rightBody": "We’re getting everything ready. Can’t wait to share it with you!"
     }
   },
   "joinus": {
@@ -109,16 +118,16 @@
   },
   "about": {
     "ourStory": "Our Story",
-    "storyPara1": "It all started in a cozy little cafe in Taipei's East District,\na group of young people returning from abroad, looking to re-root themselves in the city,\nbrought together by a shared love for books and movies.\nAfter coming back to Taiwan, our founder reunited with old colleagues from China,\nand casual catch-ups turned into something more.",
-    "storyPara2": "Strangers became reading buddies,\nand over time we figured out how we liked to read and talk together,\nnot just about books, but about life, ideas, and everything in between.\nAnd that's how BookDigest was born.\n\nEach month, we will pick the book.\nWe read everything from novels and psychology to world history and personal finance.\nSometimes it's something we'd totally pick for ourselves,\nother times, it's way outside our comfort zone (in the best way).\nThere's something magical about seeing the world through someone else's bookshelf.",
-    "storyPara3": "We believe reading isn't just about taking in information,\nit's about chewing on ideas, reflecting, discussing, and slowly letting it all sink in.\nKnowledge only truly becomes yours when you've taken the time to digest it.\nWe meet at a different cafe each month,\nso if you love a good book, meaningful conversations,\nand a really great cup of coffee,\ncome hang out with us at BookDigest!",
+    "storyPara1": "It all began in a café in Taipei’s East District, where a group of young people returning from abroad found one another through a shared love of films and books. As we went along, we kept experimenting and refining how we choose our reads and run our discussions, so the gatherings became more than book chat. They became a space to learn together, listen well, and share life. That’s how Bookdigest came to be.",
+    "storyPara2": "Each month, we take turns picking the book, ranging from novels and psychology to world history and personal finance. Sometimes it’s a book you’d happily pick up yourself; other times it gently nudges you beyond your comfort zone. Seeing the world through someone else’s choice keeps every month fresh and full of surprises.",
+    "storyPara3": "We believe reading isn’t a one way intake, but a process of circling back, challenging ideas together, and letting them settle over time. Only when you chew on what you have read does it truly become your own. We meet in a different café each month. If you love a good book, a meaningful conversation, and a great cup of coffee, come join us!",
     "whyUs": "Why Us?",
     "reason1Title": "A New Book Every Month",
     "reason1Desc": "Each month, we will pick the book, and trust us, it's never the same.\nFrom fiction to psychology, world history to personal finance, you'll find yourself reading stuff you'd never pick on your own.\nIt's like a mini adventure outside your comfort zone, and honestly, those surprises are often the best part!",
     "reason2Title": "Deep, delightful and diverse conversations",
     "reason2Desc": "We come from all sorts of backgrounds — engineers, designers, teachers, finance folks, you name it.\nAnd when we read something topic-specific, we sometimes invite someone with real-life experience to join the conversation.\nThat's what makes our book club both deep and fun at the same time!",
     "reason3Title": "Chill Vibes, No Pressure",
-    "reason3Desc": "Think of it more like catching up with friends than a formal discussion.\nNo need to prep a presentation, just bring the book you read (and your lovely self)!\nEveryone shares their favorite chapters or adds something extra the book didn't cover.\nCome hang out and chat with us!",
+    "reason3Desc": "Think of it more like catching up with friends than a formal discussion.\nNo need to prep a presentation, just bring the book you read (and your lovely self)!\nEveryone shares their favorite chapters or adds something extra the book didn't cover. Come hang out and chat with us!",
     "joinUsBtn": "Join Us"
   },
   "footer": {
@@ -193,7 +202,7 @@
   },
   "signupFlow": {
     "thanksTitle": "THANKS FOR YOUR INTEREST!",
-    "thanksBody": "To make sure everyone has enough time and space for meaningful discussion, we limit the number of participants per session. Starting in 2026, we will collect a small NT$50 registration fee to help cover venue, website, and admin costs, and to encourage attendance.\n\nThis helps us keep the quality of each gathering consistent — so that every one of you who comes can enjoy a rich and worthwhile book club experience. Thank you for your understanding and support!",
+    "thanksBody": "To make sure everyone has enough time and space for meaningful discussion, we limit the number of participants per session. Starting in 2026, we will collect a small NT$ 50 registration fee to help cover venue, website, and admin costs, and to encourage attendance.\n\nThis helps us keep the quality of each gathering consistent — so that every one of you who comes can enjoy a rich and worthwhile book club experience. Thank you for your understanding and support!",
     "next": "Next",
     "remitTitle": "Payment Details",
     "bank": "Bank: Taishin Bank (812)",

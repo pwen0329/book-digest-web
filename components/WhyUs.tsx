@@ -1,7 +1,7 @@
 'use client';
 import { useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { BLUR_SQUARE } from '@/lib/constants';
 
 // Move items to module level to avoid recreation on each render
@@ -25,6 +25,8 @@ const ITEMS = [
 
 export default function WhyUs() {
   const t = useTranslations('about');
+  const locale = useLocale();
+  const isZh = locale === 'zh';
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -71,14 +73,14 @@ export default function WhyUs() {
             </button>
 
             {/* Main Content: Image Left + Text Right - Fixed height container */}
-            <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-6 md:gap-14 min-h-[280px] md:min-h-[240px]">
+            <div className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-6 ${isZh ? 'md:gap-8 md:max-w-3xl mx-auto' : 'md:gap-14'} min-h-[280px] md:min-h-[240px]`}>
               {/* Large Image on Left - Fixed size container */}
-              <div className="flex-shrink-0 w-40 md:w-56 lg:w-64 h-40 md:h-56 lg:h-64 relative">
+              <div className="flex-shrink-0 w-44 h-44 sm:w-48 sm:h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 relative">
                 <Image 
                   src={currentItem.icon} 
                   alt="" 
                   fill
-                  sizes="(max-width: 768px) 160px, (max-width: 1024px) 224px, 256px"
+                  sizes="(max-width: 640px) 176px, (max-width: 768px) 192px, (max-width: 1024px) 224px, 256px"
                   className="object-contain transition-opacity duration-300"
                   priority
                   placeholder="blur"
@@ -89,7 +91,7 @@ export default function WhyUs() {
                   src={nextItem.icon}
                   alt=""
                   fill
-                  sizes="(max-width: 768px) 160px, (max-width: 1024px) 224px, 256px"
+                  sizes="(max-width: 640px) 176px, (max-width: 768px) 192px, (max-width: 1024px) 224px, 256px"
                   className="object-contain opacity-0 absolute"
                   aria-hidden="true"
                   placeholder="blur"
@@ -98,8 +100,8 @@ export default function WhyUs() {
               </div>
               
               {/* Text Content - 手機靠左、桌面靠左 */}
-              <div className="flex-1 min-h-[120px] md:min-h-[140px] flex flex-col justify-center">
-                <div className="text-left md:max-w-lg">
+              <div className={`flex-1 min-h-[120px] md:min-h-[140px] flex flex-col justify-center ${isZh ? 'items-center' : ''}`}>
+                <div className={`${isZh ? 'text-center max-w-lg mx-auto' : 'text-left md:max-w-lg'}`}>
                   <h3 className="font-bold text-white font-outfit text-xl md:text-2xl lg:text-3xl">
                     {t(currentItem.titleKey)}
                   </h3>
