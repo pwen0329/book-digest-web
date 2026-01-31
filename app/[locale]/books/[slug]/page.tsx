@@ -148,34 +148,49 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
               {/* Summary Section */}
               <section className="bg-gray-50 rounded-xl p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">📖 {t('summary')}</h2>
-                <p className="text-gray-700 leading-relaxed text-lg">
+                <p className="text-gray-700 leading-relaxed text-lg whitespace-pre-line">
                   {book.displaySummary || (locale === 'en' ? 'This book offers profound insights and inspiration...' : '這本書帶給我們許多深刻的思考與啟發...')}
                 </p>
               </section>
 
-              {/* Reading Notes Placeholder */}
+              {/* Reading Notes */}
               <section className="bg-gray-50 rounded-xl p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">✍️ {t('readingNotes')}</h2>
-                <p className="text-gray-600 italic">
-                  {t('notesComingSoon')}
-                </p>
-                <p className="text-gray-500 text-sm mt-2">
-                  {t('notesNotice')}
-                </p>
-                <Link
-                  href="/events"
-                  className={`inline-flex items-center mt-4 px-4 py-2 bg-brand-pink text-white font-semibold rounded-full hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
-                  prefetch={false}
-                >
-                  {t('register')}
-                </Link>
+                {((locale === 'en' && book.readingNotesEn) || (locale !== 'en' && book.readingNotes)) ? (
+                  <p className="text-gray-700 leading-relaxed text-lg whitespace-pre-line">
+                    {locale === 'en' ? book.readingNotesEn : book.readingNotes}
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-gray-600 italic">
+                      {t('notesComingSoon')}
+                    </p>
+                    <p className="text-gray-500 text-sm mt-2">
+                      {t('notesNotice')}
+                    </p>
+                    <Link
+                      href="/events"
+                      className={`inline-flex items-center mt-4 px-4 py-2 bg-brand-pink text-white font-semibold rounded-full hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
+                      prefetch={false}
+                    >
+                      {t('register')}
+                    </Link>
+                  </>
+                )}
               </section>
 
               {/* Discussion Points */}
               <section className="bg-gray-50 rounded-xl p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">💬 {t('discussionPoints')}</h2>
                 <ul className="space-y-3">
-                  {([1, 2, 3] as const).map((num) => (
+                  {(locale === 'en' ? book.discussionPointsEn : book.discussionPoints)?.map((item, idx) => (
+                    <li key={item} className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-pink/30 text-brand-navy flex items-center justify-center text-sm font-bold">
+                        {idx + 1}
+                      </span>
+                      <span className="text-gray-700">{item}</span>
+                    </li>
+                  )) || ([1, 2, 3] as const).map((num) => (
                     <li key={num} className="flex items-start gap-3">
                       <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-pink/30 text-brand-navy flex items-center justify-center text-sm font-bold">
                         {num}

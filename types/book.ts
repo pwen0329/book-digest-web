@@ -8,6 +8,10 @@ export type Book = {
   readDate?: string;
   summary?: string;
   summaryEn?: string;
+  readingNotes?: string;
+  readingNotesEn?: string;
+  discussionPoints?: string[];
+  discussionPointsEn?: string[];
   tags?: string[];
   links?: {
     publisher?: string;
