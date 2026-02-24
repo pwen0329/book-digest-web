@@ -94,12 +94,10 @@ export default function BookArticleSidebar({
             href="https://podcasts.apple.com/podcast/1801844059"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600 text-white hover:opacity-90 transition-opacity"
-            aria-label="Podcast"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600 hover:opacity-90 transition-opacity"
+            aria-label="Apple Podcasts"
           >
-            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.182c5.423 0 9.818 4.395 9.818 9.818 0 5.423-4.395 9.818-9.818 9.818-5.423 0-9.818-4.395-9.818-9.818 0-5.423 4.395-9.818 9.818-9.818zM12 5.455c-3.6 0-6.545 2.945-6.545 6.545 0 1.442.467 2.775 1.26 3.857l1.745-1.745c-.45-.655-.732-1.447-.732-2.302 0-2.187 1.813-4 4-4s4 1.813 4 4c0 .855-.282 1.647-.732 2.302l1.745 1.745c.793-1.082 1.26-2.415 1.26-3.857-.001-3.6-2.946-6.545-6.546-6.545zm0 3.636c-1.597 0-2.909 1.312-2.909 2.909 0 .545.155 1.053.423 1.489l2.486-2.486v-1.912zm2.486 2.486l-2.486 2.486h1.912c1.597 0 2.909-1.312 2.909-2.909 0-.545-.155-1.053-.423-1.489l-1.912 1.912zm-2.486 6.332c-2.187 0-4-1.813-4-4 0-.647.164-1.256.451-1.789l-1.745-1.745c-.793 1.082-1.26 2.415-1.26 3.857 0 3.6 2.945 6.545 6.545 6.545s6.545-2.945 6.545-6.545c0-1.442-.467-2.775-1.26-3.857l-1.745 1.745c.287.533.451 1.142.451 1.789 0 2.187-1.813 4-4 4z" />
-            </svg>
+            <img src="/images/logo/apple-podcasts-white.svg" alt="" className="h-5 w-5" />
           </a>
         </div>
       </div>

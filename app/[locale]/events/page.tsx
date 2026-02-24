@@ -99,10 +99,10 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
     <section className="bg-brand-navy text-white min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-16">
         {/* Stats Counters - Client Component for animation */}
-        <div className="grid grid-cols-3 gap-6 mb-16">
-          <div className="translate-x-4"><Counter target={stats.readingDays} label={t('readingDays')} /></div>
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-6 mb-16">
+          <div className="min-[420px]:translate-x-4"><Counter target={stats.readingDays} label={t('readingDays')} /></div>
           <Counter target={stats.clubsHeld} label={t('clubsHeld')} />
-          <div className="-translate-x-4"><Counter target={stats.readersJoined} label={t('readersJoined')} /></div>
+          <div className="min-[420px]:-translate-x-4"><Counter target={stats.readersJoined} label={t('readersJoined')} /></div>
         </div>
 
         {/* Taiwan Book Club */}

@@ -1,15 +1,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { getTranslations, getLocale } from 'next-intl/server';
-import { getTopBooksByNumberSync, getLocalizedTitle } from '@/lib/books';
+import { getRecentBooksSync, getLocalizedTitle } from '@/lib/books';
 import { BLUR_BOOK_COVER } from '@/lib/constants';
 
 export default async function BookWall() {
   const t = await getTranslations('home');
   const locale = await getLocale();
   
-  // Get top 30 books by cover number (largest numbers first)
-  const sortedBooks = getTopBooksByNumberSync(30);
+  // Show latest books only: desktop 6 columns × 4 rows = 24 books
+  const sortedBooks = getRecentBooksSync(24);
 
   return (
     <section aria-labelledby="books-wall-heading" className="bg-brand-navy">
@@ -19,7 +19,7 @@ export default async function BookWall() {
           <Link href="/books" className="text-sm font-semibold text-brand-pink hover:underline">{t('viewAll')}</Link>
         </div>
 
-        <ul className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+        <ul className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5 md:gap-6">
           {sortedBooks.map((book, index) => (
             <li key={book.id} className="group">
               <Link href={`/books/${book.slug}`} className="block" prefetch={false}>
@@ -28,7 +28,7 @@ export default async function BookWall() {
                     src={book.coverUrl || '/images/placeholder-cover.svg'}
                     alt={book.title}
                     fill
-                    sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 16vw, 12.5vw"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
                     className="object-cover"
                     loading={index < 6 ? 'eager' : 'lazy'}
                     placeholder="blur"

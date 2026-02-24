@@ -1,21 +1,10 @@
 "use client";
-import { useState } from 'react';
-import Image from 'next/image';
-import dynamic from 'next/dynamic';
 import { useLocale, useTranslations } from 'next-intl';
 import PageFlipAnimation from '@/components/PageFlipAnimation';
 
-// Dynamically import Modal (non-critical, only shown on user interaction)
-const Modal = dynamic(() => import('@/components/Modal'), {
-  ssr: false,
-  loading: () => null,
-});
-
 export default function HomeHero() {
-  const [open, setOpen] = useState(false);
   const locale = useLocale();
   const t = useTranslations('home');
-  const tModal = useTranslations('modal');
 
   const heroFlipClassName =
     locale === 'en'
@@ -51,16 +40,7 @@ export default function HomeHero() {
               </p>
               <div className="mt-8 flex flex-row flex-wrap items-center md:items-start justify-center md:justify-start gap-2 sm:gap-3">
                 <a href="/events" className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy ${locale === 'en' ? 'px-5 sm:px-7' : 'px-6 sm:px-8'} py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}>{t('hero.ctaBookClub')}</a>
-                <button onClick={() => setOpen(true)} className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy ${locale === 'en' ? 'px-5 sm:px-7' : 'px-6 sm:px-8'} py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}>{t('hero.ctaDetox')}</button>
-                <a
-                  href="https://www.instagram.com/bookdigest_tw/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border border-white/50 ${locale === 'en' ? 'px-4 sm:px-6' : 'px-5 sm:px-6'} py-2.5 sm:py-3 font-semibold text-white/95 hover:border-brand-pink hover:text-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}
-                >
-                  <Image src="/images/logo/IG iocn.PNG" alt="" width={18} height={18} className="h-4 w-auto" unoptimized />
-                  <span>{t('hero.ctaInstagram')}</span>
-                </a>
+                <a href="/events#detox" className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy ${locale === 'en' ? 'px-5 sm:px-7' : 'px-6 sm:px-8'} py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}>{t('hero.ctaDetox')}</a>
               </div>
             </div>
             {/* Page Flip Animation - enlarged for better visibility */}
@@ -73,45 +53,6 @@ export default function HomeHero() {
           </div>
         </div>
       </section>
-
-      <Modal open={open} onClose={() => setOpen(false)} title={tModal('detoxTitle')}>
-        {/* Layout inspired by docs/ui/notebook-03 1.png */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-stretch">
-          {/* Visual column: Page Flip Animation */}
-          <div className="order-last md:order-first">
-            <div className="rounded-xl overflow-hidden bg-white/10 border border-white/15 shadow">
-              <PageFlipAnimation
-                images={[
-                  '/images/notebook/notebook-01.png',
-                  '/images/notebook/notebook-02.png',
-                  '/images/notebook/notebook-03.png',
-                  '/images/notebook/notebook-04.png',
-                  '/images/notebook/notebook-05.png',
-                  '/images/notebook/notebook-06.png',
-                ]}
-                autoPlay={true}
-                interval={3000}
-                className="w-full"
-              />
-            </div>
-          </div>
-          {/* Content column */}
-          <div>
-            <p>
-              {tModal('detoxIntro')}
-            </p>
-            <ul className="mt-3 list-disc pl-5 space-y-1">
-              <li>{tModal('detoxFeature1')}</li>
-              <li>{tModal('detoxFeature2')}</li>
-              <li>{tModal('detoxFeature3')}</li>
-            </ul>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <a href="/events#detox" className={`inline-flex items-center rounded-full bg-brand-pink text-white px-4 py-2 font-semibold hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}>{tModal('imIn')}</a>
-              <button onClick={() => setOpen(false)} className="inline-flex items-center rounded-full border border-white/30 px-4 py-2 font-semibold text-white">{tModal('maybeLater')}</button>
-            </div>
-          </div>
-        </div>
-      </Modal>
     </>
   );
 }

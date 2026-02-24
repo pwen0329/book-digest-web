@@ -140,13 +140,13 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
       </header>
 
       {/* Main Content - clean white background */}
-      <div className="mx-auto max-w-6xl py-12 px-4 sm:px-6">
-        <div className="bg-white rounded-2xl p-6 md:p-10">
+      <div className="mx-auto max-w-6xl py-12 px-3 sm:px-6">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 md:p-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Article Content */}
             <main className="lg:col-span-2 space-y-8">
               {/* Summary Section */}
-              <section className="bg-gray-50 rounded-xl p-6">
+              <section className="bg-gray-50 rounded-xl p-4 sm:p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">📖 {t('summary')}</h2>
                 <p className="text-gray-700 leading-relaxed text-lg whitespace-pre-line">
                   {book.displaySummary || (locale === 'en' ? 'This book offers profound insights and inspiration...' : '這本書帶給我們許多深刻的思考與啟發...')}
@@ -154,7 +154,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
               </section>
 
               {/* Reading Notes */}
-              <section className="bg-gray-50 rounded-xl p-6">
+              <section className="bg-gray-50 rounded-xl p-4 sm:p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">✍️ {t('readingNotes')}</h2>
                 {((locale === 'en' && book.readingNotesEn) || (locale !== 'en' && book.readingNotes)) ? (
                   <p className="text-gray-700 leading-relaxed text-lg whitespace-pre-line">
@@ -185,14 +185,14 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
                 <ul className="space-y-3">
                   {(locale === 'en' ? book.discussionPointsEn : book.discussionPoints)?.map((item, idx) => (
                     <li key={item} className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-pink/30 text-brand-navy flex items-center justify-center text-sm font-bold">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-navy text-white flex items-center justify-center text-sm font-bold">
                         {idx + 1}
                       </span>
                       <span className="text-gray-700">{item}</span>
                     </li>
                   )) || ([1, 2, 3] as const).map((num) => (
                     <li key={num} className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-pink/30 text-brand-navy flex items-center justify-center text-sm font-bold">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-navy text-white flex items-center justify-center text-sm font-bold">
                         {num}
                       </span>
                       <span className="text-gray-700">{t(`question${num}`)}</span>
