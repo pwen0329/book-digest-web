@@ -118,7 +118,7 @@ function SignupContent() {
         )}
 
         {/* 舊版：左海報 + 右表單 */}
-        <div className="grid grid-cols-1 lg:grid-cols-[600px_1fr] gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
           <div className="flex justify-center lg:justify-end">
             <div className="relative w-full max-w-[600px] lg:w-[600px] h-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
               <Image

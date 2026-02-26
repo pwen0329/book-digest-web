@@ -56,7 +56,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                   blurDataURL={BLUR_SQUARE}
                 />
               </div>
-              <div className={`flex-1 ${currentLocale === 'en' ? 'text-left' : 'text-center'} md:text-left`}>
+              <div className="flex-1 text-left w-full">
                 <h3 className="text-2xl font-bold font-outfit text-white mb-3">
                   {t('reason1Title')}
                 </h3>
@@ -82,7 +82,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                   blurDataURL={BLUR_SQUARE}
                 />
               </div>
-              <div className={`flex-1 ${currentLocale === 'en' ? 'text-left' : 'text-center'} md:text-left`}>
+              <div className="flex-1 text-left w-full">
                 <h3 className="text-2xl font-bold font-outfit text-white mb-3">
                   {t('reason2Title')}
                 </h3>
@@ -108,7 +108,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                   blurDataURL={BLUR_SQUARE}
                 />
               </div>
-              <div className={`flex-1 ${currentLocale === 'en' ? 'text-left' : 'text-center'} md:text-left`}>
+              <div className="flex-1 text-left w-full">
                 <h3 className="text-2xl font-bold font-outfit text-white mb-3">
                   {t('reason3Title')}
                 </h3>

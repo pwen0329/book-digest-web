@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import Image from 'next/image';
+import Link from 'next/link';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { BLUR_POSTER } from '@/lib/constants';
 
@@ -15,6 +16,16 @@ export default async function DetoxPage({ params }: { params: Promise<{ locale: 
   return (
     <section className="bg-brand-navy text-white min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
+        {/* Back to Events */}
+        <div className="mb-8">
+          <Link
+            href={`/${locale}/events`}
+            className="inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-brand-pink transition-colors font-outfit"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            {locale === 'zh' ? '返回活動頁' : 'Back to Events'}
+          </Link>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
           {/* Left Copy */}
           <div className="space-y-6">

@@ -101,7 +101,7 @@ export default function WhyUs() {
               
               {/* Text Content - 手機靠左、桌面靠左 */}
               <div className={`flex-1 min-h-[120px] md:min-h-[140px] flex flex-col justify-center ${isZh ? 'items-center' : ''}`}>
-                <div className={`${isZh ? 'text-center max-w-lg mx-auto' : 'text-left md:max-w-lg'}`}>
+                <div className={`${isZh ? 'text-center md:text-left max-w-lg mx-auto md:mx-0' : 'text-left md:max-w-lg'}`}>
                   <h3 className="font-bold text-white font-outfit text-xl md:text-2xl lg:text-3xl">
                     {t(currentItem.titleKey)}
                   </h3>

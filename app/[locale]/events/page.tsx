@@ -51,7 +51,7 @@ function EventSection({
   );
 
   const contentBlock = (
-    <div className={`w-full lg:w-1/2 flex flex-col justify-center ${contentOrderClass}`}>
+    <div className={`w-full lg:flex-1 flex flex-col justify-center ${contentOrderClass}`}>
       <h3 className="text-2xl md:text-3xl font-bold text-white font-outfit">
         {title}
       </h3>
@@ -73,7 +73,7 @@ function EventSection({
   );
 
   return (
-    <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-center">
+    <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-center lg:justify-center">
       {imagePosition === 'left' ? (
         <>
           {imageBlock}
@@ -99,10 +99,10 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
     <section className="bg-brand-navy text-white min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-16">
         {/* Stats Counters - Client Component for animation */}
-        <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-6 mb-16">
-          <div className="min-[420px]:translate-x-4"><Counter target={stats.readingDays} label={t('readingDays')} /></div>
-          <Counter target={stats.clubsHeld} label={t('clubsHeld')} />
-          <div className="min-[420px]:-translate-x-4"><Counter target={stats.readersJoined} label={t('readersJoined')} /></div>
+        <div className="grid grid-cols-3 gap-2 min-[420px]:gap-6 mb-16" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+          <div className="min-[420px]:translate-x-4 min-w-0"><Counter target={stats.readingDays} label={t('readingDays')} /></div>
+          <div className="min-w-0"><Counter target={stats.clubsHeld} label={t('clubsHeld')} /></div>
+          <div className="min-[420px]:-translate-x-4 min-w-0"><Counter target={stats.readersJoined} label={t('readersJoined')} /></div>
         </div>
 
         {/* Taiwan Book Club */}

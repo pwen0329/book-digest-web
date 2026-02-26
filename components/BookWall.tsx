@@ -9,7 +9,7 @@ export default async function BookWall() {
   const locale = await getLocale();
   
   // Show latest books only: desktop 6 columns × 4 rows = 24 books
-  const sortedBooks = getRecentBooksSync(24);
+  const allBooks = getRecentBooksSync(24);
 
   return (
     <section aria-labelledby="books-wall-heading" className="bg-brand-navy">
@@ -20,8 +20,9 @@ export default async function BookWall() {
         </div>
 
         <ul className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5 md:gap-6">
-          {sortedBooks.map((book, index) => (
-            <li key={book.id} className="group">
+          {/* Mobile: 2 cols × 5 rows = 10 books; larger screens: show all */}
+          {allBooks.map((book, index) => (
+            <li key={book.id} className={`group ${index >= 10 ? 'hidden sm:list-item' : ''}`}>
               <Link href={`/books/${book.slug}`} className="block" prefetch={false}>
                 <div className="relative aspect-[7/10] overflow-hidden rounded-md bg-white shadow ring-1 ring-black/5 transition-transform duration-300 group-hover:scale-[1.03]">
                   <Image

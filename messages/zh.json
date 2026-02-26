@@ -6,8 +6,8 @@
   },
   "nav": {
     "home": "首頁",
-    "books": "選書",
-    "events": "活動",
+    "books": "讀書會選書",
+    "events": "活動報名",
     "about": "關於我們",
     "joinUs": "加入我們",
     "join": "加入"
@@ -17,7 +17,7 @@
       "title": "不相識的人們因為喜歡書而聚合，",
       "titleLine2": "反芻字裡行間的知識與觀點。",
       "subtitle": "我們每個月會舉辦一次實體讀書會，\n歡迎一起來聊聊天！",
-      "ctaBookClub": "讀書會",
+      "ctaBookClub": "報名讀書會",
       "ctaDetox": "數位排毒",
       "ctaInstagram": "IG 追蹤我們"
     },
@@ -41,7 +41,7 @@
     }
   },
   "events": {
-    "title": "活動",
+    "title": "活動報名",
     "joinBookClub": "加入讀書會",
     "chooseLocation": "選擇您的地點並報名。只需提交一次。",
     "welcomeEvent": "歡迎報名 {eventName}",
@@ -58,7 +58,7 @@
     "onlineTitle": "線上英文讀書會",
     "onlineDesc": "不用出門，也能一起讀書聊書。\n\n每月一次的線上英文讀書會，和來自不同城市的讀者一起交換想法、練習表達與聆聽。",
     "detoxTitle": "數位排毒",
-    "detoxDesc": "有那麼幾個小時，我們都斷線了。\n我們一起吃飯、一起閱讀、一起大笑，最重要的是，我們都在當下。\n\n一起來斷線吧，溫馨的小小數位排毒在等著你！",
+    "detoxDesc": "Welcome to Bookdigest’s cozy little Digital Detox!\n\n在這資訊快速的時代，讓我們把手機先放一邊，讓思緒喘口氣。\n帶幾本想看的書、想畫的圖，和一群來自世界各地、願意彼此分享故事的朋友，一起享受當下，創造一段互相連結的美好時光。\n我們想創造一個慢下來的空間—— 讓書變成一種邀請，成為話題與連結的開場白，讓陌生人聊起來像老朋友， 讓專注在「當下」變成一件自然的事。",
     "signUp": "報名",
     "digitalDetox": {
       "title": "數位排毒",
@@ -69,7 +69,7 @@
       "tip": "提示：從小處開始，保持一致。我們會在讀書會時每週確認進度。"
     },
     "detoxPage": {
-      "leftTitle": "Unplug, Relax, Share.",
+      "leftTitle": "數位排毒",
       "leftSubtitle": "Welcome to Bookdigest’s cozy little Digital Detox!",
       "leftBody": "在這資訊快速的時代，讓我們把手機先放一邊，讓思緒喘口氣。\n帶幾本想看的書、想畫的圖，和一群來自世界各地、願意彼此分享故事的朋友，一起享受當下，創造一段互相連結的美好時光。\n我們想創造一個慢下來的空間—— 讓書變成一種邀請，成為話題與連結的開場白，讓陌生人聊起來像老朋友， 讓專注在「當下」變成一件自然的事。",
       "rightBody": "活動準備中，敬請期待！"
@@ -98,7 +98,7 @@
     "joinUsBtn": "加入我們"
   },
   "books": {
-    "title": "選書",
+    "title": "讀書會選書",
     "summary": "書籍簡介",
     "readingNotes": "讀書筆記",
     "notesComingSoon": "詳細的讀書筆記即將上線，敬請期待...",
@@ -131,7 +131,7 @@
     "joinUsBtn": "加入我們"
   },
   "footer": {
-    "events": "活動",
+    "events": "活動報名",
     "bookClub": "讀書會",
     "unplugProject": "數位排毒",
     "getInvolved": "加入我們",

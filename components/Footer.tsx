@@ -19,21 +19,21 @@ export default async function Footer() {
       </div>
 
       {/* Four-column navigation - mobile 橫向（2欄），桌面 4 欄 */}
-      <div className={`mx-auto max-w-6xl px-6 py-10 grid gap-8 grid-cols-2 md:grid-cols-4 text-sm text-white/80 font-outfit ${isZh ? 'text-center md:text-left' : ''}`}>
-        <div className={isZh ? 'mx-auto md:mx-0' : ''}>
+      <div className={`mx-auto max-w-6xl px-6 py-10 grid gap-8 grid-cols-2 md:grid-cols-4 text-sm text-white/80 font-outfit ${isZh ? 'text-left' : ''}`}>
+        <div>
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{t('events')}</div>
           <ul className="mt-3 space-y-2">
             <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/events">{t('bookClub')}</a></li>
             <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/events#detox">{t('unplugProject')}</a></li>
           </ul>
         </div>
-        <div className={isZh ? 'mx-auto md:mx-0' : ''}>
+        <div>
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{t('getInvolved')}</div>
           <ul className="mt-3 space-y-2">
             <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/joinus">{t('beAHost')}</a></li>
           </ul>
         </div>
-        <div className={isZh ? 'mx-auto md:mx-0' : ''}>
+        <div>
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{t('aboutUs')}</div>
           <ul className="mt-3 space-y-2">
             <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/about">{t('ourStory')}</a></li>
@@ -41,7 +41,7 @@ export default async function Footer() {
             <li><a className="hover:underline hover:text-brand-pink transition-colors" href="https://podcasts.apple.com/podcast/1801844059" target="_blank" rel="noopener noreferrer">{t('podcast')}</a></li>
           </ul>
         </div>
-        <div className={isZh ? 'mx-auto md:mx-0' : ''}>
+        <div>
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{t('helpSupport')}</div>
           <ul className="mt-3 space-y-2">
             <li><a className="hover:underline hover:text-brand-pink transition-colors" href="mailto:bookdigest2020@gmail.com">{t('contactUs')}</a></li>
