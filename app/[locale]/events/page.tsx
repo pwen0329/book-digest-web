@@ -1,10 +1,21 @@
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import Image from 'next/image';
-import stats from '@/data/stats.json';
 import Counter from '@/components/Counter';
 import { BLUR_POSTER } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
+import { pageSEO, getLocaleAlternates } from '@/lib/seo';
+import type { Metadata } from 'next';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return {
+    title: pageSEO.events.title,
+    description: pageSEO.events.description,
+    openGraph: { title: pageSEO.events.title, description: pageSEO.events.description, locale: locale === 'zh' ? 'zh_TW' : 'en_US' },
+    alternates: getLocaleAlternates('events', locale),
+  };
+}
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -73,7 +84,7 @@ function EventSection({
   );
 
   return (
-    <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-center lg:justify-center">
+    <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-center lg:justify-center">
       {imagePosition === 'left' ? (
         <>
           {imageBlock}
@@ -97,21 +108,31 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
 
   return (
     <section className="bg-brand-navy text-white min-h-screen">
-      <div className="mx-auto max-w-6xl px-6 py-16">
+      <div className="mx-auto max-w-5xl px-6 lg:px-16 py-16">
         {/* Stats Counters - Client Component for animation */}
-        <div className="grid grid-cols-3 gap-2 min-[420px]:gap-6 mb-16" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-          <div className="min-[420px]:translate-x-4 min-w-0"><Counter target={stats.readingDays} label={t('readingDays')} /></div>
-          <div className="min-w-0"><Counter target={stats.clubsHeld} label={t('clubsHeld')} /></div>
-          <div className="min-[420px]:-translate-x-4 min-w-0"><Counter target={stats.readersJoined} label={t('readersJoined')} /></div>
-        </div>
+        {(() => {
+          const startDate = new Date('2020-07-31');
+          const now = new Date();
+          const readingDays = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const monthsDiff = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+          const clubsHeld = monthsDiff * 2;
+          const readersJoined = monthsDiff * 15;
+          return (
+            <div className="grid grid-cols-3 gap-2 min-[420px]:gap-6 mb-16" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+              <div className="min-[420px]:translate-x-4 min-w-0"><Counter target={readingDays} label={t('readingDays')} /></div>
+              <div className="min-w-0"><Counter target={clubsHeld} label={t('clubsHeld')} /></div>
+              <div className="min-[420px]:-translate-x-4 min-w-0"><Counter target={readersJoined} label={t('readersJoined')} /></div>
+            </div>
+          );
+        })()}
 
         {/* Taiwan Book Club */}
         <div className="py-12">
           <EventSection
-            image="/images/elements/AD-16.png"
+            image="/images/elements/poster_202603_taiwan.webp"
             title={t('taiwanTitle')}
             description={t('taiwanDesc')}
-            signupUrl="/signup?location=TW"
+            signupUrl={`/${locale}/signup?location=TW`}
             signupText={t('signUp')}
             imagePosition="left"
             priority={true}
@@ -119,56 +140,47 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
           />
         </div>
 
-        {/* Decorative Line */}
-        <div className="relative h-px my-4">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
-        </div>
+        <div className="my-4 h-px bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
 
         {/* Netherlands Book Club */}
         <div className="py-12">
           <EventSection
-            image="/images/elements/AD-15.png"
+            image="/images/elements/AD-15.webp"
             title={t('nlTitle')}
             description={t('nlDesc')}
-            signupUrl="/signup?location=NL"
+            signupUrl={`/${locale}/signup?location=NL`}
             signupText={t('signUp')}
             imagePosition="right"
             ctaClass={ctaClass}
           />
         </div>
 
-        {/* Decorative Line */}
-        <div className="relative h-px my-4">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
-        </div>
+        <div className="my-4 h-px bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
 
         {/* Online English Book Club */}
         <div className="py-12">
           <EventSection
-            image="/images/elements/_.png"
+            image="/images/elements/poster_202601_en_online.webp"
             title={t('onlineTitle')}
             description={t('onlineDesc')}
-            signupUrl="/signup"
+            signupUrl={`/${locale}/engclub`}
             signupText={t('signUp')}
             imagePosition="left"
             ctaClass={ctaClass}
           />
         </div>
 
-        {/* Decorative Line */}
-        <div className="relative h-px my-4">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
-        </div>
+        <div className="my-4 h-px bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
 
         {/* Digital Detox */}
         <div id="detox" className="py-12">
           <EventSection
-            image="/images/elements/AD-17.png"
+            image="/images/elements/AD-17.webp"
             title={t('detoxTitle')}
             description={t('detoxDesc')}
-            signupUrl="/detox"
+            signupUrl={`/${locale}/detox`}
             signupText={t('signUp')}
-            imagePosition="left"
+            imagePosition="right"
             ctaClass={ctaClass}
           />
         </div>

@@ -1,5 +1,10 @@
+import { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { locales, setRequestLocale } from '@/lib/i18n';
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));

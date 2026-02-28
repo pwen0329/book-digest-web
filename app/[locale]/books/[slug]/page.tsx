@@ -7,6 +7,7 @@ import { getTranslations } from 'next-intl/server';
 import { getBooksSync, getLocalizedBook, getBookBySlugSync } from '@/lib/books';
 import { BLUR_BOOK_COVER_LARGE } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
+import { getLocaleAlternates } from '@/lib/seo';
 
 // Cache book data query (using index lookup, O(1) complexity)
 const getBookBySlug = cache((slug: string) => {
@@ -50,12 +51,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   
   return {
     title: `${book.displayTitle} | Book Digest`,
-    description: book.displaySummary?.slice(0, 160) || `Read our notes on ${book.displayTitle} by ${book.author}`,
+    description: book.displaySummary?.slice(0, 160) || `Read our notes on ${book.displayTitle} by ${book.displayAuthor}`,
     openGraph: {
       title: book.displayTitle,
       description: book.displaySummary?.slice(0, 160),
-      images: book.coverUrl ? [{ url: book.coverUrl }] : [],
+      locale: locale === 'zh' ? 'zh_TW' : 'en_US',
+      images: book.displayCoverUrl ? [{ url: book.displayCoverUrl }] : book.coverUrl ? [{ url: book.coverUrl }] : [],
     },
+    alternates: getLocaleAlternates(`books/${slug}`, locale),
   };
 }
 
@@ -75,6 +78,19 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
   
   const book = getLocalizedBook(rawBook, locale);
 
+  // JSON-LD structured data for Book schema
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
+  const bookJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Book',
+    name: book.displayTitle,
+    author: { '@type': 'Person', name: book.displayAuthor },
+    ...(book.displayCoverUrl && { image: `${siteUrl}${book.displayCoverUrl}` }),
+    ...(book.displaySummary && { description: book.displaySummary.slice(0, 300) }),
+    url: `${siteUrl}/${locale}/books/${slug}`,
+    inLanguage: locale === 'en' ? 'en' : 'zh-TW',
+  };
+
   // Get other articles for sidebar (exclude current)
   const otherArticles = allBooks
     .filter((b) => b.slug !== slug)
@@ -86,6 +102,10 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
 
   return (
     <article className="bg-white min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(bookJsonLd).replace(/<\/script>/gi, '<\\/script>') }}
+      />
       {/* Hero Section */}
       <header className="relative bg-gradient-to-b from-brand-navy to-brand-blue">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-12 pb-24 md:pt-16 md:pb-32">
@@ -94,8 +114,8 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
             <div className="flex-shrink-0">
               <div className="relative w-48 md:w-56 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/20">
                 <Image
-                  src={book.coverUrl || '/images/placeholder-cover.svg'}
-                  alt={book.title}
+                  src={book.displayCoverUrl || book.coverUrl || '/images/placeholder-cover.svg'}
+                  alt={book.displayTitle}
                   fill
                   sizes="(max-width: 768px) 192px, 224px"
                   className="object-cover"
@@ -112,7 +132,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
                 {book.displayTitle}
               </h1>
               <p className="mt-3 text-lg md:text-xl text-white/80">
-                by {book.author}
+                {t('byAuthor')} {book.displayAuthor}
               </p>
               {book.tags && book.tags.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
@@ -169,7 +189,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
                       {t('notesNotice')}
                     </p>
                     <Link
-                      href="/events"
+                      href={`/${locale}/events`}
                       className={`inline-flex items-center mt-4 px-4 py-2 bg-brand-pink text-white font-semibold rounded-full hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
                       prefetch={false}
                     >
@@ -233,7 +253,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
               {/* Back to Books */}
               <div className="mt-12 pt-8 border-t border-gray-200">
                 <Link
-                  href="/books"
+                  href={`/${locale}/books`}
                   className="inline-flex items-center gap-2 text-brand-navy hover:text-brand-pink transition-colors"
                   prefetch={false}
                 >

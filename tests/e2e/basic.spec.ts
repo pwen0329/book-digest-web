@@ -18,8 +18,8 @@ for (const locale of locales) {
     });
 
     test(`should show not-found for invalid page /${locale}/not-exist`, async ({ page }) => {
-      await page.goto(`/${locale}/not-exist`);
-      await expect(page.locator('h1')).toContainText('404');
+      const response = await page.goto(`/${locale}/not-exist`);
+      expect(response?.status()).toBe(404);
     });
   });
 }
@@ -29,7 +29,8 @@ for (const locale of locales) {
   test.describe(`${locale} books`, () => {
     test(`should load books wall /${locale}/books`, async ({ page }) => {
       await page.goto(`/${locale}/books`);
-      await expect(page.locator('h1')).toBeVisible();
+      // Books page has no h1 (intentionally removed), check for the book grid
+      await expect(page.locator('ul').first()).toBeVisible();
       await expect(page.locator('li').first()).toBeVisible();
     });
   });

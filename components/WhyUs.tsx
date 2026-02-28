@@ -9,17 +9,17 @@ const ITEMS = [
   {
     titleKey: 'reason1Title',
     descKey: 'reason1Desc',
-    icon: '/images/elements/whyus-06.png',
+    icon: '/images/elements/whyus-06.webp',
   },
   {
     titleKey: 'reason2Title',
     descKey: 'reason2Desc',
-    icon: '/images/elements/whyus-07.png',
+    icon: '/images/elements/whyus-07.webp',
   },
   {
     titleKey: 'reason3Title',
     descKey: 'reason3Desc',
-    icon: '/images/elements/whyus-08.png',
+    icon: '/images/elements/whyus-08.webp',
   },
 ] as const;
 
@@ -136,7 +136,7 @@ export default function WhyUs() {
                     : 'bg-white/30 hover:bg-white/50 w-2'
                 }`}
                 aria-label={`Go to item ${idx + 1}`}
-                aria-current={idx === currentIndex ? 'true' : undefined}
+                aria-current={idx === currentIndex ? 'page' : undefined}
               />
             ))}
           </div>

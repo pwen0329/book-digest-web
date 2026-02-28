@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import SignupForm, { SignupFormValues } from '@/components/SignupForm';
 import { BLUR_POSTER } from '@/lib/constants';
@@ -78,6 +79,16 @@ function SignupContent() {
   return (
     <section className="bg-brand-navy text-white min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
+        {/* Back to Events */}
+        <div className="mb-8">
+          <Link
+            href={`/${locale}/events`}
+            className="inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-brand-pink transition-colors font-outfit"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            {t('backToEvents')}
+          </Link>
+        </div>
         {!locationLocked && step === 0 && (
           <>
             <div className="mb-8">
@@ -122,7 +133,7 @@ function SignupContent() {
           <div className="flex justify-center lg:justify-end">
             <div className="relative w-full max-w-[600px] lg:w-[600px] h-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
               <Image
-                src={activeLocation === 'TW' ? '/images/elements/AD-16.png' : '/images/elements/AD-15.png'}
+                src={activeLocation === 'TW' ? '/images/elements/poster_202603_taiwan.webp' : '/images/elements/AD-15.webp'}
                 alt={activeLocation === 'TW' ? 'Taiwan Book Club' : 'Netherlands Book Club'}
                 fill
                 sizes="(max-width: 1024px) 420px, 50vw"

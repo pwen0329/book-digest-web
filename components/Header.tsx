@@ -103,15 +103,15 @@ export default function Header() {
     <header className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-40 border-b border-white/10 py-3 md:py-4">
       <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
         {/* Desktop/tablet: grid layout with equal width nav items */}
-        <div className="hidden md:grid grid-cols-5 items-center h-full">
-          <NavLink href={`/${locale}/books`} isActive={isActive('/books')} tracking={locale === 'zh' ? 'tracking-[0.5em]' : ''}>{t('books')}</NavLink>
-          <NavLink href={`/${locale}/events`} isActive={isActive('/events')} tracking={locale === 'zh' ? 'tracking-[0.5em]' : ''}>{t('events')}</NavLink>
+        <nav aria-label="Primary" className="hidden md:grid grid-cols-5 items-center h-full">
+          <NavLink href={`/${locale}/books`} isActive={isActive('/books')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('books')}</NavLink>
+          <NavLink href={`/${locale}/events`} isActive={isActive('/events')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('events')}</NavLink>
           <Link href={`/${locale}`} className="flex items-center justify-center" aria-label="Home" prefetch={true}>
             <Image src="/images/logo/logo-t.gif" alt="Book Digest logo" width={88} height={70} className="h-[70px] w-auto" unoptimized priority />
           </Link>
-          <NavLink href={`/${locale}/about`} isActive={isActive('/about')} prefetch={false} tracking={locale === 'zh' ? 'tracking-[0.5em]' : ''}>{t('about')}</NavLink>
-          <NavLink href={`/${locale}/joinus`} isActive={isActive('/joinus')} prefetch={false} tracking={locale === 'zh' ? 'tracking-[0.5em]' : ''}>{t('joinUs')}</NavLink>
-        </div>
+          <NavLink href={`/${locale}/about`} isActive={isActive('/about')} prefetch={false} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('about')}</NavLink>
+          <NavLink href={`/${locale}/joinus`} isActive={isActive('/joinus')} prefetch={false} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('joinUs')}</NavLink>
+        </nav>
 
         {/* Mobile: hamburger button on left, logo centered */}
         <div className="md:hidden h-full flex items-center">
@@ -149,16 +149,16 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-white/10 bg-brand-navy/98 backdrop-blur">
           <nav aria-label="Primary mobile" className="mx-auto max-w-6xl px-6 py-4 flex flex-col gap-3">
-            <MobileNavLink href={`/${locale}/books`} isActive={isActive('/books')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.5em]' : ''}>
+            <MobileNavLink href={`/${locale}/books`} isActive={isActive('/books')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('books')}
             </MobileNavLink>
-            <MobileNavLink href={`/${locale}/events`} isActive={isActive('/events')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.5em]' : ''}>
+            <MobileNavLink href={`/${locale}/events`} isActive={isActive('/events')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('events')}
             </MobileNavLink>
-            <MobileNavLink href={`/${locale}/about`} isActive={isActive('/about')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.5em]' : ''}>
+            <MobileNavLink href={`/${locale}/about`} isActive={isActive('/about')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('about')}
             </MobileNavLink>
-            <MobileNavLink href={`/${locale}/joinus`} isActive={isActive('/joinus')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.5em]' : ''}>
+            <MobileNavLink href={`/${locale}/joinus`} isActive={isActive('/joinus')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('joinUs')}
             </MobileNavLink>
           </nav>

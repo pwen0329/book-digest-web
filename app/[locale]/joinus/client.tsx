@@ -18,6 +18,7 @@ function HostFAQItem({
     <div className="border-b border-white/10 last:border-b-0">
       <button
         onClick={onToggle}
+        aria-expanded={isOpen}
         className="w-full py-4 flex items-center justify-between text-left hover:bg-white/5 transition-colors px-4 -mx-4"
       >
         <h3 className="font-semibold text-white text-lg">{title}</h3>
@@ -65,7 +66,7 @@ function JoinUsContent() {
     });
   };
 
-  const postItImage = locale === 'zh' ? '/images/elements/post-it-11.png' : '/images/elements/post-it-12.png';
+  const postItImage = locale === 'zh' ? '/images/elements/post-it-11.webp' : '/images/elements/post-it-12.webp';
 
   return (
     <section className="bg-brand-navy text-white min-h-screen">

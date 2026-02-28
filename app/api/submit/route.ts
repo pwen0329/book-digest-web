@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import { saveRegistrationToNotion, type RegistrationInput } from '@/lib/notion';
+import { rateLimit } from '@/lib/rate-limit';
+import { cryptoRandomId } from '@/lib/crypto-id';
 
 // POST /api/submit?loc=TW|NL
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    const { allowed } = rateLimit(ip);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const loc = (searchParams.get('loc') || '') as 'TW' | 'NL';
     if (loc !== 'TW' && loc !== 'NL') {
@@ -12,8 +23,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const hdrs = headers();
-    const visitorId = hdrs.get('x-visitor-id') || null; // Optional: client may send an anonymous visitor id
+    const visitorId = req.headers.get('x-visitor-id') || null;
+
+    // Honeypot — return silent success if filled by bots
+    if (body.website) {
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
 
     // Backward-compat: accept either { name } or { firstName, lastName }
     const rawName = String(body.name || '').trim();
@@ -32,13 +47,21 @@ export async function POST(req: NextRequest) {
       referral: body.referral as RegistrationInput['referral'],
       referralOther: body.referralOther ? String(body.referralOther) : undefined,
       bankAccount: typeof body.bankAccount === 'string' ? String(body.bankAccount).trim() : undefined,
-      timestamp: body.timestamp,
+      timestamp: new Date().toISOString(),
       visitorId: visitorId || undefined,
     };
 
     // Basic guards
     if (!payload.name || !payload.email || !payload.profession || !Number.isInteger(payload.age)) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    }
+    // Email format (RFC 5322 relaxed)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+      return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
+    }
+    // Age range
+    if (payload.age < 13 || payload.age > 120) {
+      return NextResponse.json({ error: 'Invalid age' }, { status: 400 });
     }
     if (!['Instagram', 'Facebook', 'Others'].includes(payload.referral)) {
       return NextResponse.json({ error: 'Invalid referral' }, { status: 400 });
@@ -120,10 +143,4 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function cryptoRandomId(): string {
-  const g = globalThis as unknown as { crypto?: { randomUUID?: () => string } };
-  if (typeof g.crypto?.randomUUID === 'function') {
-    return g.crypto.randomUUID!();
-  }
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
+

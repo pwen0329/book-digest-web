@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 
 type SidebarProps = {
@@ -19,12 +20,12 @@ export default function BookArticleSidebar({
         <p className="mt-2 text-sm text-gray-600">
           {t('nextEventDesc')}
         </p>
-        <a
-          href="/events"
+        <Link
+          href={`/${locale}/events`}
           className={`mt-3 inline-flex items-center gap-2 rounded-full bg-brand-pink px-4 py-2 text-sm font-semibold text-white hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
         >
           {t('viewEvents')}
-        </a>
+        </Link>
       </div>
 
       {/* Related Articles */}
@@ -35,7 +36,7 @@ export default function BookArticleSidebar({
             {articles.slice(0, 5).map((article) => (
               <li key={article.slug}>
                 <Link
-                  href={`/books/${article.slug}`}
+                  href={`/${locale}/books/${article.slug}`}
                   className="block text-sm text-gray-700 hover:text-brand-pink transition-colors hover:underline"
                   prefetch={false}
                 >
@@ -45,7 +46,7 @@ export default function BookArticleSidebar({
             ))}
           </ul>
           <Link
-            href="/books"
+            href={`/${locale}/books`}
             className="mt-4 inline-block text-sm font-medium text-brand-pink hover:underline"
           >
             {t('viewAll')}
@@ -97,7 +98,7 @@ export default function BookArticleSidebar({
             className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-600 hover:opacity-90 transition-opacity"
             aria-label="Apple Podcasts"
           >
-            <img src="/images/logo/apple-podcasts-white.svg" alt="" className="h-5 w-5" />
+            <Image src="/images/logo/apple-podcasts-white.svg" alt="" width={20} height={20} />
           </a>
         </div>
       </div>

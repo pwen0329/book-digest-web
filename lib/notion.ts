@@ -7,6 +7,7 @@
 
 import { Client } from '@notionhq/client';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { cryptoRandomId } from '@/lib/crypto-id';
 
 export type RegistrationInput = {
   location: 'TW' | 'NL';
@@ -15,7 +16,7 @@ export type RegistrationInput = {
   profession: string;
   email: string;
   instagram?: string;
-  referral: 'BookDigestIG' | 'BookDigestFB' | 'Others';
+  referral: 'Instagram' | 'Facebook' | 'Others';
   referralOther?: string;
   bankAccount?: string;
   timestamp?: string; // ISO
@@ -177,9 +178,4 @@ export async function listRegistrations(dbId: string, limit = 10) {
   });
 }
 
-function cryptoRandomId(): string {
-  // Prefer Web Crypto if available
-  const g = globalThis as unknown as { crypto?: { randomUUID?: () => string } };
-  if (typeof g.crypto?.randomUUID === 'function') return g.crypto.randomUUID!();
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
+

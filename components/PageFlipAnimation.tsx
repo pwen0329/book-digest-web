@@ -7,23 +7,23 @@ type PageFlipProps = {
   autoPlay?: boolean;
   interval?: number;
   className?: string;
-  /** If set to a gif path, just render the gif instead of the flip animation */
-  gifSrc?: string;
+  /** If set, render a looping video (WebM + MP4) instead of the flip animation */
+  videoSrc?: string;
 };
 
 export default function PageFlipAnimation({
   images = [
-    '/images/notebook/notebook-01.png',
-    '/images/notebook/notebook-02.png',
-    '/images/notebook/notebook-03.png',
-    '/images/notebook/notebook-04.png',
-    '/images/notebook/notebook-05.png',
-    '/images/notebook/notebook-06.png',
+    '/images/notebook/notebook-01.webp',
+    '/images/notebook/notebook-02.webp',
+    '/images/notebook/notebook-03.webp',
+    '/images/notebook/notebook-04.webp',
+    '/images/notebook/notebook-05.webp',
+    '/images/notebook/notebook-06.webp',
   ],
   autoPlay = true,
   interval = 4000,
   className = '',
-  gifSrc,
+  videoSrc,
 }: PageFlipProps) {
   // All hooks must be called before any conditional returns
   const [currentPage, setCurrentPage] = useState(0);
@@ -74,8 +74,8 @@ export default function PageFlipAnimation({
 
   // Auto-play
   useEffect(() => {
-    // Skip autoplay if using gif
-    if (gifSrc) return;
+    // Skip autoplay if using video
+    if (videoSrc) return;
     if (!autoPlay || reduceMotion || images.length <= 1 || isHovered) return;
 
     const timer = setInterval(() => {
@@ -83,12 +83,12 @@ export default function PageFlipAnimation({
     }, interval);
 
     return () => clearInterval(timer);
-  }, [autoPlay, interval, images.length, reduceMotion, isHovered, goNext, gifSrc]);
+  }, [autoPlay, interval, images.length, reduceMotion, isHovered, goNext, videoSrc]);
 
   // Keyboard navigation
   useEffect(() => {
-    // Skip keyboard nav if using gif
-    if (gifSrc) return;
+    // Skip keyboard nav if using video
+    if (videoSrc) return;
     
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') goPrev();
@@ -96,24 +96,30 @@ export default function PageFlipAnimation({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goNext, goPrev, gifSrc]);
+  }, [goNext, goPrev, videoSrc]);
 
-  // If a gif is provided, just render that with rotation and loop
-  if (gifSrc) {
+  // If a video source is provided, render a looping <video> instead of the flip animation
+  if (videoSrc) {
+    const webmSrc = videoSrc.replace(/\.mp4$/, '.webm');
+    const mp4Src = videoSrc.replace(/\.webm$/, '.mp4');
     return (
       <div className={`relative ${className}`}>
-        <div 
-          className="relative w-full max-w-full mx-auto min-h-[220px] sm:min-h-[280px] md:min-h-[320px] transform rotate-[-3deg] hover:rotate-[-1deg] transition-transform duration-300" 
+        <div
+          className="relative w-full max-w-full mx-auto min-h-[220px] sm:min-h-[280px] md:min-h-[320px] transform rotate-[-3deg] hover:rotate-[-1deg] transition-transform duration-300"
           style={{ aspectRatio: '4/3' }}
         >
-          <Image
-            src={gifSrc}
-            alt="Book flip animation"
-            fill
-            sizes="(max-width: 768px) 100vw, 600px"
-            className="object-contain drop-shadow-xl"
-            unoptimized
-          />
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-contain drop-shadow-xl"
+            aria-hidden="true"
+          >
+            <source src={webmSrc} type="video/webm" />
+            <source src={mp4Src} type="video/mp4" />
+          </video>
         </div>
       </div>
     );

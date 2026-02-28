@@ -4,7 +4,9 @@ export type Book = {
   title: string;
   titleEn?: string;
   author: string;
+  authorEn?: string;
   coverUrl?: string;
+  coverUrlEn?: string;
   readDate?: string;
   summary?: string;
   summaryEn?: string;

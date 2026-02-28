@@ -1,17 +1,14 @@
 import { MetadataRoute } from 'next';
 import { getBooksSync } from '@/lib/books';
-import { locales, defaultLocale } from '@/lib/i18n';
+import { locales } from '@/lib/i18n';
 
 // Use sync version to avoid Promise overhead (data is already static)
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
   const books = getBooksSync();
 
-  // Generate URLs for each locale (default locale has no prefix)
+  // Generate URLs for each locale (always include locale prefix)
   const getLocalizedUrl = (path: string, locale: string) => {
-    if (locale === defaultLocale) {
-      return `${baseUrl}${path}`;
-    }
     return `${baseUrl}/${locale}${path}`;
   };
 

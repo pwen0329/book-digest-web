@@ -1,5 +1,10 @@
+import { Metadata } from 'next';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import SignupClient from './client';
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));

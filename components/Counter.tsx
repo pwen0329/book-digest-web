@@ -61,7 +61,9 @@ export default function Counter({ target, label }: { target: number; label: stri
         {label}
       </div>
       <div 
-        className="tabular-nums font-outfit" 
+        className="tabular-nums font-outfit"
+        aria-live="polite"
+        aria-atomic="true"
         style={{ 
           fontSize: 'clamp(48px, 10vw, 92px)', 
           fontWeight: 100, 

@@ -52,9 +52,9 @@
     "clubsHeld": "Book Clubs Held",
     "readersJoined": "Readers Joined",
     "taiwanTitle": "Upcoming Book Club in Taipei, Taiwan",
-    "taiwanDesc": "From bang to thud, this book traces how language grew from sensory experience into a uniquely human skill.\n\nWith Pok\u00e9mon, Japanese sounds, and child development as examples, it explores how meaning is built.\n\nPerfect for fans of linguistics, kids' minds, or human vs. AI thinking.\nRead with us this August!",
+    "taiwanDesc": "On your first day in a new apartment, your neighbor invites you to rob a bookstore — for a dictionary.\n\nKotaro Isaka weaves an absurd heist into a story of friendship, love, and tragedy spanning two timelines. The truth hides in the gaps between past and present.\n\nLove mysteries, Japanese fiction, or jaw-dropping twists?\nRead with us this March!",
     "nlTitle": "Upcoming Book Club in Netherlands",
-    "nlDesc": "When you think of the Netherlands, what comes to mind? Windmills, bikes, tulips?\n\nThis book bursts the romanticised bubble and offers a sharp, accessible look into Dutch society \u2014 from social clique and gender diversity to workplace culture and sustainability.\n\nNot perfect \u2014 but honest.",
+    "nlDesc": "When you think of the Netherlands, what comes to mind? Windmills, bikes, tulips?\n\nThis book bursts the romanticised bubble and offers a sharp, accessible look into Dutch society — from social clique and gender diversity to workplace culture and sustainability.\n\nNot perfect — but honest.",
     "onlineTitle": "Online English Book Club",
     "onlineDesc": "No commute needed—just bring your book and your curiosity.\n\nJoin our monthly online English book club to read, reflect, and exchange ideas with readers across different cities.",
     "detoxTitle": "Unplug, Relax, Share.",
@@ -73,7 +73,14 @@
       "leftSubtitle": "Welcome to Bookdigest’s cozy little Digital Detox!",
       "leftBody": "For a few hours, we all unplug.\nNo screens, no scrolling, just books, shared food, and brilliant strangers who might become your next favourite conversation.\nWe wanted a space to slow down, where sharing a book feels like sharing a piece of yourself, and being present is the only thing that matters.\nCome unplug with us, your cosy little digital detox awaits.",
       "rightBody": "We’re getting everything ready. Can’t wait to share it with you!"
-    }
+    },
+    "engclubPage": {
+      "leftTitle": "Online English Book Club",
+      "leftSubtitle": "Read, Reflect, and Connect — in English.",
+      "leftBody": "No commute needed — just bring your book and your curiosity.\nJoin our monthly online English book club to read, reflect, and exchange ideas with readers across different cities.\n\nWhether English is your first language or one you're still exploring, this is a relaxed, welcoming space to practise expressing your thoughts through books.\n\nWe pick one book each month and meet online to discuss what stood out, what surprised us, and what made us think differently.",
+      "rightBody": "We're getting everything ready. Can't wait to share it with you!"
+    },
+    "backToEvents": "Back to Events"
   },
   "joinus": {
     "title": "How to become a Book Digest Host?",
@@ -114,7 +121,8 @@
     "backToBooks": "Back to Books",
     "bookClubDate": "Book Club Date:",
     "moreBooks": "More Books",
-    "followUs": "Follow Us"
+    "followUs": "Follow Us",
+    "byAuthor": "by"
   },
   "about": {
     "ourStory": "Our Story",
@@ -145,7 +153,7 @@
     "contactUs": "Contact us",
     "terms": "Terms and conditions",
     "privacy": "Privacy policy",
-    "copyright": "© 2025 BOOK DIGEST"
+    "copyright": "© 2026 BOOK DIGEST"
   },
   "form": {
     "nameLabel": "Hi, what's your name?",
@@ -202,7 +210,7 @@
   },
   "signupFlow": {
     "thanksTitle": "THANKS FOR YOUR INTEREST!",
-    "thanksBody": "To make sure everyone has enough time and space for meaningful discussion, we limit the number of participants per session. Starting in 2026, we will collect a small NT$ 50 registration fee to help cover venue, website, and admin costs, and to encourage attendance.\n\nThis helps us keep the quality of each gathering consistent — so that every one of you who comes can enjoy a rich and worthwhile book club experience. Thank you for your understanding and support!",
+    "thanksBody": "To make sure everyone has enough time and space for meaningful discussion, we limit the number of participants per session. Starting in 2026, we will collect a small NT$ 100 registration fee to help cover venue, website, and admin costs, and to encourage attendance.\n\nThis helps us keep the quality of each gathering consistent — so that every one of you who comes can enjoy a rich and worthwhile book club experience. Thank you for your understanding and support!",
     "next": "Next",
     "remitTitle": "Payment Details",
     "bank": "Bank: Taishin Bank (812)",
@@ -219,8 +227,16 @@
     "successTitle": "Registration Successful!",
     "successBody": "Thanks for signing up! We'll send a confirmation email one week before the event with the venue and important notes. Please keep an eye on your inbox.",
     "cancelTitle": "Cancellation & Refund Policy (Friendly Reminder)",
-    "cancelBody": "Because spots are limited and we need to arrange the venue and admin in advance, we generally do not offer refunds after confirmation.\nIf unexpected events or force majeure arise, please contact us as early as possible, and we can help transfer your spot or carry your fee to the next session, depending on the situation.",
+    "cancelBody": "Because spots are limited and we need to arrange the venue and admin in advance, we generally do not offer refunds after confirmation. If you have an unexpected situation and cannot attend, please contact us as soon as possible. We will help you transfer your spot — you may transfer your seat to a friend or family member and let us know their contact information at least three days before the event.",
     "contact": "Questions or ideas? DM our page or email us:",
     "finalNote": "We usually send the venue details about a week before the event — please keep an eye out. Looking forward to seeing you there!"
+  },
+  "common": {
+    "skipToMain": "Skip to main content"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Please try again.",
+    "tryAgain": "Try again"
   }
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { BLUR_BOOK_CAROUSEL } from '@/lib/constants';
 
 type Book = {
@@ -15,6 +16,7 @@ type Book = {
 
 type BookCarouselProps = {
   books: Book[];
+  locale?: string;
   visibleCount?: number;
   autoPlay?: boolean;
   interval?: number;
@@ -23,14 +25,17 @@ type BookCarouselProps = {
 // Use memo to optimize book card, avoid unnecessary re-renders
 const BookCard = memo(function BookCard({ 
   book, 
-  idx 
+  idx,
+  locale,
 }: { 
   book: Book; 
   idx: number;
+  locale?: string;
 }) {
+  const prefix = locale ? `/${locale}` : '';
   return (
     <Link
-      href={`/books/${book.slug}`}
+      href={`${prefix}/books/${book.slug}`}
       className="group block"
       prefetch={false}
     >
@@ -57,6 +62,7 @@ const BookCard = memo(function BookCard({
 
 export default function BookCarousel({
   books,
+  locale,
   visibleCount = 5,
   autoPlay = true,
   interval = 4000,
@@ -118,6 +124,8 @@ export default function BookCarousel({
     return visible;
   }, [sortedBooks, currentIndex, visibleCount]);
 
+  const t = useTranslations('home');
+
   return (
     <section aria-labelledby="book-carousel-heading" className="bg-brand-navy">
       <div className="mx-auto max-w-6xl px-6 py-12">
@@ -126,13 +134,13 @@ export default function BookCarousel({
             id="book-carousel-heading"
             className="text-2xl md:text-3xl font-bold tracking-wide text-white"
           >
-            Recent Reads
+            {t('recentReads')}
           </h2>
           <Link
-            href="/books"
+            href={locale ? `/${locale}/books` : '/books'}
             className="text-sm font-semibold text-brand-pink hover:underline uppercase tracking-wider font-outfit"
           >
-            View All
+            {t('viewAll')}
           </Link>
         </div>
 
@@ -168,11 +176,11 @@ export default function BookCarousel({
               className={`grid gap-4 transition-transform duration-500 ease-out ${
                 visibleCount === 5
                   ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5'
-                  : `grid-cols-${Math.min(visibleCount, 3)} sm:grid-cols-${Math.min(visibleCount, 4)} md:grid-cols-${visibleCount}`
+                  : visibleCount === 4 ? 'grid-cols-3 sm:grid-cols-3 md:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-3'
               }`}
             >
               {visibleBooks.map((book, idx) => (
-                <BookCard key={`${book.id}-${idx}`} book={book} idx={idx} />
+                <BookCard key={`${book.id}-${idx}`} book={book} idx={idx} locale={locale} />
               ))}
             </div>
           </div>
@@ -206,10 +214,10 @@ export default function BookCarousel({
         {/* Mobile View All Button */}
         <div className="mt-6 text-center md:hidden">
           <Link
-            href="/books"
+            href={locale ? `/${locale}/books` : '/books'}
             className="inline-flex items-center rounded-full bg-brand-pink px-5 py-2.5 font-semibold text-white uppercase tracking-wider text-sm font-outfit hover:brightness-110 transition-all"
           >
-            Browse Books
+            {t('browseBooks')}
           </Link>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { getTranslations, getLocale } from 'next-intl/server';
+import Link from 'next/link';
 import Image from 'next/image';
 
 export default async function Footer() {
@@ -7,13 +8,18 @@ export default async function Footer() {
   const isZh = locale === 'zh';
   return (
     <footer className="bg-brand-navy">
-      {/* Top divider with centered social icon */}
+      {/* Top divider with centered icon */}
       <div className="mx-auto max-w-6xl px-6 pt-8">
         <div className="flex items-center gap-4">
           <div className="h-px flex-1 bg-white/30" />
-          <a href="https://www.instagram.com/bookdigest_tw/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-            <Image src="/images/logo/IG iocn.PNG" alt="Instagram" width={48} height={48} className="h-6 w-auto" unoptimized />
-          </a>
+          <Image
+            src="/images/logo/footer-icon.webp"
+            alt=""
+            width={120}
+            height={13}
+            className="h-auto w-[120px] opacity-80"
+            aria-hidden="true"
+          />
           <div className="h-px flex-1 bg-white/30" />
         </div>
       </div>
@@ -23,20 +29,20 @@ export default async function Footer() {
         <div>
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{t('events')}</div>
           <ul className="mt-3 space-y-2">
-            <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/events">{t('bookClub')}</a></li>
-            <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/events#detox">{t('unplugProject')}</a></li>
+            <li><Link className="hover:underline hover:text-brand-pink transition-colors" href={`/${locale}/events`}>{t('bookClub')}</Link></li>
+            <li><Link className="hover:underline hover:text-brand-pink transition-colors" href={`/${locale}/events#detox`}>{t('unplugProject')}</Link></li>
           </ul>
         </div>
         <div>
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{t('getInvolved')}</div>
           <ul className="mt-3 space-y-2">
-            <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/joinus">{t('beAHost')}</a></li>
+            <li><Link className="hover:underline hover:text-brand-pink transition-colors" href={`/${locale}/joinus`}>{t('beAHost')}</Link></li>
           </ul>
         </div>
         <div>
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{t('aboutUs')}</div>
           <ul className="mt-3 space-y-2">
-            <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/about">{t('ourStory')}</a></li>
+            <li><Link className="hover:underline hover:text-brand-pink transition-colors" href={`/${locale}/about`}>{t('ourStory')}</Link></li>
             <li><a className="hover:underline hover:text-brand-pink transition-colors" href="https://www.instagram.com/bookdigest_tw/" target="_blank" rel="noopener noreferrer">{t('instagram')}</a></li>
             <li><a className="hover:underline hover:text-brand-pink transition-colors" href="https://podcasts.apple.com/podcast/1801844059" target="_blank" rel="noopener noreferrer">{t('podcast')}</a></li>
           </ul>
@@ -44,9 +50,9 @@ export default async function Footer() {
         <div>
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{t('helpSupport')}</div>
           <ul className="mt-3 space-y-2">
-            <li><a className="hover:underline hover:text-brand-pink transition-colors" href="mailto:bookdigest2020@gmail.com">{t('contactUs')}</a></li>
-            <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/terms">{t('terms')}</a></li>
-            <li><a className="hover:underline hover:text-brand-pink transition-colors" href="/privacy">{t('privacy')}</a></li>
+            <li><a className="hover:underline hover:text-brand-pink transition-colors" href="mailto:bookdigest2020@gmail.com?subject=Book%20Digest%20Inquiry">{t('contactUs')}</a></li>
+            <li><Link className="hover:underline hover:text-brand-pink transition-colors" href={`/${locale}/terms`}>{t('terms')}</Link></li>
+            <li><Link className="hover:underline hover:text-brand-pink transition-colors" href={`/${locale}/privacy`}>{t('privacy')}</Link></li>
           </ul>
         </div>
       </div>

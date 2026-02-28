@@ -1,8 +1,21 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { getTranslations } from 'next-intl/server';
 import { getBooksSync, getLocalizedBook } from '@/lib/books';
 import { BLUR_BOOK_COVER } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
+import { pageSEO, getLocaleAlternates } from '@/lib/seo';
+import type { Metadata } from 'next';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return {
+    title: pageSEO.books.title,
+    description: pageSEO.books.description,
+    openGraph: { title: pageSEO.books.title, description: pageSEO.books.description, locale: locale === 'zh' ? 'zh_TW' : 'en_US' },
+    alternates: getLocaleAlternates('books', locale),
+  };
+}
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -11,6 +24,7 @@ export function generateStaticParams() {
 export default async function BooksPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations('books');
 
   // Sort by coverUrl number (extracted from filename), smaller numbers last
   const data = getBooksSync()
@@ -22,15 +36,15 @@ export default async function BooksPage({ params }: { params: Promise<{ locale: 
   return (
     <section className="bg-brand-navy text-white">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        {/* 移除標題與副標說明 */}
+        <h1 className="sr-only">{t('title')}</h1>
 
         <ul className="mt-8 grid gap-x-6 gap-y-10 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           {data.map((b, index) => (
             <li key={b.id} className="group">
-              <Link href={`/books/${b.slug}`} className="block" prefetch={false}>
+              <Link href={`/${locale}/books/${b.slug}`} className="block" prefetch={false}>
                 <div className="relative aspect-[7/10] bg-white rounded-lg shadow-xl overflow-hidden">
                   <Image
-                    src={b.coverUrl || '/images/placeholder-cover.svg'}
+                    src={b.displayCoverUrl || b.coverUrl || '/images/placeholder-cover.svg'}
                     alt={b.displayTitle}
                     fill
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
@@ -45,7 +59,7 @@ export default async function BooksPage({ params }: { params: Promise<{ locale: 
                       {b.displayTitle}
                     </h3>
                     <p className="text-white/70 text-xs md:text-sm mt-1">
-                      {b.author}
+                      {b.displayAuthor}
                     </p>
                     {b.displaySummary && (
                       <p className="text-white/80 text-xs mt-2 line-clamp-3 leading-relaxed">
@@ -58,7 +72,7 @@ export default async function BooksPage({ params }: { params: Promise<{ locale: 
                   <div className="flex items-center gap-2">
                     <span className="font-semibold line-clamp-2 tracking-wide flex-1 text-base md:text-lg">{b.displayTitle}</span>
                   </div>
-                  <div className="text-white/70 mt-1 text-sm">{b.author}</div>
+                  <div className="text-white/70 mt-1 text-sm">{b.displayAuthor}</div>
                 </div>
               </Link>
             </li>

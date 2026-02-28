@@ -16,7 +16,7 @@ export default async function NotFound() {
           {t('description')}
         </p>
         <Link
-          href="/"
+          href={`/${locale}`}
           className={`inline-flex items-center gap-2 px-6 py-3 bg-brand-pink text-white font-semibold rounded-full hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
         >
           ← {t('backHome')}

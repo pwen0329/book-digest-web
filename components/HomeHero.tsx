@@ -1,5 +1,6 @@
 "use client";
 import { useLocale, useTranslations } from 'next-intl';
+import Link from 'next/link';
 import PageFlipAnimation from '@/components/PageFlipAnimation';
 
 export default function HomeHero() {
@@ -39,14 +40,14 @@ export default function HomeHero() {
                 {t('hero.subtitle')}
               </p>
               <div className="mt-8 flex flex-row flex-wrap items-center md:items-start justify-center md:justify-start gap-2 sm:gap-3">
-                <a href="/events" className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy ${locale === 'en' ? 'px-5 sm:px-7' : 'px-6 sm:px-8'} py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-[0.5em]' : 'uppercase tracking-wider'}`}>{t('hero.ctaBookClub')}</a>
-                <a href="/events#detox" className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy ${locale === 'en' ? 'px-5 sm:px-7' : 'px-6 sm:px-8'} py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-[0.5em]' : 'uppercase tracking-wider'}`}>{t('hero.ctaDetox')}</a>
+                <Link href={`/${locale}/events`} className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy ${locale === 'en' ? 'px-5 sm:px-7' : 'px-6 sm:px-8'} py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-[0.2em]' : 'uppercase tracking-wider'}`}><span className={locale === 'zh' ? '-mr-[0.2em]' : ''}>{t('hero.ctaBookClub')}</span></Link>
+                <Link href={`/${locale}/events#detox`} className={`inline-flex min-h-11 items-center rounded-full bg-brand-navy ${locale === 'en' ? 'px-5 sm:px-7' : 'px-6 sm:px-8'} py-2.5 sm:py-3 font-semibold text-white shadow border border-white hover:bg-brand-pink hover:text-white hover:border-brand-pink focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-pink focus-visible:ring-offset-brand-navy font-outfit transition-all text-sm sm:text-base ${locale === 'zh' ? 'tracking-[0.2em]' : 'uppercase tracking-wider'}`}><span className={locale === 'zh' ? '-mr-[0.2em]' : ''}>{t('hero.ctaDetox')}</span></Link>
               </div>
             </div>
             {/* Page Flip Animation - enlarged for better visibility */}
             <div className="mt-0 md:mt-0 w-full max-w-[calc(100vw-3rem)] mx-auto px-4 sm:px-0 order-1 md:order-2">
               <PageFlipAnimation
-                gifSrc="/images/notebook/notebook.gif"
+                videoSrc="/images/notebook/notebook.webm"
                 className={heroFlipClassName}
               />
             </div>

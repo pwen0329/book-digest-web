@@ -109,7 +109,9 @@ export function getLocalizedBook(book: Book, locale: string) {
   return {
     ...book,
     displayTitle: locale === 'en' && book.titleEn ? book.titleEn : book.title,
+    displayAuthor: locale === 'en' && book.authorEn ? book.authorEn : book.author,
     displaySummary: locale === 'en' && book.summaryEn ? book.summaryEn : book.summary,
+    displayCoverUrl: locale === 'en' && book.coverUrlEn ? book.coverUrlEn : book.coverUrl,
   };
 }
 
@@ -117,4 +119,9 @@ export function getLocalizedBook(book: Book, locale: string) {
 export function getLocalizedTitle(book: Book, locale: string): string {
   if (locale === 'en' && book.titleEn) return book.titleEn;
   return book.title;
+}
+
+export function getLocalizedAuthor(book: Book, locale: string): string {
+  if (locale === 'en' && book.authorEn) return book.authorEn;
+  return book.author;
 }

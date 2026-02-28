@@ -46,8 +46,8 @@ export const defaultSEO: Metadata = {
   },
   openGraph: {
     type: 'website',
-    locale: 'en_US',
-    alternateLocale: 'zh_TW',
+    locale: 'zh_TW',
+    alternateLocale: 'en_US',
     url: siteUrl,
     siteName: 'Book Digest',
     title: 'Book Digest - A space to rest, read, and reconnect',
@@ -74,8 +74,8 @@ export const defaultSEO: Metadata = {
   alternates: {
     canonical: siteUrl,
     languages: {
-      'en': siteUrl,
-      'zh-TW': `${siteUrl}?lang=zh`,
+      'en': `${siteUrl}/en`,
+      'zh-TW': `${siteUrl}/zh`,
     },
   },
 };
@@ -110,9 +110,13 @@ export function generateBookSEO(book: {
   author: string;
   summary?: string;
   coverUrl?: string;
-}): Metadata {
-  const title = `${book.title} by ${book.author}`;
-  const description = book.summary || `Book review and discussion of ${book.title} by ${book.author}`;
+  authorEn?: string;
+  titleEn?: string;
+}, locale?: string): Metadata {
+  const displayAuthor = locale === 'en' && book.authorEn ? book.authorEn : book.author;
+  const displayTitle = locale === 'en' && book.titleEn ? book.titleEn : book.title;
+  const title = `${displayTitle} by ${displayAuthor}`;
+  const description = book.summary || `Book review and discussion of ${displayTitle} by ${displayAuthor}`;
 
   return {
     title,
@@ -127,5 +131,40 @@ export function generateBookSEO(book: {
       description,
       images: book.coverUrl ? [book.coverUrl] : undefined,
     },
+  };
+}
+
+/**
+ * Generate locale-aware alternates (canonical + hreflang) for a given page path.
+ * @param path - The path segment after the locale prefix, e.g. '' for home, 'books', 'events'
+ * @param locale - The current locale
+ */
+export function getLocaleAlternates(path: string, locale: string) {
+  const pagePath = path ? `/${path}` : '';
+  return {
+    canonical: `${siteUrl}/${locale}${pagePath}`,
+    languages: {
+      'en': `${siteUrl}/en${pagePath}`,
+      'zh-TW': `${siteUrl}/zh${pagePath}`,
+      'x-default': `${siteUrl}/zh${pagePath}`,
+    },
+  };
+}
+
+/**
+ * Generate locale-aware metadata, merging defaults with locale-specific overrides.
+ */
+export function getLocaleMetadata(locale: string, path: string = ''): Metadata {
+  const ogLocale = locale === 'zh' ? 'zh_TW' : 'en_US';
+  const altLocale = locale === 'zh' ? 'en_US' : 'zh_TW';
+
+  return {
+    ...defaultSEO,
+    openGraph: {
+      ...defaultSEO.openGraph as Record<string, unknown>,
+      locale: ogLocale,
+      alternateLocale: altLocale,
+    },
+    alternates: getLocaleAlternates(path, locale),
   };
 }

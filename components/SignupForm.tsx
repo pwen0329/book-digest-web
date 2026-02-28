@@ -172,7 +172,7 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
     <div>
       <div className="flex items-center gap-3 mb-6">
         <h3 className="text-lg font-semibold text-white">
-          Sign up
+          {tEvents('signUp')}
         </h3>
         <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${locationBadgeClass}`}>
           📍 {location === 'TW' ? tEvents('taiwan') : tEvents('netherlands')}
@@ -184,8 +184,17 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
           {t('success')}
         </div>
       ) : (!onComplete && success === 'error') ? (
-        <div className="rounded-lg bg-red-500/15 border border-red-400/30 text-red-200 p-4" role="status">
-          {t('error')}
+        <div className="rounded-lg bg-red-500/15 border border-red-400/30 text-red-200 p-4" role="alert">
+          <p>{t('error')}</p>
+          <p className="mt-2 text-sm">
+            {locale === 'zh' ? '或直接寄信給我們：' : 'Or email us directly: '}
+            <a
+              href="mailto:bookdigest2020@gmail.com?subject=Book%20Digest%20Inquiry"
+              className="underline hover:text-white"
+            >
+              bookdigest2020@gmail.com
+            </a>
+          </p>
         </div>
       ) : null}
 
@@ -201,8 +210,10 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
               id="name" name="name" value={values.name} onChange={onChange}
               className={inputClass(!!errors.name)}
               autoComplete="name"
+              aria-invalid={errors.name ? true : undefined}
+              aria-describedby={errors.name ? 'name-error' : undefined}
             />
-            {errors.name && <p className="mt-1 text-xs text-red-300">{errors.name}</p>}
+            {errors.name && <p id="name-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.name}</p>}
           </div>
 
           {/* Age */}
@@ -211,8 +222,10 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
             <input
               id="age" name="age" inputMode="numeric" pattern="[0-9]*" value={values.age} onChange={onChange}
               className={inputClass(!!errors.age)}
+              aria-invalid={errors.age ? true : undefined}
+              aria-describedby={errors.age ? 'age-error' : undefined}
             />
-            {errors.age && <p className="mt-1 text-xs text-red-300">{errors.age}</p>}
+            {errors.age && <p id="age-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.age}</p>}
           </div>
 
           {/* Profession */}
@@ -221,8 +234,10 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
             <input
               id="profession" name="profession" value={values.profession} onChange={onChange}
               className={inputClass(!!errors.profession)}
+              aria-invalid={errors.profession ? true : undefined}
+              aria-describedby={errors.profession ? 'profession-error' : undefined}
             />
-            {errors.profession && <p className="mt-1 text-xs text-red-300">{errors.profession}</p>}
+            {errors.profession && <p id="profession-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.profession}</p>}
           </div>
 
           {/* Email */}
@@ -232,8 +247,10 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
               id="email" name="email" type="email" value={values.email} onChange={onChange}
               className={inputClass(!!errors.email)}
               autoComplete="email"
+              aria-invalid={errors.email ? true : undefined}
+              aria-describedby={errors.email ? 'email-error' : undefined}
             />
-            {errors.email && <p className="mt-1 text-xs text-red-300">{errors.email}</p>}
+            {errors.email && <p id="email-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.email}</p>}
           </div>
         </div>
 
@@ -268,8 +285,10 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
               id="referralOther" name="referralOther" value={values.referralOther} onChange={onChange}
               className={inputClass(!!errors.referralOther)}
               placeholder={t('referralOtherPlaceholder')}
+              aria-invalid={errors.referralOther ? true : undefined}
+              aria-describedby={errors.referralOther ? 'referralOther-error' : undefined}
             />
-            {errors.referralOther && <p className="mt-1 text-xs text-red-300">{errors.referralOther}</p>}
+            {errors.referralOther && <p id="referralOther-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.referralOther}</p>}
           </div>
         </div>
 
