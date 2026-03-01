@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { z } from 'zod';
+import Turnstile from '@/components/Turnstile';
 
 type Location = 'TW' | 'NL';
 
@@ -63,16 +64,38 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<null | 'ok' | 'error'>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [values, setValues] = useState<SignupFormValues>({
-    name: '',
-    age: '',
-    profession: '',
-    email: '',
-    instagram: '',
-    referral: 'BookDigestIG',
-    referralOther: '',
-    website: '',
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
+
+  const storageKey = `signup-form-${location}`;
+
+  const [values, setValues] = useState<SignupFormValues>(() => {
+    if (typeof window === 'undefined') return { name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
+    try {
+      const saved = sessionStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<SignupFormValues>;
+        return { name: parsed.name || '', age: parsed.age || '', profession: parsed.profession || '', email: parsed.email || '', instagram: parsed.instagram || '', referral: parsed.referral || 'BookDigestIG', referralOther: parsed.referralOther || '', website: '' };
+      }
+    } catch { /* ignore */ }
+    return { name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
   });
+
+  // Persist form values to sessionStorage on change (exclude honeypot)
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { website, ...toSave } = values;
+      sessionStorage.setItem(storageKey, JSON.stringify(toSave));
+    } catch { /* ignore */ }
+  }, [values, storageKey]);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.target as HTMLInputElement & HTMLSelectElement;
@@ -106,6 +129,7 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
       setValues({
         name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
       });
+      try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
       return;
     }
 
@@ -141,6 +165,7 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
             referral: apiReferral,
             referralOther: values.referral === 'Others' ? values.referralOther : undefined,
             timestamp: new Date().toISOString(),
+            turnstileToken: turnstileToken || undefined,
           }),
         });
         if (!resp.ok) throw new Error('Request failed');
@@ -152,6 +177,7 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
       setValues({
         name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
       });
+      try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
     } catch {
       setSuccess('error');
     } finally {
@@ -291,6 +317,9 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
             {errors.referralOther && <p id="referralOther-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.referralOther}</p>}
           </div>
         </div>
+
+        {/* Turnstile CAPTCHA */}
+        <Turnstile onVerify={handleTurnstileVerify} onExpire={handleTurnstileExpire} />
 
         {/* Submit */}
         <div className="pt-4">

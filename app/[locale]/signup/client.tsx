@@ -1,10 +1,11 @@
 'use client';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import SignupForm, { SignupFormValues } from '@/components/SignupForm';
+import Turnstile from '@/components/Turnstile';
 import { BLUR_POSTER } from '@/lib/constants';
 
 function SignupContent() {
@@ -18,6 +19,15 @@ function SignupContent() {
   const [bankLast5, setBankLast5] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
 
   // 保留舊版：從 URL 讀取地點參數
   useEffect(() => {
@@ -65,6 +75,7 @@ function SignupContent() {
           referralOther: formValues.referral === 'Others' ? formValues.referralOther : undefined,
           bankAccount: bankLast5,
           timestamp: new Date().toISOString(),
+          turnstileToken: turnstileToken || undefined,
         }),
       });
       if (!resp.ok) throw new Error('Request failed');
@@ -201,6 +212,7 @@ function SignupContent() {
                     />
                     {sendError && <p className="mt-2 text-sm text-red-300">{sendError}</p>}
                   </div>
+                  <Turnstile onVerify={handleTurnstileVerify} onExpire={handleTurnstileExpire} />
                   <div className="pt-6">
                     <button
                       onClick={handleFinalize}

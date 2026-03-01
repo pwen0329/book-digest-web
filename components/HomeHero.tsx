@@ -48,6 +48,7 @@ export default function HomeHero() {
             <div className="mt-0 md:mt-0 w-full max-w-[calc(100vw-3rem)] mx-auto px-4 sm:px-0 order-1 md:order-2">
               <PageFlipAnimation
                 videoSrc="/images/notebook/notebook.webm"
+                videoPoster="/images/notebook/notebook-poster.webp"
                 className={heroFlipClassName}
               />
             </div>

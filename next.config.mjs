@@ -1,5 +1,6 @@
 import createNextIntlPlugin from 'next-intl/plugin';
 import bundleAnalyzer from '@next/bundle-analyzer';
+import { withSentryConfig } from '@sentry/nextjs';
 
 const withNextIntl = createNextIntlPlugin('./lib/i18n.ts');
 const withBundleAnalyzer = bundleAnalyzer({
@@ -14,20 +15,7 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://plausible.io",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://plausible.io",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join('; '),
-          },
+          // CSP is now set dynamically in middleware.ts (nonce-based)
           {
             key: 'X-Frame-Options',
             value: 'DENY',
@@ -62,10 +50,11 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 192, 256],
     // Configure external image sources here
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      { protocol: 'https', hostname: 'bookdigest.club' },
+      { protocol: 'https', hostname: '*.bookdigest.club' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: '*.notion.so' },
+      { protocol: 'https', hostname: '*.amazonaws.com' },
     ],
   },
   // Bundle splitting optimization
@@ -91,4 +80,12 @@ const nextConfig = {
   },
 };
 
-export default withBundleAnalyzer(withNextIntl(nextConfig));
+const baseConfig = withBundleAnalyzer(withNextIntl(nextConfig));
+
+export default withSentryConfig(baseConfig, {
+  // Suppress source map upload warnings when no auth token is set
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+  // Disable source map upload in dev / when no token
+  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+});

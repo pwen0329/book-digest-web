@@ -12,8 +12,27 @@ export default function sitemap(): MetadataRoute.Sitemap {
     return `${baseUrl}/${locale}${path}`;
   };
 
-  // Static pages with all locales
-  const staticPaths = ['', '/books', '/events', '/about', '/joinus', '/privacy', '/terms'];
+  // Derive site last modified from the most recent book readDate
+  const latestBookDate = books.reduce((latest, book) => {
+    if (book.readDate) {
+      const d = new Date(book.readDate);
+      return d > latest ? d : latest;
+    }
+    return latest;
+  }, new Date('2020-07-31'));
+
+  // Static pages with meaningful lastmod dates
+  const staticPageDates: Record<string, Date> = {
+    '': latestBookDate, // Home page changes when new books are added
+    '/books': latestBookDate, // Books page changes with new books
+    '/events': new Date('2025-06-01'), // Update when events change
+    '/about': new Date('2025-01-01'),
+    '/joinus': new Date('2025-01-01'),
+    '/privacy': new Date('2024-08-01'),
+    '/terms': new Date('2024-08-01'),
+  };
+
+  const staticPaths = Object.keys(staticPageDates);
   const staticPages = staticPaths.flatMap((path) =>
     locales.map((locale) => {
       let changeFrequency: 'weekly' | 'monthly' = 'weekly';
@@ -22,7 +41,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       }
       return {
         url: getLocalizedUrl(path, locale),
-        lastModified: new Date(),
+        lastModified: staticPageDates[path],
         changeFrequency,
         priority: path === '' ? 1 : path === '/books' || path === '/events' ? 0.9 : 0.7,
       };
@@ -33,7 +52,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const bookPages = books.flatMap((book) =>
     locales.map((locale) => ({
       url: getLocalizedUrl(`/books/${book.slug}`, locale),
-      lastModified: book.readDate ? new Date(book.readDate) : new Date(),
+      lastModified: book.readDate ? new Date(book.readDate) : new Date('2024-01-01'),
       changeFrequency: 'monthly' as const,
       priority: 0.8,
     }))

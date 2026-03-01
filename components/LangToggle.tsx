@@ -30,12 +30,11 @@ export default memo(function LangToggle() {
     >
       <div
         className="inline-flex rounded-full border border-white/20 p-0.5 bg-brand-navy/90 backdrop-blur text-[10px] md:text-xs shadow-lg"
-        role="tablist"
+        role="group"
         aria-label="Language selector"
       >
       <button
-        role="tab"
-        aria-selected={locale === 'en'}
+        aria-pressed={locale === 'en'}
         onClick={() => switchLocale('en')}
         className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full font-medium font-outfit uppercase tracking-wider transition-colors ${
           locale === 'en'
@@ -46,8 +45,7 @@ export default memo(function LangToggle() {
         EN
       </button>
       <button
-        role="tab"
-        aria-selected={locale === 'zh'}
+        aria-pressed={locale === 'zh'}
         onClick={() => switchLocale('zh')}
         className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full font-medium font-outfit uppercase tracking-wider transition-colors ${
           locale === 'zh'

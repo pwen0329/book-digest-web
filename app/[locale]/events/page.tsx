@@ -1,11 +1,14 @@
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import Image from 'next/image';
-import Counter from '@/components/Counter';
+import dynamic from 'next/dynamic';
 import { BLUR_POSTER } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { pageSEO, getLocaleAlternates } from '@/lib/seo';
 import type { Metadata } from 'next';
+
+// Counter is a client component below the fold; lazy-load it
+const Counter = dynamic(() => import('@/components/Counter'), { ssr: false });
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -106,8 +109,51 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
   const t = await getTranslations('events');
   const ctaClass = `inline-flex items-center px-8 md:px-9 py-2.5 md:py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all text-sm md:text-base ${locale === 'zh' ? 'tracking-[0.24em] md:tracking-[0.3em]' : 'uppercase tracking-wider'}`;
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
+  const eventsJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Book Digest Events',
+    itemListElement: [
+      {
+        '@type': 'Event',
+        name: t('taiwanTitle'),
+        description: t('taiwanDesc'),
+        eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+        eventSchedule: { '@type': 'Schedule', repeatFrequency: 'P1M', byDay: 'https://schema.org/Saturday' },
+        location: { '@type': 'Place', name: 'Taipei, Taiwan', address: { '@type': 'PostalAddress', addressLocality: 'Taipei', addressCountry: 'TW' } },
+        organizer: { '@type': 'Organization', name: 'Book Digest', url: siteUrl },
+        url: `${siteUrl}/${locale}/signup?location=TW`,
+      },
+      {
+        '@type': 'Event',
+        name: t('nlTitle'),
+        description: t('nlDesc'),
+        eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+        eventSchedule: { '@type': 'Schedule', repeatFrequency: 'P1M', byDay: 'https://schema.org/Saturday' },
+        location: { '@type': 'Place', name: 'Netherlands', address: { '@type': 'PostalAddress', addressCountry: 'NL' } },
+        organizer: { '@type': 'Organization', name: 'Book Digest', url: siteUrl },
+        url: `${siteUrl}/${locale}/signup?location=NL`,
+      },
+      {
+        '@type': 'Event',
+        name: t('onlineTitle'),
+        description: t('onlineDesc'),
+        eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
+        eventSchedule: { '@type': 'Schedule', repeatFrequency: 'P1M' },
+        location: { '@type': 'VirtualLocation', url: `${siteUrl}/${locale}/engclub` },
+        organizer: { '@type': 'Organization', name: 'Book Digest', url: siteUrl },
+        url: `${siteUrl}/${locale}/engclub`,
+      },
+    ],
+  };
+
   return (
     <section className="bg-brand-navy text-white min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventsJsonLd).replace(/<\/script>/gi, '<\\/script>') }}
+      />
       <div className="mx-auto max-w-5xl px-6 lg:px-16 py-16">
         {/* Stats Counters - Client Component for animation */}
         {(() => {

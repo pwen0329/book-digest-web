@@ -9,6 +9,8 @@ type PageFlipProps = {
   className?: string;
   /** If set, render a looping video (WebM + MP4) instead of the flip animation */
   videoSrc?: string;
+  /** Poster image shown before video loads */
+  videoPoster?: string;
 };
 
 export default function PageFlipAnimation({
@@ -24,6 +26,7 @@ export default function PageFlipAnimation({
   interval = 4000,
   className = '',
   videoSrc,
+  videoPoster,
 }: PageFlipProps) {
   // All hooks must be called before any conditional returns
   const [currentPage, setCurrentPage] = useState(0);
@@ -108,12 +111,15 @@ export default function PageFlipAnimation({
           className="relative w-full max-w-full mx-auto min-h-[220px] sm:min-h-[280px] md:min-h-[320px] transform rotate-[-3deg] hover:rotate-[-1deg] transition-transform duration-300"
           style={{ aspectRatio: '4/3' }}
         >
+          {/* Decorative video — no meaningful audio content to caption */}
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <video
             autoPlay
             loop
             muted
             playsInline
+            preload="metadata"
+            poster={videoPoster}
             className="absolute inset-0 w-full h-full object-contain drop-shadow-xl"
             aria-hidden="true"
           >

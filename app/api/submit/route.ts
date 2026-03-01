@@ -2,17 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { saveRegistrationToNotion, type RegistrationInput } from '@/lib/notion';
 import { rateLimit } from '@/lib/rate-limit';
 import { cryptoRandomId } from '@/lib/crypto-id';
+import { verifyTurnstileToken } from '@/lib/turnstile';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 // POST /api/submit?loc=TW|NL
 export async function POST(req: NextRequest) {
   try {
     // Rate limiting
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
-    const { allowed } = rateLimit(ip);
+    const { allowed, retryAfterMs } = await rateLimit(ip);
     if (!allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': '60' } }
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
       );
     }
 
@@ -28,6 +30,14 @@ export async function POST(req: NextRequest) {
     // Honeypot — return silent success if filled by bots
     if (body.website) {
       return NextResponse.json({ ok: true }, { status: 200 });
+    }
+
+    // Turnstile verification (if secret key is configured)
+    if (process.env.TURNSTILE_SECRET_KEY) {
+      const turnstileOk = await verifyTurnstileToken(body.turnstileToken || '', ip);
+      if (!turnstileOk) {
+        return NextResponse.json({ error: 'Bot verification failed' }, { status: 403 });
+      }
     }
 
     // Backward-compat: accept either { name } or { firstName, lastName }
@@ -60,7 +70,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
     }
     // Age range
-    if (payload.age < 13 || payload.age > 120) {
+    if (payload.age < 18 || payload.age > 100) {
       return NextResponse.json({ error: 'Invalid age' }, { status: 400 });
     }
     if (!['Instagram', 'Facebook', 'Others'].includes(payload.referral)) {
@@ -68,6 +78,10 @@ export async function POST(req: NextRequest) {
     }
     if (payload.referral === 'Others' && (!payload.referralOther || payload.referralOther.trim().length < 2)) {
       return NextResponse.json({ error: 'Invalid referralOther' }, { status: 400 });
+    }
+    // Bank account must be exactly 5 digits if provided
+    if (payload.bankAccount && !/^\d{5}$/.test(payload.bankAccount)) {
+      return NextResponse.json({ error: 'Invalid bank account' }, { status: 400 });
     }
 
     // 1) Optional Tally forward. Use per-location endpoint if provided.
@@ -100,13 +114,15 @@ export async function POST(req: NextRequest) {
         location: payload.location,
       } as Record<string, unknown>;
 
-      const forward = await fetch(tallyEndpoint, {
+      const forward = await fetchWithTimeout(tallyEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(tallyBody),
+        timeoutMs: 15_000,
       });
       if (!forward.ok) {
-        // Do not expose upstream body; return a generic error
+        const forwardErr = await forward.text().catch(() => 'unknown');
+        console.error('[api/submit] Tally forward failed:', forward.status, forwardErr);
         return NextResponse.json({ error: 'Upstream processor error' }, { status: 502 });
       }
     }

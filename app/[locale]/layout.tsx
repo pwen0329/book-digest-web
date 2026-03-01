@@ -1,15 +1,20 @@
 import '../globals.css';
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import Script from 'next/script';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import LangToggle from '@/components/LangToggle';
-import FloatingInstagram from '@/components/FloatingInstagram';
 import { defaultViewport, getLocaleMetadata } from '@/lib/seo';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { Outfit, Noto_Sans_TC } from 'next/font/google';
 import { locales, type Locale, setRequestLocale } from '@/lib/i18n';
+
+// Lazy-load non-critical floating UI (not needed for first paint)
+const FloatingInstagram = dynamic(() => import('@/components/FloatingInstagram'), { ssr: false });
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -18,16 +23,13 @@ const outfit = Outfit({
   display: 'swap',
 });
 
-// Noto Sans TC with optimized CJK subset loading
-// Only load Traditional Chinese characters commonly used in the UI
+// Noto Sans TC — use variable font to minimize CJK download size
+// (1 variable file per unicode-range instead of separate files per weight)
 const notoSansTC = Noto_Sans_TC({
   subsets: ['latin'],
-  weight: ['400', '500', '700'],
   variable: '--font-noto-tc',
   display: 'swap',
-  // Preload only the most common characters for faster initial load
   preload: true,
-  // Use font-display: swap for better perceived performance
   adjustFontFallback: true,
 });
 
@@ -61,33 +63,35 @@ export default async function LocaleLayout({ children, params }: Props) {
   const messages = await getMessages();
   const t = await getTranslations('common');
 
+  // Read nonce from middleware for CSP
+  const headersList = await headers();
+  const nonce = headersList.get('x-nonce') || '';
+
   return (
     <html lang={locale} className={`h-full bg-brand-navy ${outfit.variable} ${notoSansTC.variable}`}>
       <head>
-        {/* Plausible Analytics (privacy-friendly, no cookies) */}
+        {/* Preload hero video poster for faster LCP */}
+        <link rel="preload" href="/images/notebook/notebook-poster.webp" as="image" type="image/webp" />
+
+        {/* Favicon 根據語系切換（ico 格式） */}
+        {locale === 'en' ? (
+          <link rel="icon" href="/eyes2.ico" type="image/x-icon" />
+        ) : (
+          <link rel="icon" href="/eyes1.ico" type="image/x-icon" />
+        )}
+        <link rel="manifest" href="/site.webmanifest" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+      </head>
+      <body className="min-h-screen flex flex-col text-white font-body">
+        {/* Plausible Analytics — loaded after interactive (non-blocking) */}
         {process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN && (
-          <script
-            defer
+          <Script
+            strategy="afterInteractive"
+            nonce={nonce}
             data-domain={process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN}
             src={process.env.NEXT_PUBLIC_PLAUSIBLE_SRC || 'https://plausible.io/js/script.js'}
           />
         )}
-
-        {/* Preconnect to critical resources (performance optimization) */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-        
-          {/* Favicon 根據語系切換（ico 格式） */}
-          {locale === 'en' ? (
-            <link rel="icon" href="/eyes2.ico" type="image/x-icon" />
-          ) : (
-            <link rel="icon" href="/eyes1.ico" type="image/x-icon" />
-          )}
-          <link rel="manifest" href="/site.webmanifest" />
-          <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-      </head>
-      <body className="min-h-screen flex flex-col text-white font-body">
         <NextIntlClientProvider messages={messages}>
           {/* Skip to main content link for keyboard/screen reader users */}
           <a

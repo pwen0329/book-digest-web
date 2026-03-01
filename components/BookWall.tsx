@@ -26,7 +26,7 @@ export default async function BookWall() {
           {/* Mobile: 2 cols × 5 rows = 10 books; larger screens: show all */}
           {allBooks.map((book, index) => (
             <li key={book.id} className={`group ${index >= 10 ? 'hidden sm:list-item' : ''}`}>
-              <Link href={`/${locale}/books/${book.slug}`} className="block" prefetch={false}>
+              <Link href={`/${locale}/books/${book.slug}`} className="block" prefetch={false} aria-label={`${book.displayTitle} — ${getLocalizedAuthor(book, locale)}`}>
                 <div className="relative aspect-[7/10] overflow-hidden rounded-md bg-white shadow ring-1 ring-black/5 transition-transform duration-300 group-hover:scale-[1.03]">
                   <Image
                     src={book.displayCoverUrl || book.coverUrl || '/images/placeholder-cover.svg'}
@@ -35,6 +35,7 @@ export default async function BookWall() {
                     sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
                     className="object-cover"
                     loading={index < 6 ? 'eager' : 'lazy'}
+                    fetchPriority={index < 6 ? 'high' : undefined}
                     placeholder="blur"
                     blurDataURL={BLUR_BOOK_COVER}
                   />

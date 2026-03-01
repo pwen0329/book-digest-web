@@ -1,20 +1,61 @@
 /**
- * Simple in-memory sliding window rate limiter.
- * NOTE: This works per-server-instance. For multi-instance deployments,
- * use Redis-based rate limiting instead.
+ * Sliding-window rate limiter with Redis (Upstash) support.
+ * Falls back to in-memory when UPSTASH_REDIS_REST_URL is not configured.
  */
+import { Redis } from '@upstash/redis';
 
-const windowMs = 60 * 1000; // 1 minute window
-const maxRequests = 10; // max requests per window per IP
+const WINDOW_MS = 60 * 1000; // 1 minute window
+const MAX_REQUESTS = 10;     // max requests per window per IP
+const MAX_ENTRIES = 10_000;  // in-memory cap (DoS protection)
 
+// --------------- Redis backend (Upstash) ---------------
+const redis =
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    ? new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      })
+    : null;
+
+const REDIS_KEY_PREFIX = 'rl:';
+const WINDOW_SECONDS = Math.ceil(WINDOW_MS / 1000);
+
+async function redisRateLimit(ip: string): Promise<{ allowed: boolean; remaining: number; retryAfterMs: number }> {
+  const key = `${REDIS_KEY_PREFIX}${ip}`;
+  const now = Date.now();
+  const member = `${now}-${Math.random().toString(36).slice(2, 8)}`;
+
+  // Use a pipeline: ZREMRANGEBYSCORE + ZADD + ZCARD + EXPIRE
+  const pipe = redis!.pipeline();
+  pipe.zremrangebyscore(key, 0, now - WINDOW_MS);   // prune old entries
+  pipe.zadd(key, { score: now, member });            // add current
+  pipe.zcard(key);                                    // count in window
+  pipe.expire(key, WINDOW_SECONDS + 1);              // auto-expire key
+
+  const results = await pipe.exec();
+  const count = results[2] as number;
+
+  if (count > MAX_REQUESTS) {
+    // Remove the entry we just added (over limit)
+    await redis!.zrem(key, member);
+    // Get oldest score to calculate retry-after
+    const oldest = await redis!.zrange<string[]>(key, 0, 0);
+    const retryAfterMs = oldest.length
+      ? Math.max(1000, parseInt(oldest[0], 10) + WINDOW_MS - now)
+      : 1000;
+    return { allowed: false, remaining: 0, retryAfterMs };
+  }
+
+  return { allowed: true, remaining: MAX_REQUESTS - count, retryAfterMs: 0 };
+}
+
+// --------------- In-memory fallback ---------------
 const requestLog = new Map<string, number[]>();
 
-// Cleanup stale entries every 5 minutes
-// .unref() prevents this timer from keeping the Node.js process alive during SSG builds
 const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, timestamps] of requestLog) {
-    const valid = timestamps.filter((t) => now - t < windowMs);
+    const valid = timestamps.filter((t) => now - t < WINDOW_MS);
     if (valid.length === 0) {
       requestLog.delete(key);
     } else {
@@ -24,19 +65,41 @@ const cleanupTimer = setInterval(() => {
 }, 5 * 60 * 1000);
 if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
 
-export function rateLimit(ip: string): { allowed: boolean; remaining: number } {
+function memoryRateLimit(ip: string): { allowed: boolean; remaining: number; retryAfterMs: number } {
   const now = Date.now();
   const timestamps = requestLog.get(ip) || [];
-  const windowStart = now - windowMs;
+  const recent = timestamps.filter((t) => t > now - WINDOW_MS);
 
-  // Filter to only timestamps within window
-  const recent = timestamps.filter((t) => t > windowStart);
-
-  if (recent.length >= maxRequests) {
-    return { allowed: false, remaining: 0 };
+  if (recent.length >= MAX_REQUESTS) {
+    const retryAfterMs = Math.max(1000, recent[0] + WINDOW_MS - now);
+    return { allowed: false, remaining: 0, retryAfterMs };
   }
 
   recent.push(now);
+
+  if (requestLog.size >= MAX_ENTRIES && !requestLog.has(ip)) {
+    const firstKey = requestLog.keys().next().value;
+    if (firstKey !== undefined) requestLog.delete(firstKey);
+  }
+
   requestLog.set(ip, recent);
-  return { allowed: true, remaining: maxRequests - recent.length };
+  return { allowed: true, remaining: MAX_REQUESTS - recent.length, retryAfterMs: 0 };
+}
+
+// --------------- Public API ---------------
+
+/**
+ * Rate-limit a request by IP.
+ * Uses Redis when configured, otherwise falls back to in-memory.
+ */
+export async function rateLimit(ip: string): Promise<{ allowed: boolean; remaining: number; retryAfterMs: number }> {
+  if (redis) {
+    try {
+      return await redisRateLimit(ip);
+    } catch (err) {
+      console.warn('[rate-limit] Redis error, falling back to memory:', err);
+      return memoryRateLimit(ip);
+    }
+  }
+  return memoryRateLimit(ip);
 }

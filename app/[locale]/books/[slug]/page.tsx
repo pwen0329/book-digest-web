@@ -9,6 +9,9 @@ import { BLUR_BOOK_COVER_LARGE } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { getLocaleAlternates } from '@/lib/seo';
 
+// ISR: regenerate book pages hourly without a full rebuild
+export const revalidate = 3600;
+
 // Cache book data query (using index lookup, O(1) complexity)
 const getBookBySlug = cache((slug: string) => {
   return getBookBySlugSync(slug);
@@ -49,14 +52,26 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   
   const book = getLocalizedBook(rawBook, locale);
   
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
+  const ogImageUrl = `${siteUrl}/api/og?title=${encodeURIComponent(book.displayTitle)}&author=${encodeURIComponent(book.displayAuthor)}&cover=${encodeURIComponent(book.displayCoverUrl || book.coverUrl || '')}&locale=${locale}`;
+  
   return {
     title: `${book.displayTitle} | Book Digest`,
     description: book.displaySummary?.slice(0, 160) || `Read our notes on ${book.displayTitle} by ${book.displayAuthor}`,
     openGraph: {
+      type: 'article',
       title: book.displayTitle,
       description: book.displaySummary?.slice(0, 160),
       locale: locale === 'zh' ? 'zh_TW' : 'en_US',
-      images: book.displayCoverUrl ? [{ url: book.displayCoverUrl }] : book.coverUrl ? [{ url: book.coverUrl }] : [],
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: book.displayTitle }],
+      ...(rawBook.readDate && { publishedTime: rawBook.readDate }),
+      section: 'Books',
+      authors: [book.displayAuthor],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: book.displayTitle,
+      images: [ogImageUrl],
     },
     alternates: getLocaleAlternates(`books/${slug}`, locale),
   };
@@ -89,6 +104,13 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
     ...(book.displaySummary && { description: book.displaySummary.slice(0, 300) }),
     url: `${siteUrl}/${locale}/books/${slug}`,
     inLanguage: locale === 'en' ? 'en' : 'zh-TW',
+    ...(book.readDate && { datePublished: book.readDate }),
+    ...(book.tags && book.tags.length > 0 && { genre: book.tags }),
+    publisher: {
+      '@type': 'Organization',
+      name: 'Book Digest',
+      url: siteUrl,
+    },
   };
 
   // Get other articles for sidebar (exclude current)
