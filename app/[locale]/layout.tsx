@@ -60,8 +60,6 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <html lang={locale} className={`h-full bg-brand-navy ${outfit.variable}`}>
       <head>
-        {/* Preload hero video poster for faster LCP */}
-        <link rel="preload" href="/images/notebook/notebook-poster.webp" as="image" type="image/webp" />
 
         {/* Favicon 根據語系切換（ico 格式） */}
         {locale === 'en' ? (

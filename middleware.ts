@@ -14,12 +14,17 @@ export default function middleware(req: NextRequest) {
 
   // Generate a nonce for CSP
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const isDev = process.env.NODE_ENV !== 'production';
 
   // Build CSP with nonce (replaces 'unsafe-inline' for scripts)
+  const scriptSrc = isDev
+    ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' 'strict-dynamic' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io`;
+
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io`,
-    `style-src-elem 'self' 'nonce-${nonce}'`,
+    scriptSrc,
+    "style-src-elem 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
