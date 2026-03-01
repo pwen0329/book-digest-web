@@ -37,7 +37,7 @@ function EventSection({
 }: {
   image: string;
   title: string;
-  description: string;
+  description: React.ReactNode;
   signupUrl?: string;
   signupText?: string;
   imagePosition?: 'left' | 'right';
@@ -76,7 +76,7 @@ function EventSection({
         <div className="mt-8">
           <Link
             href={signupUrl}
-            className={ctaClass || "inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all uppercase tracking-wider text-sm"}
+            className={ctaClass || "inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all uppercase tracking-wider text-[15px] md:text-base"}
             prefetch={false}
           >
             {signupText}
@@ -107,7 +107,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('events');
-  const ctaClass = `inline-flex items-center px-8 md:px-9 py-2.5 md:py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all text-sm md:text-base ${locale === 'zh' ? 'tracking-[0.24em] md:tracking-[0.3em]' : 'uppercase tracking-wider'}`;
+  const ctaClass = `inline-flex items-center px-8 md:px-9 py-2.5 md:py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all text-[15px] md:text-base ${locale === 'zh' ? 'tracking-[0.24em] md:tracking-[0.3em]' : 'uppercase tracking-wider'}`;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
   const eventsJsonLd = {
@@ -138,7 +138,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
       {
         '@type': 'Event',
         name: t('onlineTitle'),
-        description: t('onlineDesc'),
+        description: t.raw('onlineDesc').replace(/<[^>]+>/g, ''),
         eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
         eventSchedule: { '@type': 'Schedule', repeatFrequency: 'P1M' },
         location: { '@type': 'VirtualLocation', url: `${siteUrl}/${locale}/engclub` },
@@ -160,9 +160,13 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
           const startDate = new Date('2020-07-31');
           const now = new Date();
           const readingDays = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-          const monthsDiff = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
-          const clubsHeld = monthsDiff * 2;
-          const readersJoined = monthsDiff * 15;
+          
+          const baseDate = new Date('2026-03-01');
+          const monthsDiff = (now.getFullYear() - baseDate.getFullYear()) * 12 + (now.getMonth() - baseDate.getMonth());
+          const safeMonthsDiff = Math.max(0, monthsDiff);
+          
+          const clubsHeld = 78 + safeMonthsDiff * 2;
+          const readersJoined = 300 + safeMonthsDiff * 15;
           return (
             <div className="grid grid-cols-3 gap-2 min-[420px]:gap-6 mb-16" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
               <div className="min-[420px]:translate-x-4 min-w-0"><Counter target={readingDays} label={t('readingDays')} /></div>
@@ -208,7 +212,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
           <EventSection
             image="/images/elements/poster_202601_en_online.webp"
             title={t('onlineTitle')}
-            description={t('onlineDesc')}
+            description={t.rich('onlineDesc', { b: (chunks) => <strong className="font-bold text-base">{chunks}</strong> })}
             signupUrl={`/${locale}/engclub`}
             signupText={t('signUp')}
             imagePosition="left"

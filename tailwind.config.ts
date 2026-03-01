@@ -27,13 +27,13 @@ const config: Config = {
       },
       fontFamily: {
         // Outfit for CTAs and headings (using CSS variable from next/font)
-        outfit: ['var(--font-outfit)', 'Outfit', 'system-ui', 'sans-serif'],
+        outfit: ['var(--font-outfit)', 'Outfit', '"PingFang TC"', 'system-ui', 'sans-serif'],
         // Display font for hero sections
-        display: ['var(--font-outfit)', 'Outfit', 'system-ui', 'sans-serif'],
+        display: ['var(--font-outfit)', 'Outfit', '"PingFang TC"', 'system-ui', 'sans-serif'],
         // Body text with Chinese font support
-        body: ['var(--font-noto-tc)', 'Noto Sans TC', 'system-ui', 'sans-serif'],
+        body: ['"PingFang TC"', 'system-ui', 'sans-serif'],
         // Chinese font
-        chinese: ['var(--font-noto-tc)', 'Noto Sans TC', 'system-ui', 'sans-serif'],
+        chinese: ['"PingFang TC"', 'system-ui', 'sans-serif'],
       },
       letterSpacing: {
         wider: '0.1em',

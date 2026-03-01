@@ -101,9 +101,6 @@ function SignupContent() {
             {t('backToEvents')}
           </Link>
         </div>
-        {isNlComingSoon && (
-          <p className="mb-6 text-brand-pink/90 font-outfit">Coming soon…</p>
-        )}
         {!locationLocked && step === 0 && (
           <>
             <div className="mb-8">
@@ -143,7 +140,6 @@ function SignupContent() {
           </>
         )}
 
-        {/* 舊版：左海報 + 右表單 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
           <div className="flex justify-center lg:justify-end">
             <div className="relative w-full max-w-[480px] lg:w-[480px] h-auto rounded-xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
@@ -160,85 +156,96 @@ function SignupContent() {
           </div>
 
           <div className="flex justify-center lg:justify-start">
-            <div className={`w-full max-w-[700px] rounded-2xl p-6 lg:p-8 transition-colors duration-300 ${formBgClass}`}>
-              {step === 0 && (
-                <SignupForm
-                  key={activeLocation}
-                  location={activeLocation}
-                  disabled={isNlComingSoon}
-                  onComplete={!isNlComingSoon ? (vals) => {
-                    setFormValues(vals);
-                    setStep(1);
-                  } : undefined}
-                />
-              )}
-
-              {step === 1 && (
-                <div className="text-white flex flex-col min-h-[300px] justify-between py-6">
+            <div className={isNlComingSoon ? "flex flex-col justify-start pt-10" : `w-full max-w-[700px] rounded-2xl p-6 lg:p-8 transition-colors duration-300 ${formBgClass}`}>
+              {isNlComingSoon ? (
+                <div className="space-y-6">
                   <div>
-                    <h3 className="text-xl font-bold mb-4">{tSignup('thanksTitle')}</h3>
-                    <p className="whitespace-pre-line text-white">{tSignup('thanksBody')}</p>
+                    <h1 className="text-3xl md:text-4xl font-bold font-outfit">{t('nlTitle')}</h1>
                   </div>
-                  <div className="pt-6">
-                    <button
-                      onClick={() => setStep(2)}
-                      className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
-                    >
-                      {tSignup('next')}
-                    </button>
-                  </div>
+                  <p className="font-bold text-white text-lg font-outfit">Coming soon…</p>
                 </div>
-              )}
-
-              {step === 2 && (
-                <div className="text-white">
-                  <h3 className="text-xl font-bold mb-4">{tSignup('remitTitle')}</h3>
-                  <div className="space-y-1 text-white/90">
-                    <p>{tSignup('bank')}</p>
-                    <p>{tSignup('account')}</p>
-                    <p>
-                      <span className="block">{tSignup('richartPrefix')}</span>
-                      <a href="https://mobile.richart.tw/TSDIB_RichartWeb/RC04/RC040300?token=88084B8A2C7A93B4DC6FB4D553667015" target="_blank" rel="noopener noreferrer" className="underline text-brand-pink inline-block mt-1">
-                        {tSignup('richartLinkText')}
-                      </a>
-                    </p>
-                  </div>
-                  <p className="mt-4 text-white/90">{tSignup('remitPrompt')}</p>
-                  <div className="mt-3">
-                    <label className="block text-sm font-medium text-white mb-2">{tSignup('last5Label')}</label>
-                    <input
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={5}
-                      value={bankLast5}
-                      onChange={(e) => setBankLast5(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                      className="w-full rounded-lg bg-white px-4 py-3 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-pink transition-colors"
-                      placeholder={tSignup('last5Placeholder')}
+              ) : (
+                <>
+                  {step === 0 && (
+                    <SignupForm
+                      key={activeLocation}
+                      location={activeLocation}
+                      disabled={isNlComingSoon}
+                      onComplete={!isNlComingSoon ? (vals) => {
+                        setFormValues(vals);
+                        setStep(1);
+                      } : undefined}
                     />
-                    {sendError && <p className="mt-2 text-sm text-red-300">{sendError}</p>}
-                  </div>
-                  <Turnstile onVerify={handleTurnstileVerify} onExpire={handleTurnstileExpire} />
-                  <div className="pt-6">
-                    <button
-                      onClick={handleFinalize}
-                      disabled={sending}
-                      className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all disabled:opacity-60 ${locale === 'zh' ? 'tracking-widest' : ''}`}
-                    >
-                      {sending ? tSignup('submitting') : tSignup('submitPayment')}
-                    </button>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {step === 3 && (
-                <div className="text-white">
-                  <h3 className="text-xl font-bold mb-4">{tSignup('successTitle')}</h3>
-                  <p className="whitespace-pre-line text-white">{tSignup('successBody')}</p>
-                  <h4 className="mt-6 font-semibold">{tSignup('cancelTitle')}</h4>
-                  <p className="mt-1 whitespace-pre-line text-white">{tSignup('cancelBody')}</p>
-                  <p className="mt-4 text-white">{tSignup('contact')}</p>
-                  <p className="text-white">📩 bookdigest2020@gmail.com</p>
-                </div>
+                  {step === 1 && (
+                    <div className="text-white flex flex-col min-h-[300px] justify-between py-6">
+                      <div>
+                        <h3 className="text-xl font-bold mb-4">{tSignup('thanksTitle')}</h3>
+                        <p className="whitespace-pre-line text-white">{tSignup('thanksBody')}</p>
+                      </div>
+                      <div className="pt-6">
+                        <button
+                          onClick={() => setStep(2)}
+                          className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
+                        >
+                          {tSignup('next')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 2 && (
+                    <div className="text-white">
+                      <h3 className="text-xl font-bold mb-4">{tSignup('remitTitle')}</h3>
+                      <div className="space-y-1 text-white/90">
+                        <p>{tSignup('bank')}</p>
+                        <p>{tSignup('account')}</p>
+                        <p>
+                          <span className="block">{tSignup('richartPrefix')}</span>
+                          <a href="https://mobile.richart.tw/TSDIB_RichartWeb/RC04/RC040300?token=88084B8A2C7A93B4DC6FB4D553667015" target="_blank" rel="noopener noreferrer" className="underline text-brand-pink inline-block mt-1">
+                            {tSignup('richartLinkText')}
+                          </a>
+                        </p>
+                      </div>
+                      <p className="mt-4 text-white/90">{tSignup('remitPrompt')}</p>
+                      <div className="mt-3">
+                        <label className="block text-sm font-medium text-white mb-2">{tSignup('last5Label')}</label>
+                        <input
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={5}
+                          value={bankLast5}
+                          onChange={(e) => setBankLast5(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                          className="w-full rounded-lg bg-white px-4 py-3 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-pink transition-colors"
+                          placeholder={tSignup('last5Placeholder')}
+                        />
+                        {sendError && <p className="mt-2 text-sm text-red-300">{sendError}</p>}
+                      </div>
+                      <Turnstile onVerify={handleTurnstileVerify} onExpire={handleTurnstileExpire} />
+                      <div className="pt-6">
+                        <button
+                          onClick={handleFinalize}
+                          disabled={sending}
+                          className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all disabled:opacity-60 ${locale === 'zh' ? 'tracking-widest' : ''}`}
+                        >
+                          {sending ? tSignup('submitting') : tSignup('submitPayment')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 3 && (
+                    <div className="text-white">
+                      <h3 className="text-xl font-bold mb-4">{tSignup('successTitle')}</h3>
+                      <p className="whitespace-pre-line text-white">{tSignup('successBody')}</p>
+                      <h4 className="mt-6 font-semibold">{tSignup('cancelTitle')}</h4>
+                      <p className="mt-1 whitespace-pre-line text-white">{tSignup('cancelBody')}</p>
+                      <p className="mt-4 text-white">{tSignup('contact')}</p>
+                      <p className="text-white">📩 bookdigest2020@gmail.com</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

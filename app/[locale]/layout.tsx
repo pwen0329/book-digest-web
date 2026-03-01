@@ -10,7 +10,7 @@ import LangToggle from '@/components/LangToggle';
 import { defaultViewport, getLocaleMetadata } from '@/lib/seo';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
-import { Outfit, Noto_Sans_TC } from 'next/font/google';
+import { Outfit } from 'next/font/google';
 import { locales, type Locale, setRequestLocale } from '@/lib/i18n';
 
 // Lazy-load non-critical floating UI (not needed for first paint)
@@ -21,16 +21,6 @@ const outfit = Outfit({
   weight: ['400', '500', '600', '700'],
   variable: '--font-outfit',
   display: 'swap',
-});
-
-// Noto Sans TC — use variable font to minimize CJK download size
-// (1 variable file per unicode-range instead of separate files per weight)
-const notoSansTC = Noto_Sans_TC({
-  subsets: ['latin'],
-  variable: '--font-noto-tc',
-  display: 'swap',
-  preload: true,
-  adjustFontFallback: true,
 });
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -68,7 +58,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   const nonce = headersList.get('x-nonce') || '';
 
   return (
-    <html lang={locale} className={`h-full bg-brand-navy ${outfit.variable} ${notoSansTC.variable}`}>
+    <html lang={locale} className={`h-full bg-brand-navy ${outfit.variable}`}>
       <head>
         {/* Preload hero video poster for faster LCP */}
         <link rel="preload" href="/images/notebook/notebook-poster.webp" as="image" type="image/webp" />
