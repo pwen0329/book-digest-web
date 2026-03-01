@@ -7,6 +7,8 @@ export type Book = {
   authorEn?: string;
   coverUrl?: string;
   coverUrlEn?: string;
+  coverUrls?: string[];
+  coverUrlsEn?: string[];
   readDate?: string;
   summary?: string;
   summaryEn?: string;

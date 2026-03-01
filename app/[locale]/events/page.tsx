@@ -48,8 +48,8 @@ function EventSection({
   const contentOrderClass = imagePosition === 'left' ? 'order-2 lg:order-2' : 'order-2 lg:order-1';
 
   const imageBlock = (
-    <div className={`w-full lg:w-4/12 flex justify-center ${imageOrderClass}`}>
-      <div className="relative w-full max-w-[320px] sm:max-w-[360px] lg:max-w-none rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
+    <div className={`w-full lg:w-5/12 flex justify-center ${imageOrderClass}`}>
+      <div className="relative w-full max-w-[360px] sm:max-w-[400px] lg:max-w-none rounded-xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
         <Image
           src={image}
           alt={title}

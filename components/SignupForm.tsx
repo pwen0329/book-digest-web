@@ -9,6 +9,7 @@ type Location = 'TW' | 'NL';
 export type SignupFormProps = {
   location: Location;
   endpoint?: string;
+  disabled?: boolean;
   // When provided, form will validate and call onComplete instead of submitting.
   onComplete?: (values: SignupFormValues) => void;
 };
@@ -57,7 +58,7 @@ const formSchema = baseSchema.superRefine((data, ctx) => {
   }
 });
 
-export default function SignupForm({ location, endpoint, onComplete }: SignupFormProps) {
+export default function SignupForm({ location, endpoint, onComplete, disabled = false }: SignupFormProps) {
   const t = useTranslations('form');
   const tEvents = useTranslations('events');
   const locale = useLocale();
@@ -98,6 +99,7 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
   }, [values, storageKey]);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (disabled) return;
     const target = e.target as HTMLInputElement & HTMLSelectElement;
     const { name } = target;
     const isCheckbox = (target as HTMLInputElement).type === 'checkbox';
@@ -108,6 +110,7 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (disabled) return;
     setSubmitting(true);
     setSuccess(null);
 
@@ -234,6 +237,8 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
             <label htmlFor="name" className="block text-sm font-medium text-white mb-2">{t('nameLabel')}</label>
             <input
               id="name" name="name" value={values.name} onChange={onChange}
+              readOnly={disabled}
+              disabled={disabled}
               className={inputClass(!!errors.name)}
               autoComplete="name"
               aria-invalid={errors.name ? true : undefined}
@@ -247,6 +252,8 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
             <label htmlFor="age" className="block text-sm font-medium text-white mb-2">{t('ageLabel')}</label>
             <input
               id="age" name="age" inputMode="numeric" pattern="[0-9]*" value={values.age} onChange={onChange}
+              readOnly={disabled}
+              disabled={disabled}
               className={inputClass(!!errors.age)}
               aria-invalid={errors.age ? true : undefined}
               aria-describedby={errors.age ? 'age-error' : undefined}
@@ -259,6 +266,8 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
             <label htmlFor="profession" className="block text-sm font-medium text-white mb-2">{t('professionLabel')}</label>
             <input
               id="profession" name="profession" value={values.profession} onChange={onChange}
+              readOnly={disabled}
+              disabled={disabled}
               className={inputClass(!!errors.profession)}
               aria-invalid={errors.profession ? true : undefined}
               aria-describedby={errors.profession ? 'profession-error' : undefined}
@@ -271,6 +280,8 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
             <label htmlFor="email" className="block text-sm font-medium text-white mb-2">{t('emailLabel')}</label>
             <input
               id="email" name="email" type="email" value={values.email} onChange={onChange}
+              readOnly={disabled}
+              disabled={disabled}
               className={inputClass(!!errors.email)}
               autoComplete="email"
               aria-invalid={errors.email ? true : undefined}
@@ -285,6 +296,8 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
           <label htmlFor="instagram" className="block text-sm font-medium text-white mb-2">{t('instagramLabel')}</label>
           <input
             id="instagram" name="instagram" value={values.instagram} onChange={onChange}
+            readOnly={disabled}
+            disabled={disabled}
             className={inputClass(false)}
             placeholder="bookdigest_tw"
           />
@@ -295,6 +308,7 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
           <label htmlFor="referral" className="block text-sm font-medium text-white mb-2">{t('referralLabel')}</label>
           <select
             id="referral" name="referral" value={values.referral} onChange={onChange}
+            disabled={disabled}
             className={`${inputClass(false)} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%23666%22%3E%3Cpath%20stroke-linecap%3D%22round%20stroke-linejoin%3D%22round%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_1rem_center] bg-[length:1.25rem]`}
           >
             <option value="BookDigestIG">{t('referralBookDigestIG')}</option>
@@ -309,6 +323,8 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
             <label htmlFor="referralOther" className="block text-sm font-medium text-white mb-2">{t('referralOtherLabel')}</label>
             <input
               id="referralOther" name="referralOther" value={values.referralOther} onChange={onChange}
+              readOnly={disabled}
+              disabled={disabled}
               className={inputClass(!!errors.referralOther)}
               placeholder={t('referralOtherPlaceholder')}
               aria-invalid={errors.referralOther ? true : undefined}
@@ -319,13 +335,13 @@ export default function SignupForm({ location, endpoint, onComplete }: SignupFor
         </div>
 
         {/* Turnstile CAPTCHA */}
-        <Turnstile onVerify={handleTurnstileVerify} onExpire={handleTurnstileExpire} />
+        {!disabled && <Turnstile onVerify={handleTurnstileVerify} onExpire={handleTurnstileExpire} />}
 
         {/* Submit */}
         <div className="pt-4">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || disabled}
             className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all disabled:opacity-60 ${locale === 'zh' ? 'tracking-widest' : ''}`}
           >
             {submitting ? t('submitting') : t('submit')}

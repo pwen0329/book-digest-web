@@ -13,11 +13,12 @@ export default async function Footer() {
         <div className="flex items-center gap-4">
           <div className="h-px flex-1 bg-white/30" />
           <Image
-            src="/images/logo/footer-icon.webp"
+            src="/images/logo/footer-icon.png"
             alt=""
-            width={120}
-            height={13}
-            className="h-auto w-[120px] opacity-80"
+            width={170}
+            height={18}
+            sizes="170px"
+            className="h-auto w-[170px]"
             aria-hidden="true"
           />
           <div className="h-px flex-1 bg-white/30" />

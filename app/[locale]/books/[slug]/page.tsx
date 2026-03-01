@@ -133,19 +133,24 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
         <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-12 pb-24 md:pt-16 md:pb-32">
           <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
             {/* Book Cover - Optimized image loading */}
-            <div className="flex-shrink-0">
-              <div className="relative w-48 md:w-56 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/20">
-                <Image
-                  src={book.displayCoverUrl || book.coverUrl || '/images/placeholder-cover.svg'}
-                  alt={book.displayTitle}
-                  fill
-                  sizes="(max-width: 768px) 192px, 224px"
-                  className="object-cover"
-                  priority
-                  placeholder="blur"
-                  blurDataURL={BLUR_BOOK_COVER_LARGE}
-                />
-              </div>
+            <div className="flex-shrink-0 flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar">
+              {(book.displayCoverUrls && book.displayCoverUrls.length > 0
+                ? book.displayCoverUrls
+                : [book.displayCoverUrl || book.coverUrl || '/images/placeholder-cover.svg']
+              ).map((url, idx) => (
+                <div key={idx} className="relative w-48 md:w-56 aspect-[2/3] flex-shrink-0 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/20 snap-center">
+                  <Image
+                    src={url}
+                    alt={`${book.displayTitle} - Cover ${idx + 1}`}
+                    fill
+                    sizes="(max-width: 768px) 192px, 224px"
+                    className="object-cover"
+                    priority={idx === 0}
+                    placeholder="blur"
+                    blurDataURL={BLUR_BOOK_COVER_LARGE}
+                  />
+                </div>
+              ))}
             </div>
 
             {/* Book Info */}

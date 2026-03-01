@@ -38,6 +38,7 @@ function SignupContent() {
   }, [searchParams]);
 
   const locationLocked = searchParams.get('location') !== null;
+  const isNlComingSoon = activeLocation === 'NL';
   const formBgClass = 'bg-white/20 backdrop-blur-xl rounded-2xl';
 
   const endpoint =
@@ -100,6 +101,9 @@ function SignupContent() {
             {t('backToEvents')}
           </Link>
         </div>
+        {isNlComingSoon && (
+          <p className="mb-6 text-brand-pink/90 font-outfit">Coming soon…</p>
+        )}
         {!locationLocked && step === 0 && (
           <>
             <div className="mb-8">
@@ -142,7 +146,7 @@ function SignupContent() {
         {/* 舊版：左海報 + 右表單 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
           <div className="flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-[600px] lg:w-[600px] h-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
+            <div className="relative w-full max-w-[480px] lg:w-[480px] h-auto rounded-xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
               <Image
                 src={activeLocation === 'TW' ? '/images/elements/poster_202603_taiwan.webp' : '/images/elements/AD-15.webp'}
                 alt={activeLocation === 'TW' ? 'Taiwan Book Club' : 'Netherlands Book Club'}
@@ -161,10 +165,11 @@ function SignupContent() {
                 <SignupForm
                   key={activeLocation}
                   location={activeLocation}
-                  onComplete={(vals) => {
+                  disabled={isNlComingSoon}
+                  onComplete={!isNlComingSoon ? (vals) => {
                     setFormValues(vals);
                     setStep(1);
-                  }}
+                  } : undefined}
                 />
               )}
 

@@ -44,12 +44,7 @@ export default async function EngClubPage({ params }: { params: Promise<{ locale
               <h1 className="text-3xl md:text-4xl font-bold font-outfit">{t('engclubPage.leftTitle')}</h1>
               <p className="mt-2 text-brand-pink/90 font-outfit">{t('engclubPage.leftSubtitle')}</p>
             </div>
-            <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
-              {t('engclubPage.leftBody')}
-            </p>
-            <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
-              {t('engclubPage.rightBody')}
-            </p>
+            <p className="font-bold text-white text-lg font-outfit">Coming soon…</p>
           </div>
 
           {/* Right Poster */}

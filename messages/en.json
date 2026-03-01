@@ -52,14 +52,14 @@
     "clubsHeld": "Book Clubs Held",
     "readersJoined": "Readers Joined",
     "taiwanTitle": "Upcoming Book Club in Taipei, Taiwan",
-    "taiwanDesc": "On your first day in a new apartment, your neighbor invites you to rob a bookstore — for a dictionary.\n\nKotaro Isaka weaves an absurd heist into a story of friendship, love, and tragedy spanning two timelines. The truth hides in the gaps between past and present.\n\nLove mysteries, Japanese fiction, or jaw-dropping twists?\nRead with us this March!",
+    "taiwanDesc": "In Barbara Demick's Daughters of the Bamboo Grove, twin sisters Fangfang and Shuangjie become the thread that reveals child trafficking under the one-child era, bureaucratic corruption, and the gray industry of international adoption.\n\nThrough investigative storytelling, Demick shows how policy can tear apart families and identities. She not only reconstructs the fate of trafficked children, but also follows two families through emotionally complex reunions shaped by civilizational and language barriers.\n\nThe book also confronts the moral dilemmas of international adoption and global inequality, helping readers see the systemic historical forces and consequences beyond any single personal story.",
     "nlTitle": "Upcoming Book Club in Netherlands",
-    "nlDesc": "When you think of the Netherlands, what comes to mind? Windmills, bikes, tulips?\n\nThis book bursts the romanticised bubble and offers a sharp, accessible look into Dutch society — from social clique and gender diversity to workplace culture and sustainability.\n\nNot perfect — but honest.",
+    "nlDesc": "The Netherlands is only about 1.15 times the size of Taiwan. In some ways we feel alike, yet in many ways we are strikingly different.\n\nThrough three lenses - transition, society, and environmental sustainability - this book explores both the bright and shadowed sides of Dutch life.\nIt questions workplace norms, gender diversity in practice, and the realities faced by working women.\nIt also dives into a topic rarely covered by mainstream media: the deeply rooted sports culture in Dutch society.\n\nAfter finishing this book, you will also learn:\nWhy has cannabis long remained in a legal gray zone?\nCan the so-called \"Dutch disease\" be cured?\nDoes the Netherlands have its own north-south divide?\nAnd what histories lie behind the Red Light District?",
     "onlineTitle": "Online English Book Club",
-    "onlineDesc": "No commute needed—just bring your book and your curiosity.\n\nJoin our monthly online English book club to read, reflect, and exchange ideas with readers across different cities.",
+    "onlineDesc": "Seeking a regular space to refine your spoken English?\nEnhance your fluency through the joy of reading. We know that the greatest challenge isn't getting it \"right,\" but simply having the courage to speak out.\nTo guarantee a high standard of discussion, we strictly limit each group to 15 participants.\n．Recommended Level: B1 - C1\n．Highlights: Boutique group sizes throughout.\nFeel free to choose between \"Peer-only\" slots or \"Expat-participant\" slots.",
     "detoxTitle": "Unplug, Relax, Share.",
     "detoxDesc": "Welcome to Bookdigest’s cozy little Digital Detox!\n\nFor a few hours, we all unplug.\nNo screens, no scrolling, just books, shared food, and brilliant strangers who might become your next favourite conversation.\nWe wanted a space to slow down, where sharing a book feels like sharing a piece of yourself, and being present is the only thing that matters.\nCome unplug with us, your cosy little digital detox awaits.",
-    "signUp": "Sign Up",
+    "signUp": "Register Now",
     "digitalDetox": {
       "title": "Digital Detox",
       "description": "A gentle reset from constant notifications. Put your phone away for a while and join us in slow, mindful reading.",
@@ -77,7 +77,7 @@
     "engclubPage": {
       "leftTitle": "Online English Book Club",
       "leftSubtitle": "Read, Reflect, and Connect — in English.",
-      "leftBody": "No commute needed — just bring your book and your curiosity.\nJoin our monthly online English book club to read, reflect, and exchange ideas with readers across different cities.\n\nWhether English is your first language or one you're still exploring, this is a relaxed, welcoming space to practise expressing your thoughts through books.\n\nWe pick one book each month and meet online to discuss what stood out, what surprised us, and what made us think differently.",
+      "leftBody": "Seeking a regular space to refine your spoken English?\nEnhance your fluency through the joy of reading. We know that the greatest challenge isn't getting it \"right,\" but simply having the courage to speak out.\nTo guarantee a high standard of discussion, we strictly limit each group to 15 participants.\nRecommended Level: B1 - C1\nHighlights: Boutique group sizes throughout.\nFeel free to choose between \"Peer-only\" slots or \"Expat-participant\" slots.",
       "rightBody": "We're getting everything ready. Can't wait to share it with you!"
     },
     "backToEvents": "Back to Events"
@@ -136,7 +136,7 @@
     "reason2Desc": "We come from all sorts of backgrounds — engineers, designers, teachers, finance folks, you name it.\nAnd when we read something topic-specific, we sometimes invite someone with real-life experience to join the conversation.\nThat's what makes our book club both deep and fun at the same time!",
     "reason3Title": "Chill Vibes, No Pressure",
     "reason3Desc": "Think of it more like catching up with friends than a formal discussion.\nNo need to prep a presentation, just bring the book you read (and your lovely self)!\nEveryone shares their favorite chapters or adds something extra the book didn't cover. Come hang out and chat with us!",
-    "joinUsBtn": "Join Us"
+    "joinUsBtn": "Sign Up"
   },
   "footer": {
     "events": "Events",

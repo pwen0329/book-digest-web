@@ -112,6 +112,7 @@ export function getLocalizedBook(book: Book, locale: string) {
     displayAuthor: locale === 'en' && book.authorEn ? book.authorEn : book.author,
     displaySummary: locale === 'en' && book.summaryEn ? book.summaryEn : book.summary,
     displayCoverUrl: locale === 'en' && book.coverUrlEn ? book.coverUrlEn : book.coverUrl,
+    displayCoverUrls: locale === 'en' && book.coverUrlsEn ? book.coverUrlsEn : book.coverUrls,
   };
 }
 

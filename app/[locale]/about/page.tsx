@@ -134,7 +134,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           {/* Join Us Button */}
           <div className="text-center mt-12">
             <Link
-              href={`/${currentLocale}/joinus`}
+              href={`/${currentLocale}/events`}
               className={`inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all text-sm ${currentLocale === 'zh' ? 'tracking-widest' : 'uppercase tracking-wider'}`}
             >
               {t('joinUsBtn')}

@@ -44,18 +44,13 @@ export default async function DetoxPage({ params }: { params: Promise<{ locale: 
               <h1 className="text-3xl md:text-4xl font-bold font-outfit">{t('detoxPage.leftTitle')}</h1>
               <p className="mt-2 text-brand-pink/90 font-outfit">{t('detoxPage.leftSubtitle')}</p>
             </div>
-            <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
-              {t('detoxPage.leftBody')}
-            </p>
-            <p className="text-white/80 leading-relaxed whitespace-pre-line font-outfit">
-              {t('detoxPage.rightBody')}
-            </p>
+            <p className="font-bold text-white text-lg font-outfit">Coming soon…</p>
           </div>
 
           {/* Right Copy + Poster */}
           <div className="space-y-6">
             <div />
-            <div className="relative w-full max-w-[340px] sm:max-w-[380px] lg:max-w-[520px] mx-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
+            <div className="relative w-full max-w-[280px] sm:max-w-[320px] lg:max-w-[420px] mx-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
               <Image
                 src="/images/elements/AD-17.webp"
                 alt={t('detoxTitle')}

@@ -1094,10 +1094,10 @@
     "authorEn": "Lu Ann Cahn"
   },
   {
-    "id": "three-body-1",
-    "slug": "three-body-1",
-    "title": "三體",
-    "titleEn": "The Three-Body Problem",
+    "id": "three-body",
+    "slug": "three-body",
+    "title": "三體：三部曲",
+    "titleEn": "The Three-Body Problem (Trilogy)",
     "author": "劉慈欣",
     "coverUrl": "/images/books_zh/38_三體.webp",
     "readDate": "2024-03-01",
@@ -1120,65 +1120,15 @@
       "The Wallfacer Project stakes its hope on \"thoughts being unmonitorable.\" In your own life, is there a domain that \"can only stay inside your head\" that represents your last piece of freedom?",
       "Do you think *The Three-Body Problem* is more about alien civilizations, or about humanity: when resources are scarce, information is opaque, and trust is absent, will we naturally gravitate toward confrontation?"
     ],
-    "authorEn": "Liu Cixin"
-  },
-  {
-    "id": "three-body-2",
-    "slug": "three-body-2",
-    "title": "三體II：黑暗森林",
-    "titleEn": "The Dark Forest",
-    "author": "劉慈欣",
-    "coverUrl": "/images/books_zh/38_三體2.webp",
-    "readDate": "2024-04-01",
-    "summary": "《三體》是劉慈欣「地球往事三部曲」的第一部：從文化大革命的創傷開始，菁英科學家葉文潔在軍方祕密計畫中，向宇宙深處送出一則訊號，替人類打開了「被回覆」的可能。\n\n數十年後，奈米材料研究員汪淼捲入科學家接連自殺與「科學前線」組織的謎團；一款名為「三體」的虛擬實境遊戲，把物理學裡著名的「三體問題」變成一個文明層級的寓言：三顆太陽的混沌世界，如何活下去？又要如何理解活著的意義？",
-    "summaryEn": "Second part of the trilogy, the Wallfacer Project and the Dark Forest theory.",
-    "tags": [
-      "science fiction",
-      "chinese literature"
+    "authorEn": "Liu Cixin",
+    "coverUrls": [
+      "/images/books_zh/38_三體.webp",
+      "/images/books_zh/38_三體2.webp",
+      "/images/books_zh/38_三體3.webp"
     ],
-    "coverUrlEn": "/images/books_en/38_Threebodyproblem.webp",
-    "readingNotes": "《三體》讀起來像一個巨大的反諷：人類終於找到外星文明了，結果第一個念頭不是「交朋友」，而是「完了」。因為這個故事從一開始就把「溝通」寫成一種武器。葉文潔的訊號並不是科技宅的浪漫，而更像一封帶著傷口的信，寄給宇宙做見證。她不是單純想被理解，她更像在問：如果人類的殘酷已經無可救藥，那我把人類交出去，算不算一種正義？這種把個人創傷直接升級成文明命運的寫法，讓「第一接觸」從科學幻想變成倫理炸彈。\n\n接著，小說把「三體問題」本身做成一個超漂亮的隱喻。三顆太陽的世界沒有穩定氣候，沒有固定秩序，文明只能在亂紀元中反覆崩壞與重建。這其實在偷渡一個更殘酷的世界觀：**不穩定才是常態，穩定才是奢侈**。於是你看著汪淼一路追查「科學前線」、進入「三體」遊戲、看到全球頂尖人才用一種近乎宗教的方式重新分配立場，你會開始意識到：當人們面對失控的世界，最先尋找的不是答案，而是一個可以把自己安放進去的敘事。\n\n然後來到《黑暗森林》最經典的那一刀：黑暗森林法則。羅輯提出的假說之所以迷人，是因為它不是「外星人很壞」這麼扁平，而是把宇宙變成一個極端版的安全困境：你不知道對方是不是善意，但你只要暴露位置，就可能被更高等文明一擊抹除。這跟國際關係裡的「安全困境」幾乎同構：你加強防衛，別人以為你要進攻，大家一起升級，最後誰都不安全。\n\n再把它丟進博弈論的語境，會更像囚徒困境：在缺乏信任與資訊不對稱下，「先下手」看起來理性，合作反而顯得天真。\n\n所以黑暗森林法則也被拿來對照費米悖論：「如果宇宙那麼大，外星人在哪？」它提供一個陰沉但合理的回答：也許大家都在躲，因為活著比被理解更重要。\n\n而面壁計畫（Wallfacer Project）則把這種恐懼推到人類心理的最後防線：當三體人能用智子監控資訊、干擾基礎科學，人類只剩下「思想」暫時無法被讀取，於是把希望賭在「一個人的腦內」。\n\n這設定荒謬到很好笑，也現代到讓人發冷：在我們的世界裡，隱私常常早就被使用條款與資料蒐集磨成粉了，我們也常常像你說的那樣滑到最下面按「我同意」。而《三體》用面壁者提醒你：當一切可見，最後的武器不是更大的武器，是「不可見」本身。\n\n最後，到了《死神永生》的「降維打擊」與二向箔，你會突然懂一件事：宇宙的恐怖不只是火力，而是規則可以被改寫。不是你輸在努力不夠，而是你被迫換了一個維度玩遊戲。這也是《三體》最像寓言的地方：它用最硬的科幻外殼，講最人類的警告——別太自信，也別太吵，因為你不知道森林裡的獵人有多安靜。",
-    "readingNotesEn": "Reading *The Three-Body Problem* feels like encountering a grand irony: humanity finally finds an alien civilization, and the first thought isn't \"let's be friends\" but \"we're doomed.\" Because from the very beginning, the story frames \"communication\" as a weapon. Ye Wenjie's signal isn't the romantic gesture of a science nerd—it's more like a letter written in wounds, sent to the universe as witness. She doesn't simply want to be understood; she's more like asking: if humanity's cruelty is beyond redemption, does handing humanity over count as a form of justice? This approach of escalating personal trauma directly into civilizational destiny turns \"first contact\" from science fiction into an ethical bomb.\n\nNext, the novel transforms the \"three-body problem\" itself into a stunningly elegant metaphor. The world of three suns has no stable climate, no fixed order—civilization can only collapse and rebuild repeatedly during Chaotic Eras. This is actually smuggling in a far more brutal worldview: **instability is the norm; stability is the luxury.** As you watch Wang Miao trace the \"Frontiers of Science,\" enter the \"Three Body\" game, and see the world's top minds realign their positions with near-religious fervor, you begin to realize: when people face a world spinning out of control, the first thing they seek isn't answers, but a narrative they can place themselves within.\n\nThen comes *The Dark Forest*'s most iconic stroke: the Dark Forest Theory. Luo Ji's hypothesis is fascinating not because \"aliens are evil\"—that would be too flat—but because it turns the universe into an extreme version of the security dilemma: you don't know whether the other side is benevolent, but the moment you reveal your position, you may be wiped out by a more advanced civilization in a single strike. This is nearly isomorphic with the \"security dilemma\" in international relations: you strengthen your defenses, others assume you're about to attack, everyone escalates, and ultimately no one is safe.\n\nPlace it within the context of game theory, and it looks even more like the Prisoner's Dilemma: under conditions of no trust and asymmetric information, \"striking first\" appears rational, while cooperation seems naive.\n\nThe Dark Forest Theory has also been compared to the Fermi Paradox: \"If the universe is so vast, where are the aliens?\" It offers a grim but plausible answer: perhaps everyone is hiding, because staying alive matters more than being understood.\n\nThe Wallfacer Project then pushes this fear to humanity's last psychological line of defense: when the Trisolarans can use sophons to monitor information and disrupt fundamental science, the only thing humans have left is \"thought\"—temporarily unreadable. So they gamble their hope on \"what's inside one person's mind.\"\n\nThis setup is absurd enough to be funny, and modern enough to send chills: in our world, privacy has long been ground to dust by terms of service and data collection, and we routinely scroll to the bottom and click \"I agree.\" *The Three-Body Problem* uses the Wallfacers to remind you: when everything is visible, the ultimate weapon isn't a bigger weapon—it's \"invisibility\" itself.\n\nFinally, in *Death's End* with the \"dimensional reduction strike\" and the two-dimensional foil, you suddenly grasp something: the terror of the universe isn't just firepower—it's that the rules themselves can be rewritten. You didn't lose because you didn't try hard enough; you were forced to play in an entirely different dimension. This is also where *The Three-Body Problem* most resembles a fable: using the hardest sci-fi shell to deliver the most human warning—don't be too confident, and don't be too loud, because you don't know how quiet the hunters in the forest are.",
-    "discussionPoints": [
-      "如果「黑暗森林」是真的，你覺得人類該選擇沉默、威懾，還是冒險溝通？你願意用什麼代價換取「被理解」？",
-      "面壁計畫把希望押在「思想不可被監控」上。在你自己的生活裡，有沒有哪一塊「只能留在腦內」的東西，是你最後的自由？",
-      "你覺得《三體》更像是在談外星文明，還是在談人類：當資源有限、資訊不透明、彼此不信任時，我們會不會自然走向對抗？"
-    ],
-    "discussionPointsEn": [
-      "If the \"Dark Forest\" is real, do you think humanity should choose silence, deterrence, or risk communication? What price would you be willing to pay to be \"understood\"?",
-      "The Wallfacer Project stakes its hope on \"thoughts being unmonitorable.\" In your own life, is there a domain that \"can only stay inside your head\" that represents your last piece of freedom?",
-      "Do you think The Three-Body Problem is more about alien civilizations, or about humanity: when resources are scarce, information is opaque, and trust is absent, will we naturally gravitate toward confrontation?"
-    ],
-    "authorEn": "Liu Cixin"
-  },
-  {
-    "id": "three-body-3",
-    "slug": "three-body-3",
-    "title": "三體III：死神永生",
-    "titleEn": "Death's End",
-    "author": "劉慈欣",
-    "coverUrl": "/images/books_zh/38_三體3.webp",
-    "readDate": "2024-05-01",
-    "summary": "《三體》是劉慈欣「地球往事三部曲」的第一部：從文化大革命的創傷開始，菁英科學家葉文潔在軍方祕密計畫中，向宇宙深處送出一則訊號，替人類打開了「被回覆」的可能。\n\n數十年後，奈米材料研究員汪淼捲入科學家接連自殺與「科學前線」組織的謎團；一款名為「三體」的虛擬實境遊戲，把物理學裡著名的「三體問題」變成一個文明層級的寓言：三顆太陽的混沌世界，如何活下去？又要如何理解活著的意義？",
-    "summaryEn": "Final chapter of the trilogy, the ultimate fate of the universe.",
-    "tags": [
-      "science fiction",
-      "chinese literature"
-    ],
-    "coverUrlEn": "/images/books_en/38_Threebodyproblem.webp",
-    "readingNotes": "《三體》讀起來像一個巨大的反諷：人類終於找到外星文明了，結果第一個念頭不是「交朋友」，而是「完了」。因為這個故事從一開始就把「溝通」寫成一種武器。葉文潔的訊號並不是科技宅的浪漫，而更像一封帶著傷口的信，寄給宇宙做見證。她不是單純想被理解，她更像在問：如果人類的殘酷已經無可救藥，那我把人類交出去，算不算一種正義？這種把個人創傷直接升級成文明命運的寫法，讓「第一接觸」從科學幻想變成倫理炸彈。\n\n接著，小說把「三體問題」本身做成一個超漂亮的隱喻。三顆太陽的世界沒有穩定氣候，沒有固定秩序，文明只能在亂紀元中反覆崩壞與重建。這其實在偷渡一個更殘酷的世界觀：**不穩定才是常態，穩定才是奢侈**。於是你看著汪淼一路追查「科學前線」、進入「三體」遊戲、看到全球頂尖人才用一種近乎宗教的方式重新分配立場，你會開始意識到：當人們面對失控的世界，最先尋找的不是答案，而是一個可以把自己安放進去的敘事。\n\n然後來到《黑暗森林》最經典的那一刀：黑暗森林法則。羅輯提出的假說之所以迷人，是因為它不是「外星人很壞」這麼扁平，而是把宇宙變成一個極端版的安全困境：你不知道對方是不是善意，但你只要暴露位置，就可能被更高等文明一擊抹除。這跟國際關係裡的「安全困境」幾乎同構：你加強防衛，別人以為你要進攻，大家一起升級，最後誰都不安全。\n\n再把它丟進博弈論的語境，會更像囚徒困境：在缺乏信任與資訊不對稱下，「先下手」看起來理性，合作反而顯得天真。\n\n所以黑暗森林法則也被拿來對照費米悖論：「如果宇宙那麼大，外星人在哪？」它提供一個陰沉但合理的回答：也許大家都在躲，因為活著比被理解更重要。\n\n而面壁計畫（Wallfacer Project）則把這種恐懼推到人類心理的最後防線：當三體人能用智子監控資訊、干擾基礎科學，人類只剩下「思想」暫時無法被讀取，於是把希望賭在「一個人的腦內」。\n\n這設定荒謬到很好笑，也現代到讓人發冷：在我們的世界裡，隱私常常早就被使用條款與資料蒐集磨成粉了，我們也常常像你說的那樣滑到最下面按「我同意」。而《三體》用面壁者提醒你：當一切可見，最後的武器不是更大的武器，是「不可見」本身。\n\n最後，在《死神永生》中出現了降維打擊與二向箔等概念，在這之前我們都還在玩同一個維度下的遊戲；但一旦進入降維世界後你就會突然懂一件事：宇宙的恐怖不只是火力差異這麼簡單——規則可以被改寫！不是你輸在努力不夠、能力不足或資源短缺——而是你被迫換了一個維度玩遊戲。這也是《三體》最像寓言的地方：它用最硬的科幻外殼包覆著最深層的人類警告——別太自信、也別太吵。",
-    "readingNotesEn": "Reading *The Three-Body Problem* feels like encountering a grand irony: humanity finally finds an alien civilization, and the first thought isn't \"let's be friends\" but \"we're doomed.\" Because from the very beginning, the story frames \"communication\" as a weapon. Ye Wenjie's signal isn't the romantic gesture of a science nerd—it's more like a letter written in wounds, sent to the universe as witness. She doesn't simply want to be understood; she's more like asking: if humanity's cruelty is beyond redemption, does handing humanity over count as a form of justice? This approach of escalating personal trauma directly into civilizational destiny turns \"first contact\" from science fiction into an ethical bomb.\n\nNext, the novel transforms the \"three-body problem\" itself into a stunningly elegant metaphor. The world of three suns has no stable climate, no fixed order—civilization can only collapse and rebuild repeatedly during Chaotic Eras. This is actually smuggling in a far more brutal worldview: **instability is the norm; stability is the luxury.** As you watch Wang Miao trace the \"Frontiers of Science,\" enter the \"Three Body\" game, and see the world's top minds realign their positions with near-religious fervor, you begin to realize: when people face a world spinning out of control, the first thing they seek isn't answers, but a narrative they can place themselves within.\n\nThen comes *The Dark Forest*'s most iconic stroke: the Dark Forest Theory. Luo Ji's hypothesis is fascinating not because \"aliens are evil\"—that would be too flat—but because it turns the universe into an extreme version of the security dilemma: you don't know whether the other side is benevolent, but the moment you reveal your position, you may be wiped out by a more advanced civilization in a single strike. This is nearly isomorphic with the \"security dilemma\" in international relations: you strengthen your defenses, others assume you're about to attack, everyone escalates, and ultimately no one is safe.\n\nPlace it within the context of game theory, and it looks even more like the Prisoner's Dilemma: under conditions of no trust and asymmetric information, \"striking first\" appears rational, while cooperation seems naive.\n\nThe Dark Forest Theory has also been compared to the Fermi Paradox: \"If the universe is so vast, where are the aliens?\" It offers a grim but plausible answer: perhaps everyone is hiding, because staying alive matters more than being understood.\n\nThe Wallfacer Project then pushes this fear to humanity's last psychological line of defense: when the Trisolarans can use sophons to monitor information and disrupt fundamental science, the only thing humans have left is \"thought\"—temporarily unreadable. So they gamble their hope on \"what's inside one person's mind.\"\n\nThis setup is absurd enough to be funny, and modern enough to send chills: in our world, privacy has long been ground to dust by terms of service and data collection, and we routinely scroll to the bottom and click \"I agree.\" *The Three-Body Problem* uses the Wallfacers to remind you: when everything is visible, the ultimate weapon isn't a bigger weapon—it's \"invisibility\" itself.\n\nFinally, in *Death's End* with the \"dimensional reduction strike\" and the two-dimensional foil, you suddenly grasp something: the terror of the universe isn't just firepower—it's that the rules themselves can be rewritten. You didn't lose because you didn't try hard enough; you were forced to play in an entirely different dimension. This is also where *The Three-Body Problem* most resembles a fable: using the hardest sci-fi shell to deliver the most human warning—don't be too confident, and don't be too loud, because you don't know how quiet the hunters in the forest are.",
-    "discussionPoints": [
-      "如果「黑暗森林」是真的，你覺得人類該選擇沉默、威懾，還是冒險溝通？你願意用什麼代價換取「被理解」？",
-      "面壁計畫把希望押在「思想不可被監控」上。在你自己的生活裡，有沒有哪一塊「只能留在腦內」的東西，是你最後的自由？",
-      "你覺得《三體》更像是在談外星文明，還是在談人類：當資源有限、資訊不透明、彼此不信任時，我們會不會自然走向對抗？"
-    ],
-    "discussionPointsEn": [
-      "If the \"Dark Forest\" is real, do you think humanity should choose silence, deterrence, or risk communication? What price would you be willing to pay to be \"understood\"?",
-      "The Wallfacer Project stakes its hope on \"thoughts being unmonitorable.\" In your own life, is there a domain that \"can only stay inside your head\" that represents your last piece of freedom?",
-      "Do you think The Three-Body Problem is more about alien civilizations, or about humanity: when resources are scarce, information is opaque, and trust is absent, will we naturally gravitate toward confrontation?"
-    ],
-    "authorEn": "Liu Cixin"
+    "coverUrlsEn": [
+      "/images/books_en/38_Threebodyproblem.webp"
+    ]
   },
   {
     "id": "thinking-improvisation",
