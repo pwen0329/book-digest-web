@@ -23,7 +23,6 @@ export type SignupFormValues = {
   instagram?: string;
   referral: 'BookDigestIG' | 'BookDigestFB' | 'Others';
   referralOther?: string;
-  consent: boolean;
   website?: string; // honeypot
 };
 
@@ -45,7 +44,6 @@ const baseSchema = z.object({
   instagram: z.string().optional(),
   referral: z.enum(['BookDigestIG', 'BookDigestFB', 'Others']),
   referralOther: z.string().optional(),
-  consent: z.boolean(),
   website: z.string().optional(),
 });
 
@@ -59,14 +57,6 @@ const formSchema = baseSchema.superRefine((data, ctx) => {
         message: 'Please specify at least 2 characters',
       });
     }
-  }
-
-  if (data.consent !== true) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['consent'],
-      message: 'Consent is required',
-    });
   }
 });
 
@@ -90,7 +80,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
   const storageKey = `signup-form-${location}`;
 
   const [values, setValues] = useState<SignupFormValues>(() => {
-    if (typeof window === 'undefined') return { firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', consent: false, website: '' };
+    if (typeof window === 'undefined') return { firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
     try {
       const saved = sessionStorage.getItem(storageKey);
       if (saved) {
@@ -104,12 +94,11 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           instagram: parsed.instagram || '',
           referral: parsed.referral || 'BookDigestIG',
           referralOther: parsed.referralOther || '',
-          consent: parsed.consent === true,
           website: '',
         };
       }
     } catch { /* ignore */ }
-    return { firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', consent: false, website: '' };
+    return { firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
   });
 
   // Persist form values to sessionStorage on change (exclude honeypot)
@@ -153,7 +142,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
       setSuccess('ok');
       setSubmitting(false);
       setValues({
-        firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', consent: false, website: ''
+        firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
       });
       try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
       return;
@@ -192,7 +181,6 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             instagram: values.instagram || undefined,
             referral: apiReferral,
             referralOther: values.referral === 'Others' ? values.referralOther : undefined,
-            consent: values.consent,
             timestamp: new Date().toISOString(),
             turnstileToken: turnstileToken || undefined,
           }),
@@ -204,7 +192,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
 
       setSuccess('ok');
       setValues({
-        firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', consent: false, website: ''
+        firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
       });
       try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
     } catch {
@@ -330,24 +318,6 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             />
             {errors.email && <p id="email-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.email}</p>}
           </div>
-        </div>
-
-        <div>
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              id="consent"
-              name="consent"
-              type="checkbox"
-              checked={values.consent}
-              onChange={onChange}
-              disabled={disabled}
-              className="mt-1 h-4 w-4 rounded border-white/40 bg-white text-brand-pink focus:ring-brand-pink"
-              aria-invalid={errors.consent ? true : undefined}
-              aria-describedby={errors.consent ? 'consent-error' : undefined}
-            />
-            <span className="text-sm text-white/90">{t('consentText')}</span>
-          </label>
-          {errors.consent && <p id="consent-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.consent}</p>}
         </div>
 
         {/* Instagram - Full width */}

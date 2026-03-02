@@ -4,9 +4,32 @@ import { rateLimit } from '@/lib/rate-limit';
 import { cryptoRandomId } from '@/lib/crypto-id';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
+import { getCapacityStatus, releaseCapacity, reserveCapacity } from '@/lib/signup-capacity';
+
+type Location = 'TW' | 'NL';
+
+function parseLocation(url: string): Location | null {
+  const { searchParams } = new URL(url);
+  const loc = (searchParams.get('loc') || '') as Location;
+  if (loc !== 'TW' && loc !== 'NL') return null;
+  return loc;
+}
+
+// GET /api/submit?loc=TW|NL
+// Returns the current slot/capacity status for the requested location.
+export async function GET(req: NextRequest) {
+  const loc = parseLocation(req.url);
+  if (!loc) {
+    return NextResponse.json({ error: 'Invalid location' }, { status: 400 });
+  }
+
+  const status = await getCapacityStatus(loc);
+  return NextResponse.json({ ok: true, location: loc, ...status }, { status: 200 });
+}
 
 // POST /api/submit?loc=TW|NL
 export async function POST(req: NextRequest) {
+  let reservedLoc: Location | null = null;
   try {
     // Rate limiting
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
@@ -18,9 +41,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(req.url);
-    const loc = (searchParams.get('loc') || '') as 'TW' | 'NL';
-    if (loc !== 'TW' && loc !== 'NL') {
+    const loc = parseLocation(req.url);
+    if (!loc) {
       return NextResponse.json({ error: 'Invalid location' }, { status: 400 });
     }
 
@@ -45,8 +67,6 @@ export async function POST(req: NextRequest) {
     const firstName = String(body.firstName || '').trim();
     const lastName = String(body.lastName || '').trim();
     const name = rawName || `${firstName} ${lastName}`.trim();
-    const consent = body.consent === true;
-
     // Minimal validation mirror of client
     const payload: RegistrationInput = {
       location: loc,
@@ -59,7 +79,6 @@ export async function POST(req: NextRequest) {
       instagram: body.instagram ? String(body.instagram) : undefined,
       referral: body.referral as RegistrationInput['referral'],
       referralOther: body.referralOther ? String(body.referralOther) : undefined,
-      consent,
       bankAccount: typeof body.bankAccount === 'string' ? String(body.bankAccount).trim() : undefined,
       timestamp: new Date().toISOString(),
       visitorId: visitorId || undefined,
@@ -68,9 +87,6 @@ export async function POST(req: NextRequest) {
     // Basic guards
     if (!payload.name || !payload.email || !payload.profession || !Number.isInteger(payload.age)) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
-    }
-    if (!payload.consent) {
-      return NextResponse.json({ error: 'Consent required' }, { status: 400 });
     }
     // Email format (RFC 5322 relaxed)
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
@@ -90,6 +106,15 @@ export async function POST(req: NextRequest) {
     if (payload.bankAccount && !/^\d{5}$/.test(payload.bankAccount)) {
       return NextResponse.json({ error: 'Invalid bank account' }, { status: 400 });
     }
+
+    const reservation = await reserveCapacity(loc);
+    if (!reservation.allowed) {
+      return NextResponse.json(
+        { error: reservation.reason === 'full' ? 'Registration full' : 'Registration closed', reason: reservation.reason },
+        { status: 409 }
+      );
+    }
+    reservedLoc = loc;
 
     // 1) Optional Tally forward. Use per-location endpoint if provided.
     const tallyTW = process.env.TALLY_ENDPOINT_TW;
@@ -130,6 +155,7 @@ export async function POST(req: NextRequest) {
       if (!forward.ok) {
         const forwardErr = await forward.text().catch(() => 'unknown');
         console.error('[api/submit] Tally forward failed:', forward.status, forwardErr);
+        await releaseCapacity(loc);
         return NextResponse.json({ error: 'Upstream processor error' }, { status: 502 });
       }
     }
@@ -161,6 +187,9 @@ export async function POST(req: NextRequest) {
     // If Tally forward succeeded (and we didn't save to Notion), return success
     return NextResponse.json({ ok: true, forwarded: true }, { status: 201 });
   } catch (err) {
+    if (reservedLoc) {
+      await releaseCapacity(reservedLoc);
+    }
     console.error('Submit error', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }

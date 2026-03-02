@@ -21,7 +21,6 @@ test.describe('Signup form validation', () => {
     await page.fill('#age', '10');
     await page.fill('#profession', 'Engineer');
     await page.fill('#email', 'test@example.com');
-    await page.check('#consent');
     await page.click('button[type="submit"]');
     // Age error should appear
     await expect(page.locator('#age-error')).toBeVisible();
@@ -188,22 +187,6 @@ test.describe('Submit API', () => {
         profession: 'Engineer',
         email: 'not-an-email',
         referral: 'Instagram',
-        consent: true,
-      },
-      headers: testHeaders(),
-    });
-    expect(response.status()).toBe(400);
-  });
-
-  test('should reject missing consent', async ({ request }) => {
-    const response = await request.post('/api/submit?loc=TW', {
-      data: {
-        firstName: 'API',
-        lastName: 'User',
-        age: 30,
-        profession: 'Engineer',
-        email: 'api@example.com',
-        referral: 'Instagram',
       },
       headers: testHeaders(),
     });
@@ -219,6 +202,25 @@ test.describe('Submit API', () => {
     });
     expect(response.status()).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ ok: true });
+  });
+});
+
+// ------------------------------------------------------------------
+// Submit slot status API
+// ------------------------------------------------------------------
+test.describe('Submit slot status API', () => {
+  test('should return slot status for valid location', async ({ request }) => {
+    const response = await request.get('/api/submit?loc=TW');
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body.ok).toBe(true);
+    expect(body.location).toBe('TW');
+    expect(typeof body.enabled).toBe('boolean');
+  });
+
+  test('should reject invalid location for slot status', async ({ request }) => {
+    const response = await request.get('/api/submit?loc=US');
+    expect(response.status()).toBe(400);
   });
 });
 

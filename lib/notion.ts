@@ -20,7 +20,6 @@ export type RegistrationInput = {
   instagram?: string;
   referral: 'Instagram' | 'Facebook' | 'Others';
   referralOther?: string;
-  consent?: boolean;
   bankAccount?: string;
   timestamp?: string; // ISO
   visitorId?: string;

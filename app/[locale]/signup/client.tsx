@@ -8,6 +8,15 @@ import SignupForm, { SignupFormValues } from '@/components/SignupForm';
 import Turnstile from '@/components/Turnstile';
 import { BLUR_POSTER } from '@/lib/constants';
 
+type SlotStatus = {
+  enabled: boolean;
+  open: boolean;
+  full: boolean;
+  count: number;
+  max: number | null;
+  reason: 'ok' | 'closed' | 'full';
+};
+
 function SignupContent() {
   const t = useTranslations('events');
   const tSignup = useTranslations('signupFlow');
@@ -20,6 +29,8 @@ function SignupContent() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [slotStatus, setSlotStatus] = useState<SlotStatus | null>(null);
+  const [checkingSlot, setCheckingSlot] = useState(false);
 
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
@@ -45,6 +56,38 @@ function SignupContent() {
     activeLocation === 'TW'
       ? process.env.NEXT_PUBLIC_FORMS_ENDPOINT_TW || '/api/submit?loc=TW'
       : process.env.NEXT_PUBLIC_FORMS_ENDPOINT_NL || '/api/submit?loc=NL';
+
+  const refreshSlotStatus = useCallback(async () => {
+    setCheckingSlot(true);
+    try {
+      const res = await fetch(`/api/submit?loc=${activeLocation}`, { method: 'GET' });
+      if (!res.ok) {
+        setSlotStatus(null);
+        return;
+      }
+      const data = await res.json();
+      setSlotStatus({
+        enabled: data.enabled === true,
+        open: data.open !== false,
+        full: data.full === true,
+        count: typeof data.count === 'number' ? data.count : 0,
+        max: typeof data.max === 'number' ? data.max : null,
+        reason: (data.reason as SlotStatus['reason']) || 'ok',
+      });
+    } catch {
+      setSlotStatus(null);
+    } finally {
+      setCheckingSlot(false);
+    }
+  }, [activeLocation]);
+
+  useEffect(() => {
+    if (isNlComingSoon) return;
+    void refreshSlotStatus();
+  }, [isNlComingSoon, refreshSlotStatus]);
+
+  const isSlotBlocked = Boolean(slotStatus?.enabled && (slotStatus.full || !slotStatus.open));
+  const blockReason = slotStatus?.reason === 'full' ? 'full' : 'closed';
 
   const mapReferral = (ref: SignupFormValues['referral']): 'Instagram' | 'Facebook' | 'Others' => {
     if (ref === 'BookDigestIG') return 'Instagram';
@@ -76,12 +119,19 @@ function SignupContent() {
           instagram: formValues.instagram || undefined,
           referral: mapReferral(formValues.referral),
           referralOther: formValues.referral === 'Others' ? formValues.referralOther : undefined,
-          consent: formValues.consent,
           bankAccount: bankLast5,
           timestamp: new Date().toISOString(),
           turnstileToken: turnstileToken || undefined,
         }),
       });
+      if (resp.status === 409) {
+        const conflict = await resp.json().catch(() => ({ reason: 'full' }));
+        await refreshSlotStatus();
+        setStep(0);
+        setSendError(conflict.reason === 'closed' ? tSignup('closedBody') : tSignup('fullBody'));
+        setSending(false);
+        return;
+      }
       if (!resp.ok) throw new Error('Request failed');
       setStep(3);
     } catch {
@@ -170,15 +220,33 @@ function SignupContent() {
               ) : (
                 <>
                   {step === 0 && (
-                    <SignupForm
-                      key={activeLocation}
-                      location={activeLocation}
-                      disabled={isNlComingSoon}
-                      onComplete={!isNlComingSoon ? (vals) => {
-                        setFormValues(vals);
-                        setStep(1);
-                      } : undefined}
-                    />
+                    isSlotBlocked ? (
+                      <div className="rounded-xl border border-brand-pink/50 bg-white/10 p-6 text-white">
+                        <h3 className="text-2xl font-bold mb-2">
+                          {blockReason === 'full' ? tSignup('fullTitle') : tSignup('closedTitle')}
+                        </h3>
+                        <p className="text-white/90 whitespace-pre-line">
+                          {blockReason === 'full' ? tSignup('fullBody') : tSignup('closedBody')}
+                        </p>
+                        {slotStatus?.enabled && slotStatus.max ? (
+                          <p className="mt-4 text-sm text-white/70">
+                            {tSignup('slotStats', { count: slotStatus.count, max: slotStatus.max })}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : checkingSlot ? (
+                      <div className="text-white/80">Checking availability...</div>
+                    ) : (
+                      <SignupForm
+                        key={activeLocation}
+                        location={activeLocation}
+                        disabled={isNlComingSoon}
+                        onComplete={!isNlComingSoon ? (vals) => {
+                          setFormValues(vals);
+                          setStep(1);
+                        } : undefined}
+                      />
+                    )
                   )}
 
                   {step === 1 && (
