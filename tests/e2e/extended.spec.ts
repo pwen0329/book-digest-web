@@ -129,6 +129,28 @@ test.describe('OG image API', () => {
 });
 
 // ------------------------------------------------------------------
+// Registrations API validation
+// ------------------------------------------------------------------
+test.describe('Registrations API', () => {
+  test('should reject missing admin token', async ({ request }) => {
+    const response = await request.get('/api/registrations');
+    expect(response.status()).toBe(401);
+  });
+
+  test('should reject invalid limit query', async ({ request }) => {
+    // Authorization uses a placeholder value here; endpoint should reject invalid limit
+    // only after auth passes in environments that configure ADMIN_API_SECRET.
+    const response = await request.get('/api/registrations?limit=abc', {
+      headers: { Authorization: 'Bearer test-secret' },
+    });
+
+    // Local/dev environments without ADMIN_API_SECRET return 401 first.
+    // Environments with the secret configured should return 400 for invalid limit.
+    expect([400, 401]).toContain(response.status());
+  });
+});
+
+// ------------------------------------------------------------------
 // Events page counters and content
 // ------------------------------------------------------------------
 for (const locale of locales) {

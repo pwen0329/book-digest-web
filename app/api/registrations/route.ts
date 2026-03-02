@@ -16,16 +16,27 @@ export async function GET(req: NextRequest) {
 
     // Rate limiting
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
-    const { allowed } = await rateLimit(ip);
+    const { allowed, retryAfterMs } = await rateLimit(ip);
     if (!allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': '60' } }
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
       );
     }
 
     const { searchParams } = new URL(req.url);
-    const limit = Number(searchParams.get('limit') || '10');
+    const rawLimit = searchParams.get('limit');
+    let limit = 10;
+    if (rawLimit !== null) {
+      if (!/^\d+$/.test(rawLimit)) {
+        return NextResponse.json({ error: 'Invalid limit' }, { status: 400 });
+      }
+      limit = Number(rawLimit);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+        return NextResponse.json({ error: 'Invalid limit' }, { status: 400 });
+      }
+    }
+
     const dbId = process.env.NOTION_DB_ID;
     const token = process.env.NOTION_TOKEN;
     if (!dbId || !token) {
