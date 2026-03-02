@@ -12,8 +12,8 @@ export default function middleware(req: NextRequest) {
   // Run the intl middleware first
   const response = intlMiddleware(req);
 
-  // Generate a nonce for CSP
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  // Generate a CSP nonce in an Edge-compatible way (Buffer is not guaranteed in Edge runtime).
+  const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV !== 'production';
 
   // Build CSP with nonce (replaces 'unsafe-inline' for scripts)

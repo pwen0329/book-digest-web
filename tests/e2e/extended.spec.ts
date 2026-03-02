@@ -151,6 +151,23 @@ test.describe('Registrations API', () => {
 });
 
 // ------------------------------------------------------------------
+// Middleware security headers
+// ------------------------------------------------------------------
+test.describe('Middleware headers', () => {
+  test('should set CSP nonce headers on localized page', async ({ request }) => {
+    const response = await request.get('/en');
+    expect(response.status()).toBe(200);
+
+    const nonce = response.headers()['x-nonce'];
+    const csp = response.headers()['content-security-policy'];
+
+    expect(nonce).toBeTruthy();
+    expect(csp).toContain("script-src");
+    expect(csp).toContain("'nonce-");
+  });
+});
+
+// ------------------------------------------------------------------
 // Events page counters and content
 // ------------------------------------------------------------------
 for (const locale of locales) {
