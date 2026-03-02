@@ -157,6 +157,8 @@
   },
   "form": {
     "nameLabel": "嗨，請問怎麼稱呼你？",
+    "firstNameLabel": "名字",
+    "lastNameLabel": "姓氏",
     "ageLabel": "今年幾歲～",
     "professionLabel": "你做什麼工作呢？",
     "emailLabel": "請問你的 E-mail 是？",

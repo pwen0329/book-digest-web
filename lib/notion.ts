@@ -11,6 +11,8 @@ import { cryptoRandomId } from '@/lib/crypto-id';
 
 export type RegistrationInput = {
   location: 'TW' | 'NL';
+  firstName?: string;
+  lastName?: string;
   name: string;
   age: number;
   profession: string;
@@ -18,6 +20,7 @@ export type RegistrationInput = {
   instagram?: string;
   referral: 'Instagram' | 'Facebook' | 'Others';
   referralOther?: string;
+  consent?: boolean;
   bankAccount?: string;
   timestamp?: string; // ISO
   visitorId?: string;

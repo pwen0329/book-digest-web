@@ -15,24 +15,27 @@ export type SignupFormProps = {
 };
 
 export type SignupFormValues = {
-  name: string;
+  firstName: string;
+  lastName: string;
   age: string;
   profession: string;
   email: string;
   instagram?: string;
   referral: 'BookDigestIG' | 'BookDigestFB' | 'Others';
   referralOther?: string;
+  consent: boolean;
   website?: string; // honeypot
 };
 
 // Move schema to module level for better performance (only created once)
 const baseSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100),
+  firstName: z.string().min(1, 'First name is required').max(60),
+  lastName: z.string().min(1, 'Last name is required').max(60),
   age: z
     .string()
     .transform((v) => (v.trim() === '' ? NaN : Number(v)))
-    .refine((n) => Number.isInteger(n) && n >= 18 && n <= 100, {
-      message: 'Age must be an integer between 18 and 100',
+    .refine((n) => Number.isInteger(n) && n >= 13 && n <= 120, {
+      message: 'Age must be an integer between 13 and 120',
     }),
   profession: z.string().min(1, 'Profession is required').max(120),
   email: z
@@ -42,6 +45,7 @@ const baseSchema = z.object({
   instagram: z.string().optional(),
   referral: z.enum(['BookDigestIG', 'BookDigestFB', 'Others']),
   referralOther: z.string().optional(),
+  consent: z.boolean(),
   website: z.string().optional(),
 });
 
@@ -55,6 +59,14 @@ const formSchema = baseSchema.superRefine((data, ctx) => {
         message: 'Please specify at least 2 characters',
       });
     }
+  }
+
+  if (data.consent !== true) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['consent'],
+      message: 'Consent is required',
+    });
   }
 });
 
@@ -78,15 +90,26 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
   const storageKey = `signup-form-${location}`;
 
   const [values, setValues] = useState<SignupFormValues>(() => {
-    if (typeof window === 'undefined') return { name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
+    if (typeof window === 'undefined') return { firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', consent: false, website: '' };
     try {
       const saved = sessionStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved) as Partial<SignupFormValues>;
-        return { name: parsed.name || '', age: parsed.age || '', profession: parsed.profession || '', email: parsed.email || '', instagram: parsed.instagram || '', referral: parsed.referral || 'BookDigestIG', referralOther: parsed.referralOther || '', website: '' };
+        return {
+          firstName: parsed.firstName || '',
+          lastName: parsed.lastName || '',
+          age: parsed.age || '',
+          profession: parsed.profession || '',
+          email: parsed.email || '',
+          instagram: parsed.instagram || '',
+          referral: parsed.referral || 'BookDigestIG',
+          referralOther: parsed.referralOther || '',
+          consent: parsed.consent === true,
+          website: '',
+        };
       }
     } catch { /* ignore */ }
-    return { name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
+    return { firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', consent: false, website: '' };
   });
 
   // Persist form values to sessionStorage on change (exclude honeypot)
@@ -130,7 +153,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
       setSuccess('ok');
       setSubmitting(false);
       setValues({
-        name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
+        firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', consent: false, website: ''
       });
       try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
       return;
@@ -160,13 +183,16 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             location,
-            name: values.name,
+            firstName: values.firstName,
+            lastName: values.lastName,
+            name: `${values.firstName} ${values.lastName}`.trim(),
             age: Number(values.age),
             profession: values.profession,
             email: values.email,
             instagram: values.instagram || undefined,
             referral: apiReferral,
             referralOther: values.referral === 'Others' ? values.referralOther : undefined,
+            consent: values.consent,
             timestamp: new Date().toISOString(),
             turnstileToken: turnstileToken || undefined,
           }),
@@ -178,7 +204,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
 
       setSuccess('ok');
       setValues({
-        name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
+        firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', consent: false, website: ''
       });
       try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
     } catch {
@@ -232,19 +258,34 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
         <input type="text" name="website" value={values.website} onChange={onChange} className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-          {/* Name */}
+          {/* First name */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-white mb-2">{t('nameLabel')}</label>
+            <label htmlFor="firstName" className="block text-sm font-medium text-white mb-2">{t('firstNameLabel')}</label>
             <input
-              id="name" name="name" value={values.name} onChange={onChange}
+              id="firstName" name="firstName" value={values.firstName} onChange={onChange}
               readOnly={disabled}
               disabled={disabled}
-              className={inputClass(!!errors.name)}
-              autoComplete="name"
-              aria-invalid={errors.name ? true : undefined}
-              aria-describedby={errors.name ? 'name-error' : undefined}
+              className={inputClass(!!errors.firstName)}
+              autoComplete="given-name"
+              aria-invalid={errors.firstName ? true : undefined}
+              aria-describedby={errors.firstName ? 'firstName-error' : undefined}
             />
-            {errors.name && <p id="name-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.name}</p>}
+            {errors.firstName && <p id="firstName-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.firstName}</p>}
+          </div>
+
+          {/* Last name */}
+          <div>
+            <label htmlFor="lastName" className="block text-sm font-medium text-white mb-2">{t('lastNameLabel')}</label>
+            <input
+              id="lastName" name="lastName" value={values.lastName} onChange={onChange}
+              readOnly={disabled}
+              disabled={disabled}
+              className={inputClass(!!errors.lastName)}
+              autoComplete="family-name"
+              aria-invalid={errors.lastName ? true : undefined}
+              aria-describedby={errors.lastName ? 'lastName-error' : undefined}
+            />
+            {errors.lastName && <p id="lastName-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.lastName}</p>}
           </div>
 
           {/* Age */}
@@ -289,6 +330,24 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             />
             {errors.email && <p id="email-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.email}</p>}
           </div>
+        </div>
+
+        <div>
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              id="consent"
+              name="consent"
+              type="checkbox"
+              checked={values.consent}
+              onChange={onChange}
+              disabled={disabled}
+              className="mt-1 h-4 w-4 rounded border-white/40 bg-white text-brand-pink focus:ring-brand-pink"
+              aria-invalid={errors.consent ? true : undefined}
+              aria-describedby={errors.consent ? 'consent-error' : undefined}
+            />
+            <span className="text-sm text-white/90">{t('consentText')}</span>
+          </label>
+          {errors.consent && <p id="consent-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.consent}</p>}
         </div>
 
         {/* Instagram - Full width */}

@@ -1,10 +1,20 @@
 import { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { locales, setRequestLocale } from '@/lib/i18n';
+import { getLocaleAlternates } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return {
+    title: locale === 'zh' ? '隱私權政策' : 'Privacy Policy',
+    description:
+      locale === 'zh'
+        ? 'Book Digest 隱私權政策，說明我們如何蒐集、使用與保護您的個人資料。'
+        : 'Book Digest privacy policy describing how we collect, use, and protect your personal data.',
+    alternates: getLocaleAlternates('privacy', locale),
+    robots: { index: true, follow: true },
+  };
+}
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));

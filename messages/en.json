@@ -157,6 +157,8 @@
   },
   "form": {
     "nameLabel": "Hi, what's your name?",
+    "firstNameLabel": "First name",
+    "lastNameLabel": "Last name",
     "ageLabel": "How old are you?",
     "professionLabel": "What do you do?",
     "emailLabel": "What's your email?",

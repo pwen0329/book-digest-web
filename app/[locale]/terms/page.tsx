@@ -1,10 +1,20 @@
 import { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { locales, setRequestLocale } from '@/lib/i18n';
+import { getLocaleAlternates } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return {
+    title: locale === 'zh' ? '條款與細則' : 'Terms and Conditions',
+    description:
+      locale === 'zh'
+        ? 'Book Digest 服務條款與細則，包含使用規範與相關法律資訊。'
+        : 'Book Digest terms and conditions for website use and related legal information.',
+    alternates: getLocaleAlternates('terms', locale),
+    robots: { index: true, follow: true },
+  };
+}
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));

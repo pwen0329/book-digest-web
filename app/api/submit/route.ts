@@ -45,10 +45,13 @@ export async function POST(req: NextRequest) {
     const firstName = String(body.firstName || '').trim();
     const lastName = String(body.lastName || '').trim();
     const name = rawName || `${firstName} ${lastName}`.trim();
+    const consent = body.consent === true;
 
     // Minimal validation mirror of client
     const payload: RegistrationInput = {
       location: loc,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
       name,
       age: Number(body.age),
       profession: String(body.profession || '').trim(),
@@ -56,6 +59,7 @@ export async function POST(req: NextRequest) {
       instagram: body.instagram ? String(body.instagram) : undefined,
       referral: body.referral as RegistrationInput['referral'],
       referralOther: body.referralOther ? String(body.referralOther) : undefined,
+      consent,
       bankAccount: typeof body.bankAccount === 'string' ? String(body.bankAccount).trim() : undefined,
       timestamp: new Date().toISOString(),
       visitorId: visitorId || undefined,
@@ -65,12 +69,15 @@ export async function POST(req: NextRequest) {
     if (!payload.name || !payload.email || !payload.profession || !Number.isInteger(payload.age)) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
+    if (!payload.consent) {
+      return NextResponse.json({ error: 'Consent required' }, { status: 400 });
+    }
     // Email format (RFC 5322 relaxed)
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
     }
     // Age range
-    if (payload.age < 18 || payload.age > 100) {
+    if (payload.age < 13 || payload.age > 120) {
       return NextResponse.json({ error: 'Invalid age' }, { status: 400 });
     }
     if (!['Instagram', 'Facebook', 'Others'].includes(payload.referral)) {

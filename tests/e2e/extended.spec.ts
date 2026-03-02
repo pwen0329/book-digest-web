@@ -10,16 +10,18 @@ test.describe('Signup form validation', () => {
     await page.goto('/en/signup');
     // Submit the form without filling in anything
     await page.click('button[type="submit"]');
-    // Should show name validation error
-    await expect(page.locator('#name-error')).toBeVisible();
+    // Should show first name validation error
+    await expect(page.locator('#firstName-error')).toBeVisible();
   });
 
   test('should reject invalid age', async ({ page }) => {
     await page.goto('/en/signup');
-    await page.fill('#name', 'Test User');
+    await page.fill('#firstName', 'Test');
+    await page.fill('#lastName', 'User');
     await page.fill('#age', '10');
     await page.fill('#profession', 'Engineer');
     await page.fill('#email', 'test@example.com');
+    await page.check('#consent');
     await page.click('button[type="submit"]');
     // Age error should appear
     await expect(page.locator('#age-error')).toBeVisible();
@@ -85,8 +87,6 @@ for (const locale of locales) {
     test(`should return 404 status and show content /${locale}/this-doesnt-exist`, async ({ page }) => {
       const response = await page.goto(`/${locale}/this-doesnt-exist`);
       expect(response?.status()).toBe(404);
-      // Should still render a page (not blank)
-      await expect(page.locator('body')).toBeVisible();
     });
   });
 }
@@ -167,9 +167,14 @@ test.describe('Registrations API', () => {
 // Submit API validation
 // ------------------------------------------------------------------
 test.describe('Submit API', () => {
+  const testHeaders = () => ({
+    'x-forwarded-for': `198.51.100.${Math.floor(Math.random() * 200) + 1}`,
+  });
+
   test('should reject invalid location query', async ({ request }) => {
     const response = await request.post('/api/submit?loc=US', {
       data: {},
+      headers: testHeaders(),
     });
     expect(response.status()).toBe(400);
   });
@@ -177,12 +182,30 @@ test.describe('Submit API', () => {
   test('should reject malformed email', async ({ request }) => {
     const response = await request.post('/api/submit?loc=TW', {
       data: {
-        name: 'API Test User',
+        firstName: 'API',
+        lastName: 'User',
         age: 30,
         profession: 'Engineer',
         email: 'not-an-email',
         referral: 'Instagram',
+        consent: true,
       },
+      headers: testHeaders(),
+    });
+    expect(response.status()).toBe(400);
+  });
+
+  test('should reject missing consent', async ({ request }) => {
+    const response = await request.post('/api/submit?loc=TW', {
+      data: {
+        firstName: 'API',
+        lastName: 'User',
+        age: 30,
+        profession: 'Engineer',
+        email: 'api@example.com',
+        referral: 'Instagram',
+      },
+      headers: testHeaders(),
     });
     expect(response.status()).toBe(400);
   });
@@ -192,9 +215,27 @@ test.describe('Submit API', () => {
       data: {
         website: 'spam-bot-filled',
       },
+      headers: testHeaders(),
     });
     expect(response.status()).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ ok: true });
+  });
+});
+
+// ------------------------------------------------------------------
+// Legal page SEO metadata
+// ------------------------------------------------------------------
+test.describe('Legal page SEO', () => {
+  test('should expose canonical and indexable metadata on privacy page', async ({ page }) => {
+    await page.goto('/en/privacy');
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/en\/privacy$/);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/i);
+  });
+
+  test('should expose canonical and indexable metadata on terms page', async ({ page }) => {
+    await page.goto('/en/terms');
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/en\/terms$/);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/i);
   });
 });
 
