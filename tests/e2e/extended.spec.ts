@@ -103,6 +103,19 @@ test.describe('Sitemap', () => {
     expect(body).toContain('<loc>');
     expect(body).toContain('<lastmod>');
   });
+
+  test('should include key localized routes', async ({ request }) => {
+    const response = await request.get('/sitemap.xml');
+    expect(response.status()).toBe(200);
+    const body = await response.text();
+
+    expect(body).toContain('/en/detox');
+    expect(body).toContain('/zh/detox');
+    expect(body).toContain('/en/engclub');
+    expect(body).toContain('/zh/engclub');
+    expect(body).toContain('/en/joinus');
+    expect(body).toContain('/zh/joinus');
+  });
 });
 
 // ------------------------------------------------------------------
@@ -147,6 +160,41 @@ test.describe('Registrations API', () => {
     // Local/dev environments without ADMIN_API_SECRET return 401 first.
     // Environments with the secret configured should return 400 for invalid limit.
     expect([400, 401]).toContain(response.status());
+  });
+});
+
+// ------------------------------------------------------------------
+// Submit API validation
+// ------------------------------------------------------------------
+test.describe('Submit API', () => {
+  test('should reject invalid location query', async ({ request }) => {
+    const response = await request.post('/api/submit?loc=US', {
+      data: {},
+    });
+    expect(response.status()).toBe(400);
+  });
+
+  test('should reject malformed email', async ({ request }) => {
+    const response = await request.post('/api/submit?loc=TW', {
+      data: {
+        name: 'API Test User',
+        age: 30,
+        profession: 'Engineer',
+        email: 'not-an-email',
+        referral: 'Instagram',
+      },
+    });
+    expect(response.status()).toBe(400);
+  });
+
+  test('should silently accept honeypot submissions', async ({ request }) => {
+    const response = await request.post('/api/submit?loc=TW', {
+      data: {
+        website: 'spam-bot-filled',
+      },
+    });
+    expect(response.status()).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: true });
   });
 });
 

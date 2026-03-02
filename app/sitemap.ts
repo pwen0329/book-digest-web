@@ -26,6 +26,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '': latestBookDate, // Home page changes when new books are added
     '/books': latestBookDate, // Books page changes with new books
     '/events': new Date('2025-06-01'), // Update when events change
+    '/detox': new Date('2025-06-01'),
+    '/engclub': new Date('2025-06-01'),
     '/about': new Date('2025-01-01'),
     '/joinus': new Date('2025-01-01'),
     '/privacy': new Date('2024-08-01'),
@@ -36,14 +38,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages = staticPaths.flatMap((path) =>
     locales.map((locale) => {
       let changeFrequency: 'weekly' | 'monthly' = 'weekly';
-      if (path === '/about' || path === '/privacy' || path === '/terms') {
+      if (path === '/about' || path === '/joinus' || path === '/privacy' || path === '/terms') {
         changeFrequency = 'monthly';
       }
       return {
         url: getLocalizedUrl(path, locale),
         lastModified: staticPageDates[path],
         changeFrequency,
-        priority: path === '' ? 1 : path === '/books' || path === '/events' ? 0.9 : 0.7,
+        priority: path === ''
+          ? 1
+          : path === '/books' || path === '/events' || path === '/detox' || path === '/engclub'
+            ? 0.9
+            : 0.7,
       };
     })
   );
