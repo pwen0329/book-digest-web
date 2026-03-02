@@ -9,6 +9,8 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep default `.next`, but allow override in restricted environments.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   // Security headers
   async headers() {
     return [
