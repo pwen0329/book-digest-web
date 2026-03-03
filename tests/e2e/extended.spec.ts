@@ -299,6 +299,41 @@ test.describe.serial('Submit capacity guardrails', () => {
     const body = await second.json();
     expect(body.reason).toBe('full');
   });
+
+  test('should block status and submission when forceFull is enabled', async ({ request }) => {
+    // Enable forceFull override via the test-only DELETE endpoint.
+    const setRes = await request.delete('/api/submit?loc=TW&forceFull=1');
+    expect(setRes.status()).toBe(200);
+
+    // GET status should reflect full/reason:full immediately.
+    const statusRes = await request.get('/api/submit?loc=TW');
+    expect(statusRes.status()).toBe(200);
+    const status = await statusRes.json();
+    expect(status.full).toBe(true);
+    expect(status.reason).toBe('full');
+
+    // POST should be rejected with 409 + reason:full.
+    const postRes = await request.post('/api/submit?loc=TW', {
+      headers: { 'x-forwarded-for': `198.51.100.${Math.floor(Math.random() * 200) + 1}` },
+      data: {
+        firstName: 'Force',
+        lastName: 'Full',
+        age: 25,
+        profession: 'Engineer',
+        email: `force-full-${Date.now()}@example.com`,
+        referral: 'Instagram',
+      },
+    });
+    expect(postRes.status()).toBe(409);
+    const postBody = await postRes.json();
+    expect(postBody.reason).toBe('full');
+
+    // Reset clears forceFull; subsequent GET should show not-full.
+    await request.delete('/api/submit?loc=TW');
+    const afterRes = await request.get('/api/submit?loc=TW');
+    const afterStatus = await afterRes.json();
+    expect(afterStatus.full).toBe(false);
+  });
 });
 
 // ------------------------------------------------------------------

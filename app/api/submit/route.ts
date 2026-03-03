@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { cryptoRandomId } from '@/lib/crypto-id';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
-import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTesting } from '@/lib/signup-capacity';
+import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTesting, _setForceFullForTesting } from '@/lib/signup-capacity';
 
 type Location = 'TW' | 'NL';
 
@@ -41,7 +41,13 @@ export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const tempMaxRaw = searchParams.get('tempMax');
   const tempMax = tempMaxRaw !== null ? Number(tempMaxRaw) : undefined;
+  const forceFullRaw = searchParams.get('forceFull');
+  // Reset count first (also clears any prior forceFull override).
   _resetCountForTesting(loc, tempMax !== undefined && Number.isInteger(tempMax) && tempMax > 0 ? tempMax : undefined);
+  // Apply forceFull override after reset so it isn't cleared.
+  if (forceFullRaw !== null) {
+    _setForceFullForTesting(loc, forceFullRaw === '1' || forceFullRaw.toLowerCase() === 'true');
+  }
   return NextResponse.json({ ok: true, location: loc, reset: true }, { status: 200 });
 }
 
