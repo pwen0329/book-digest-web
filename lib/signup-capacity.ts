@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import capacityConfig from '@/data/signup-capacity.json';
 
 type Location = 'TW' | 'NL';
 
@@ -8,6 +9,18 @@ type SlotConfig = {
   endAt?: Date;
   max?: number;
   key?: string;
+};
+
+type ConfigSlot = {
+  enabled?: boolean;
+  startAt?: string;
+  endAt?: string;
+  max?: number;
+};
+
+type CapacityConfigFile = {
+  TW?: ConfigSlot;
+  NL?: ConfigSlot;
 };
 
 export type CapacityStatus = {
@@ -36,12 +49,46 @@ const redis =
     : null;
 
 const memoryCounts = new Map<string, number>();
+// Temporary max overrides used only in non-production environments (testing).
+const memoryMaxOverrides = new Map<string, number>();
+
+/**
+ * Reset in-memory count for a location and optionally override its max.
+ * Only available in non-production environments.
+ */
+export function _resetCountForTesting(location: Location, tempMax?: number): void {
+  if (process.env.ALLOW_CAPACITY_RESET !== '1') return;
+  const config = parseSlotConfig(location);
+  if (config.key) {
+    memoryCounts.set(config.key, 0);
+    if (tempMax !== undefined) {
+      memoryMaxOverrides.set(config.key, tempMax);
+    } else {
+      memoryMaxOverrides.delete(config.key);
+    }
+  }
+}
+
+function getConfigSlot(location: Location): ConfigSlot {
+  const fileConfig = capacityConfig as CapacityConfigFile;
+  return fileConfig[location] || {};
+}
 
 function parseSlotConfig(location: Location): SlotConfig {
+  const configSlot = getConfigSlot(location);
+
   const prefix = `SIGNUP_SLOT_${location}`;
-  const startRaw = process.env[`${prefix}_START_AT`];
-  const endRaw = process.env[`${prefix}_END_AT`];
-  const maxRaw = process.env[`${prefix}_MAX`];
+  const enabledRaw = process.env[`${prefix}_ENABLED`];
+  const startRaw = process.env[`${prefix}_START_AT`] || configSlot.startAt;
+  const endRaw = process.env[`${prefix}_END_AT`] || configSlot.endAt;
+  const maxRaw = process.env[`${prefix}_MAX`] || (typeof configSlot.max === 'number' ? String(configSlot.max) : undefined);
+  const enabled = enabledRaw !== undefined
+    ? enabledRaw === '1' || enabledRaw.toLowerCase() === 'true'
+    : configSlot.enabled === true;
+
+  if (!enabled) {
+    return { enabled: false };
+  }
 
   if (!startRaw || !endRaw || !maxRaw) {
     return { enabled: false };
@@ -61,12 +108,15 @@ function parseSlotConfig(location: Location): SlotConfig {
     return { enabled: false };
   }
 
+  const key = `signup-slot:${location}:${startAt.toISOString()}:${endAt.toISOString()}`;
+  const effectiveMax = memoryMaxOverrides.get(key) ?? max;
+
   return {
     enabled: true,
     startAt,
     endAt,
-    max,
-    key: `signup-slot:${location}:${startAt.toISOString()}:${endAt.toISOString()}`,
+    max: effectiveMax,
+    key,
   };
 }
 

@@ -216,11 +216,88 @@ test.describe('Submit slot status API', () => {
     expect(body.ok).toBe(true);
     expect(body.location).toBe('TW');
     expect(typeof body.enabled).toBe('boolean');
+    expect(body.enabled).toBe(true);
+    expect(body.open).toBe(true);
+    expect(body.reason).toBe('ok');
   });
 
   test('should reject invalid location for slot status', async ({ request }) => {
     const response = await request.get('/api/submit?loc=US');
     expect(response.status()).toBe(400);
+  });
+
+  test('should return closed status for NL slot (config-driven)', async ({ request }) => {
+    const response = await request.get('/api/submit?loc=NL');
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body.enabled).toBe(true);
+    expect(body.open).toBe(false);
+    expect(body.reason).toBe('closed');
+  });
+});
+
+// ------------------------------------------------------------------
+// Submit capacity guardrails
+// ------------------------------------------------------------------
+// Serial ensures these mutating tests never race against each other or the
+// slot-status tests above that read TW state.
+test.describe.serial('Submit capacity guardrails', () => {
+  test.beforeEach(async ({ request }) => {
+    // Reset TW state before each capacity test so we start from a clean slate.
+    await request.delete('/api/submit?loc=TW');
+  });
+
+  test.afterAll(async ({ request }) => {
+    // Leave TW in clean state after the entire describe block.
+    await request.delete('/api/submit?loc=TW');
+  });
+  test('should block submission when slot is closed', async ({ request }) => {
+    const response = await request.post('/api/submit?loc=NL', {
+      headers: {
+        'x-forwarded-for': `198.51.100.${Math.floor(Math.random() * 200) + 1}`,
+      },
+      data: {
+        firstName: 'Closed',
+        lastName: 'Slot',
+        age: 25,
+        profession: 'Engineer',
+        email: 'closed-slot@example.com',
+        referral: 'Instagram',
+      },
+    });
+
+    expect(response.status()).toBe(409);
+    const body = await response.json();
+    expect(body.reason).toBe('closed');
+  });
+
+  test('should block submission when slot is full', async ({ request }) => {
+    // Set TW max to 1 via test-only DELETE reset endpoint, then exhaust it.
+    const resetRes = await request.delete('/api/submit?loc=TW&tempMax=1');
+    expect(resetRes.status()).toBe(200);
+
+    const validPayload = {
+      firstName: 'Full',
+      lastName: 'Test',
+      age: 25,
+      profession: 'Engineer',
+      email: `full-test-${Date.now()}@example.com`,
+      referral: 'Instagram',
+    };
+    const ip = () => ({ 'x-forwarded-for': `198.51.100.${Math.floor(Math.random() * 200) + 1}` });
+
+    // First submission should be accepted (count 1 == max 1).
+    const first = await request.post('/api/submit?loc=TW', { headers: ip(), data: validPayload });
+    expect(first.status()).toBe(201);
+
+    // Second submission should be rejected because count would exceed max.
+    const second = await request.post('/api/submit?loc=TW', {
+      headers: ip(),
+      data: { ...validPayload, email: `full-test2-${Date.now()}@example.com` },
+    });
+    expect(second.status()).toBe(409);
+    const body = await second.json();
+    expect(body.reason).toBe('full');
   });
 });
 

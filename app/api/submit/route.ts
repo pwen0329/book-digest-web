@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { cryptoRandomId } from '@/lib/crypto-id';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
-import { getCapacityStatus, releaseCapacity, reserveCapacity } from '@/lib/signup-capacity';
+import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTesting } from '@/lib/signup-capacity';
 
 type Location = 'TW' | 'NL';
 
@@ -25,6 +25,24 @@ export async function GET(req: NextRequest) {
 
   const status = await getCapacityStatus(loc);
   return NextResponse.json({ ok: true, location: loc, ...status }, { status: 200 });
+}
+
+// DELETE /api/submit?loc=TW|NL&tempMax=N
+// Resets in-memory count and optionally sets a temporary max override.
+// Only available outside production; used for automated testing.
+export async function DELETE(req: NextRequest) {
+  if (process.env.ALLOW_CAPACITY_RESET !== '1') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+  const loc = parseLocation(req.url);
+  if (!loc) {
+    return NextResponse.json({ error: 'Invalid location' }, { status: 400 });
+  }
+  const { searchParams } = new URL(req.url);
+  const tempMaxRaw = searchParams.get('tempMax');
+  const tempMax = tempMaxRaw !== null ? Number(tempMaxRaw) : undefined;
+  _resetCountForTesting(loc, tempMax !== undefined && Number.isInteger(tempMax) && tempMax > 0 ? tempMax : undefined);
+  return NextResponse.json({ ok: true, location: loc, reset: true }, { status: 200 });
 }
 
 // POST /api/submit?loc=TW|NL
