@@ -271,15 +271,19 @@ test.describe('Submit slot status API', () => {
 // ------------------------------------------------------------------
 // Serial ensures these mutating tests never race against each other.
 test.describe.serial('Submit capacity guardrails', () => {
-  test.skip(({ browserName }) => browserName !== 'chromium', 'Shared-state capacity tests run once to avoid cross-browser counter races.');
+  test.beforeEach(async ({ request, browserName }) => {
+    test.skip(browserName !== 'chromium', 'Shared-state capacity tests run once to avoid cross-browser counter races.');
 
-  test.beforeEach(async ({ request }) => {
     // Reset mutable locations before each capacity test so we start from a clean slate.
     await request.delete('/api/submit?loc=TW&forceFull=0');
     await request.delete('/api/submit?loc=EN&forceFull=0');
   });
 
-  test.afterAll(async ({ request }) => {
+  test.afterAll(async ({ request, browserName }) => {
+    if (browserName !== 'chromium') {
+      return;
+    }
+
     // Leave mutable locations in clean state after the entire describe block.
     await request.delete('/api/submit?loc=TW&forceFull=0');
     await request.delete('/api/submit?loc=EN&forceFull=0');
