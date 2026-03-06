@@ -228,11 +228,7 @@ function SignupContent() {
                         <p className="text-white/90 whitespace-pre-line">
                           {blockReason === 'full' ? tSignup('fullBody') : tSignup('closedBody')}
                         </p>
-                        {slotStatus?.enabled && slotStatus.max ? (
-                          <p className="mt-4 text-sm text-white/70">
-                            {tSignup('slotStats', { count: slotStatus.count, max: slotStatus.max })}
-                          </p>
-                        ) : null}
+
                       </div>
                     ) : checkingSlot ? (
                       <div className="text-white/80">Checking availability...</div>

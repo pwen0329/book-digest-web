@@ -192,13 +192,13 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
 
         <div className="my-4 h-px bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
 
-        {/* Netherlands Book Club */}
+        {/* Online English Book Club */}
         <div className="py-12">
           <EventSection
-            image="/images/elements/AD-15.webp"
-            title={t('nlTitle')}
-            description={t('nlDesc')}
-            signupUrl={`/${locale}/signup?location=NL`}
+            image="/images/elements/poster_202604_en_online.webp"
+            title={t('onlineTitle')}
+            description={t.rich('onlineDesc', { level: (chunks) => <strong className="font-bold text-base block mt-3">{chunks}</strong> })}
+            signupUrl={`/${locale}/engclub`}
             signupText={t('signUp')}
             imagePosition="right"
             ctaClass={ctaClass}
@@ -207,13 +207,13 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
 
         <div className="my-4 h-px bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
 
-        {/* Online English Book Club */}
+        {/* Netherlands Book Club */}
         <div className="py-12">
           <EventSection
-            image="/images/elements/poster_202604_en_online.webp"
-            title={t('onlineTitle')}
-            description={t.rich('onlineDesc', { level: (chunks) => <strong className="font-bold text-base block mt-3">{chunks}</strong> })}
-            signupUrl={`/${locale}/engclub`}
+            image="/images/elements/AD-15.webp"
+            title={t('nlTitle')}
+            description={t('nlDesc')}
+            signupUrl={`/${locale}/signup?location=NL`}
             signupText={t('signUp')}
             imagePosition="left"
             ctaClass={ctaClass}

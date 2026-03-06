@@ -52,7 +52,7 @@ export default async function EngClubPage({ params }: { params: Promise<{ locale
             <div />
             <div className="relative w-full max-w-[340px] sm:max-w-[380px] lg:max-w-[520px] mx-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
               <Image
-                src="/images/elements/poster_202601_en_online.webp"
+                src="/images/elements/poster_202604_en_online.webp"
                 alt={t('onlineTitle')}
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
