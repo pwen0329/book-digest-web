@@ -6,12 +6,12 @@ import { verifyTurnstileToken } from '@/lib/turnstile';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTesting, _setForceFullForTesting } from '@/lib/signup-capacity';
 
-type Location = 'TW' | 'NL';
+type Location = 'TW' | 'NL' | 'EN';
 
 function parseLocation(url: string): Location | null {
   const { searchParams } = new URL(url);
   const loc = (searchParams.get('loc') || '') as Location;
-  if (loc !== 'TW' && loc !== 'NL') return null;
+  if (loc !== 'TW' && loc !== 'NL' && loc !== 'EN') return null;
   return loc;
 }
 
@@ -159,7 +159,8 @@ export async function POST(req: NextRequest) {
     // Use per-location endpoint if provided.
     const tallyTW = process.env.TALLY_ENDPOINT_TW;
     const tallyNL = process.env.TALLY_ENDPOINT_NL;
-    const tallyEndpoint = payload.location === 'TW' ? tallyTW : tallyNL;
+    const tallyEN = process.env.TALLY_ENDPOINT_EN;
+    const tallyEndpoint = payload.location === 'TW' ? tallyTW : payload.location === 'NL' ? tallyNL : tallyEN;
 
     if (tallyEndpoint) {
       // Map payload to the requested column names for Tally or generic webhook.

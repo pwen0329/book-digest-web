@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import capacityConfig from '@/data/signup-capacity.json';
 
-type Location = 'TW' | 'NL';
+type Location = 'TW' | 'NL' | 'EN';
 
 type SlotConfig = {
   enabled: boolean;
@@ -23,6 +23,7 @@ type ConfigSlot = {
 type CapacityConfigFile = {
   TW?: ConfigSlot;
   NL?: ConfigSlot;
+  EN?: ConfigSlot;
 };
 
 export type CapacityStatus = {
@@ -251,6 +252,7 @@ export async function reserveCapacity(location: Location): Promise<ReserveResult
   const status = await getCapacityStatus(location);
   if (!status.enabled) return { allowed: true, reason: 'ok' };
   if (!status.open) return { allowed: false, reason: 'closed' };
+  if (status.full) return { allowed: false, reason: 'full' };
 
   const config = parseSlotConfig(location);
   if (!config.enabled || !config.max || !config.key) return { allowed: true, reason: 'ok' };

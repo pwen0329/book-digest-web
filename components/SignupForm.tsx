@@ -4,7 +4,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { z } from 'zod';
 import Turnstile from '@/components/Turnstile';
 
-type Location = 'TW' | 'NL';
+type Location = 'TW' | 'NL' | 'EN';
 
 export type SignupFormProps = {
   location: Location;
@@ -209,7 +209,9 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
   // Location badge colors
   const locationBadgeClass = location === 'TW'
     ? 'bg-[#FFDD57] text-brand-navy'
-    : 'bg-brand-pink text-brand-navy';
+    : location === 'EN'
+      ? 'bg-emerald-400 text-brand-navy'
+      : 'bg-brand-pink text-brand-navy';
 
   return (
     <div>
@@ -218,7 +220,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           {tEvents('signUp')}
         </h3>
         <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${locationBadgeClass}`}>
-          📍 {location === 'TW' ? tEvents('taiwan') : tEvents('netherlands')}
+          📍 {location === 'TW' ? tEvents('taiwan') : location === 'NL' ? tEvents('netherlands') : tEvents('english')}
         </span>
       </div>
 

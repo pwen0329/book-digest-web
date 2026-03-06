@@ -210,14 +210,44 @@ test.describe('Submit API', () => {
 // ------------------------------------------------------------------
 test.describe('Submit slot status API', () => {
   test('should return slot status for valid location', async ({ request }) => {
-    const response = await request.get('/api/submit?loc=TW');
+    const response = await request.get('/api/submit?loc=EN');
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body.ok).toBe(true);
-    expect(body.location).toBe('TW');
+    expect(body.location).toBe('EN');
     expect(typeof body.enabled).toBe('boolean');
     expect(body.enabled).toBe(true);
     expect(body.open).toBe(true);
+    expect(body.reason).toBe('ok');
+  });
+
+  test('should expose configured TW capacity window and max', async ({ request }) => {
+    const response = await request.get('/api/submit?loc=TW');
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+
+    expect(body.location).toBe('TW');
+    expect(body.enabled).toBe(true);
+    expect(body.open).toBe(true);
+    expect(body.full).toBe(false);
+    expect(body.max).toBe(8);
+    expect(body.startAt).toBe('2026-03-06T00:00:00.000Z');
+    expect(body.endAt).toBe('2026-03-29T23:59:59.000Z');
+    expect(body.reason).toBe('ok');
+  });
+
+  test('should expose configured EN capacity window and max', async ({ request }) => {
+    const response = await request.get('/api/submit?loc=EN');
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+
+    expect(body.location).toBe('EN');
+    expect(body.enabled).toBe(true);
+    expect(body.open).toBe(true);
+    expect(body.full).toBe(false);
+    expect(body.max).toBe(14);
+    expect(body.startAt).toBe('2026-03-06T00:00:00.000Z');
+    expect(body.endAt).toBe('2026-04-11T23:59:59.000Z');
     expect(body.reason).toBe('ok');
   });
 
@@ -239,17 +269,20 @@ test.describe('Submit slot status API', () => {
 // ------------------------------------------------------------------
 // Submit capacity guardrails
 // ------------------------------------------------------------------
-// Serial ensures these mutating tests never race against each other or the
-// slot-status tests above that read TW state.
+// Serial ensures these mutating tests never race against each other.
 test.describe.serial('Submit capacity guardrails', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'Shared-state capacity tests run once to avoid cross-browser counter races.');
+
   test.beforeEach(async ({ request }) => {
-    // Reset TW state before each capacity test so we start from a clean slate.
-    await request.delete('/api/submit?loc=TW');
+    // Reset mutable locations before each capacity test so we start from a clean slate.
+    await request.delete('/api/submit?loc=TW&forceFull=0');
+    await request.delete('/api/submit?loc=EN&forceFull=0');
   });
 
   test.afterAll(async ({ request }) => {
-    // Leave TW in clean state after the entire describe block.
-    await request.delete('/api/submit?loc=TW');
+    // Leave mutable locations in clean state after the entire describe block.
+    await request.delete('/api/submit?loc=TW&forceFull=0');
+    await request.delete('/api/submit?loc=EN&forceFull=0');
   });
   test('should block submission when slot is closed', async ({ request }) => {
     const response = await request.post('/api/submit?loc=NL', {
@@ -273,7 +306,7 @@ test.describe.serial('Submit capacity guardrails', () => {
 
   test('should block submission when slot is full', async ({ request }) => {
     // Set TW max to 1 via test-only DELETE reset endpoint, then exhaust it.
-    const resetRes = await request.delete('/api/submit?loc=TW&tempMax=1');
+    const resetRes = await request.delete('/api/submit?loc=TW&tempMax=1&forceFull=0');
     expect(resetRes.status()).toBe(200);
 
     const validPayload = {
@@ -298,6 +331,86 @@ test.describe.serial('Submit capacity guardrails', () => {
     expect(second.status()).toBe(409);
     const body = await second.json();
     expect(body.reason).toBe('full');
+  });
+
+  test('should close TW registration after 8 successful submissions', async ({ request }) => {
+    const ip = () => ({ 'x-forwarded-for': `198.51.100.${Math.floor(Math.random() * 200) + 1}` });
+
+    for (let index = 0; index < 8; index += 1) {
+      const response = await request.post('/api/submit?loc=TW', {
+        headers: ip(),
+        data: {
+          firstName: 'Taiwan',
+          lastName: `Reader${index}`,
+          age: 25,
+          profession: 'Engineer',
+          email: `tw-limit-${Date.now()}-${index}@example.com`,
+          referral: 'Instagram',
+        },
+      });
+      expect(response.status()).toBe(201);
+    }
+
+    const statusRes = await request.get('/api/submit?loc=TW');
+    expect(statusRes.status()).toBe(200);
+    const status = await statusRes.json();
+    expect(status.full).toBe(true);
+    expect(status.max).toBe(8);
+    expect(status.reason).toBe('full');
+
+    const blocked = await request.post('/api/submit?loc=TW', {
+      headers: ip(),
+      data: {
+        firstName: 'Taiwan',
+        lastName: 'Overflow',
+        age: 25,
+        profession: 'Engineer',
+        email: `tw-limit-overflow-${Date.now()}@example.com`,
+        referral: 'Instagram',
+      },
+    });
+    expect(blocked.status()).toBe(409);
+    await expect(blocked.json()).resolves.toMatchObject({ reason: 'full' });
+  });
+
+  test('should close EN registration after 14 successful submissions', async ({ request }) => {
+    const ip = () => ({ 'x-forwarded-for': `198.51.100.${Math.floor(Math.random() * 200) + 1}` });
+
+    for (let index = 0; index < 14; index += 1) {
+      const response = await request.post('/api/submit?loc=EN', {
+        headers: ip(),
+        data: {
+          firstName: 'English',
+          lastName: `Reader${index}`,
+          age: 25,
+          profession: 'Engineer',
+          email: `en-limit-${Date.now()}-${index}@example.com`,
+          referral: 'Instagram',
+        },
+      });
+      expect(response.status()).toBe(201);
+    }
+
+    const statusRes = await request.get('/api/submit?loc=EN');
+    expect(statusRes.status()).toBe(200);
+    const status = await statusRes.json();
+    expect(status.full).toBe(true);
+    expect(status.max).toBe(14);
+    expect(status.reason).toBe('full');
+
+    const blocked = await request.post('/api/submit?loc=EN', {
+      headers: ip(),
+      data: {
+        firstName: 'English',
+        lastName: 'Overflow',
+        age: 25,
+        profession: 'Engineer',
+        email: `en-limit-overflow-${Date.now()}@example.com`,
+        referral: 'Instagram',
+      },
+    });
+    expect(blocked.status()).toBe(409);
+    await expect(blocked.json()).resolves.toMatchObject({ reason: 'full' });
   });
 
   test('should block status and submission when forceFull is enabled', async ({ request }) => {
@@ -329,7 +442,7 @@ test.describe.serial('Submit capacity guardrails', () => {
     expect(postBody.reason).toBe('full');
 
     // Reset clears forceFull; subsequent GET should show not-full.
-    await request.delete('/api/submit?loc=TW');
+    await request.delete('/api/submit?loc=TW&forceFull=0');
     const afterRes = await request.get('/api/submit?loc=TW');
     const afterStatus = await afterRes.json();
     expect(afterStatus.full).toBe(false);
