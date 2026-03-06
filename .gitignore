@@ -3,6 +3,7 @@
 
 # Build directory
 /.next/
+/.next-local/
 
 # Production build
 /out/

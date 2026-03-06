@@ -363,8 +363,8 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           </div>
         </div>
 
-        {/* Turnstile CAPTCHA */}
-        {!disabled && <Turnstile onVerify={handleTurnstileVerify} onExpire={handleTurnstileExpire} />}
+        {/* Turnstile CAPTCHA — only in direct submission mode, not wizard mode */}
+        {!disabled && !onComplete && <Turnstile onVerify={handleTurnstileVerify} onExpire={handleTurnstileExpire} />}
 
         {/* Submit */}
         <div className="pt-4">

@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   }
 
   const status = await getCapacityStatus(loc);
-  return NextResponse.json({ ok: true, location: loc, ...status }, { status: 200 });
+  return NextResponse.json({ ok: true, location: loc, ...status }, { status: 200, headers: { 'Cache-Control': 'public, max-age=30, stale-while-revalidate=60' } });
 }
 
 // DELETE /api/submit?loc=TW|NL&tempMax=N
@@ -54,6 +54,7 @@ export async function DELETE(req: NextRequest) {
 // POST /api/submit?loc=TW|NL
 export async function POST(req: NextRequest) {
   let reservedLoc: Location | null = null;
+  let tallySucceeded = false;
   try {
     // Rate limiting
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
@@ -130,6 +131,22 @@ export async function POST(req: NextRequest) {
     if (payload.bankAccount && !/^\d{5}$/.test(payload.bankAccount)) {
       return NextResponse.json({ error: 'Invalid bank account' }, { status: 400 });
     }
+    // Field length limits (mirror client-side Zod schema)
+    if (firstName.length > 60 || lastName.length > 60) {
+      return NextResponse.json({ error: 'Name too long' }, { status: 400 });
+    }
+    if (payload.profession.length > 120) {
+      return NextResponse.json({ error: 'Profession too long' }, { status: 400 });
+    }
+    if (payload.email.length > 254) {
+      return NextResponse.json({ error: 'Email too long' }, { status: 400 });
+    }
+    if (payload.instagram && payload.instagram.length > 60) {
+      return NextResponse.json({ error: 'Instagram handle too long' }, { status: 400 });
+    }
+    if (payload.referralOther && payload.referralOther.length > 200) {
+      return NextResponse.json({ error: 'Referral note too long' }, { status: 400 });
+    }
 
     const reservation = await reserveCapacity(loc);
     if (!reservation.allowed) {
@@ -139,8 +156,7 @@ export async function POST(req: NextRequest) {
       );
     }
     reservedLoc = loc;
-
-    // 1) Optional Tally forward. Use per-location endpoint if provided.
+    // Use per-location endpoint if provided.
     const tallyTW = process.env.TALLY_ENDPOINT_TW;
     const tallyNL = process.env.TALLY_ENDPOINT_NL;
     const tallyEndpoint = payload.location === 'TW' ? tallyTW : tallyNL;
@@ -182,6 +198,7 @@ export async function POST(req: NextRequest) {
         await releaseCapacity(loc);
         return NextResponse.json({ error: 'Upstream processor error' }, { status: 502 });
       }
+      tallySucceeded = true;
     }
 
     // 2) Optional Notion save (server-side) based on env flag
@@ -189,7 +206,7 @@ export async function POST(req: NextRequest) {
     const dbId = process.env.NOTION_DB_ID;
     const token = process.env.NOTION_TOKEN;
 
-    console.info('[api/submit] routing', {
+    console.debug('[api/submit] routing', {
       loc,
       hasTallyEndpoint: Boolean(tallyEndpoint),
       saveAlsoToNotion,
@@ -211,7 +228,7 @@ export async function POST(req: NextRequest) {
     // If Tally forward succeeded (and we didn't save to Notion), return success
     return NextResponse.json({ ok: true, forwarded: true }, { status: 201 });
   } catch (err) {
-    if (reservedLoc) {
+    if (reservedLoc && !tallySucceeded) {
       await releaseCapacity(reservedLoc);
     }
     console.error('Submit error', err);

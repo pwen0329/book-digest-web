@@ -210,9 +210,9 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
         {/* Online English Book Club */}
         <div className="py-12">
           <EventSection
-            image="/images/elements/poster_202601_en_online.webp"
+            image="/images/elements/poster_202604_en_online.webp"
             title={t('onlineTitle')}
-            description={t.rich('onlineDesc', { b: (chunks) => <strong className="font-bold text-base">{chunks}</strong> })}
+            description={t.rich('onlineDesc', { level: (chunks) => <strong className="font-bold text-base block mt-3">{chunks}</strong> })}
             signupUrl={`/${locale}/engclub`}
             signupText={t('signUp')}
             imagePosition="left"
