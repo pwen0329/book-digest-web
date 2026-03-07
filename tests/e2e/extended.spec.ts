@@ -10,20 +10,52 @@ test.describe('Signup form validation', () => {
     await page.goto('/en/signup');
     // Submit the form without filling in anything
     await page.click('button[type="submit"]');
-    // Should show first name validation error
-    await expect(page.locator('#firstName-error')).toBeVisible();
+    // Should show name validation error
+    await expect(page.locator('#name-error')).toBeVisible();
   });
 
   test('should reject invalid age', async ({ page }) => {
     await page.goto('/en/signup');
-    await page.fill('#firstName', 'Test');
-    await page.fill('#lastName', 'User');
+    await page.fill('#name', 'Test User');
     await page.fill('#age', '10');
     await page.fill('#profession', 'Engineer');
     await page.fill('#email', 'test@example.com');
     await page.click('button[type="submit"]');
     // Age error should appear
     await expect(page.locator('#age-error')).toBeVisible();
+  });
+});
+
+// ------------------------------------------------------------------
+// Signup form copy regression
+// ------------------------------------------------------------------
+test.describe('Signup form copy', () => {
+  test('should show the restored English field copy on the TW signup page', async ({ page }) => {
+    await page.goto('/en/signup?location=TW');
+    await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
+    await expect(page.getByLabel('How old are you?')).toBeVisible();
+    await expect(page.getByLabel('What do you do?')).toBeVisible();
+  });
+
+  test('should show the restored Chinese field copy on the TW signup page', async ({ page }) => {
+    await page.goto('/zh/signup?location=TW');
+    await expect(page.getByLabel('嗨，怎麼稱呼您？')).toBeVisible();
+    await expect(page.getByLabel('今年幾歲～')).toBeVisible();
+    await expect(page.getByLabel('你做什麼工作呢？')).toBeVisible();
+  });
+
+  test('should reuse the restored English field copy on the English book club page', async ({ page }) => {
+    await page.goto('/en/engclub');
+    await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
+    await expect(page.getByLabel('How old are you?')).toBeVisible();
+    await expect(page.getByLabel('What do you do?')).toBeVisible();
+  });
+
+  test('should reuse the restored Chinese field copy on the English book club page', async ({ page }) => {
+    await page.goto('/zh/engclub');
+    await expect(page.getByLabel('嗨，怎麼稱呼您？')).toBeVisible();
+    await expect(page.getByLabel('今年幾歲～')).toBeVisible();
+    await expect(page.getByLabel('你做什麼工作呢？')).toBeVisible();
   });
 });
 

@@ -110,9 +110,7 @@ function SignupContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           location: activeLocation,
-          firstName: formValues.firstName,
-          lastName: formValues.lastName,
-          name: `${formValues.firstName} ${formValues.lastName}`.trim(),
+          name: formValues.name,
           age: Number(formValues.age),
           profession: formValues.profession,
           email: formValues.email,

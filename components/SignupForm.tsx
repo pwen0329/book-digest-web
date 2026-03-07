@@ -15,8 +15,7 @@ export type SignupFormProps = {
 };
 
 export type SignupFormValues = {
-  firstName: string;
-  lastName: string;
+  name: string;
   age: string;
   profession: string;
   email: string;
@@ -28,8 +27,7 @@ export type SignupFormValues = {
 
 // Move schema to module level for better performance (only created once)
 const baseSchema = z.object({
-  firstName: z.string().min(1, 'First name is required').max(60),
-  lastName: z.string().min(1, 'Last name is required').max(60),
+  name: z.string().min(1, 'Name is required').max(100),
   age: z
     .string()
     .transform((v) => (v.trim() === '' ? NaN : Number(v)))
@@ -80,14 +78,13 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
   const storageKey = `signup-form-${location}`;
 
   const [values, setValues] = useState<SignupFormValues>(() => {
-    if (typeof window === 'undefined') return { firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
+    if (typeof window === 'undefined') return { name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
     try {
       const saved = sessionStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved) as Partial<SignupFormValues>;
         return {
-          firstName: parsed.firstName || '',
-          lastName: parsed.lastName || '',
+          name: parsed.name || '',
           age: parsed.age || '',
           profession: parsed.profession || '',
           email: parsed.email || '',
@@ -98,7 +95,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
         };
       }
     } catch { /* ignore */ }
-    return { firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
+    return { name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
   });
 
   // Persist form values to sessionStorage on change (exclude honeypot)
@@ -142,7 +139,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
       setSuccess('ok');
       setSubmitting(false);
       setValues({
-        firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
+        name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
       });
       try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
       return;
@@ -172,9 +169,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             location,
-            firstName: values.firstName,
-            lastName: values.lastName,
-            name: `${values.firstName} ${values.lastName}`.trim(),
+            name: values.name,
             age: Number(values.age),
             profession: values.profession,
             email: values.email,
@@ -192,7 +187,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
 
       setSuccess('ok');
       setValues({
-        firstName: '', lastName: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
+        name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
       });
       try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
     } catch {
@@ -248,34 +243,19 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
         <input type="text" name="website" value={values.website} onChange={onChange} className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-          {/* First name */}
+          {/* Name */}
           <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-white mb-2">{t('firstNameLabel')}</label>
+            <label htmlFor="name" className="block text-sm font-medium text-white mb-2">{t('nameLabel')}</label>
             <input
-              id="firstName" name="firstName" value={values.firstName} onChange={onChange}
+              id="name" name="name" value={values.name} onChange={onChange}
               readOnly={disabled}
               disabled={disabled}
-              className={inputClass(!!errors.firstName)}
-              autoComplete="given-name"
-              aria-invalid={errors.firstName ? true : undefined}
-              aria-describedby={errors.firstName ? 'firstName-error' : undefined}
+              className={inputClass(!!errors.name)}
+              autoComplete="name"
+              aria-invalid={errors.name ? true : undefined}
+              aria-describedby={errors.name ? 'name-error' : undefined}
             />
-            {errors.firstName && <p id="firstName-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.firstName}</p>}
-          </div>
-
-          {/* Last name */}
-          <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-white mb-2">{t('lastNameLabel')}</label>
-            <input
-              id="lastName" name="lastName" value={values.lastName} onChange={onChange}
-              readOnly={disabled}
-              disabled={disabled}
-              className={inputClass(!!errors.lastName)}
-              autoComplete="family-name"
-              aria-invalid={errors.lastName ? true : undefined}
-              aria-describedby={errors.lastName ? 'lastName-error' : undefined}
-            />
-            {errors.lastName && <p id="lastName-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.lastName}</p>}
+            {errors.name && <p id="name-error" className="mt-1 text-xs text-red-300" aria-live="polite">{errors.name}</p>}
           </div>
 
           {/* Age */}
