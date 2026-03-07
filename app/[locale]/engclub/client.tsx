@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import SignupForm, { SignupFormValues } from '@/components/SignupForm';
 import Turnstile from '@/components/Turnstile';
+import ActivitySignupTabs from '@/components/ActivitySignupTabs';
 import { BLUR_POSTER } from '@/lib/constants';
 
 type SlotStatus = {
@@ -136,6 +137,7 @@ function EngClubContent() {
             {t('backToEvents')}
           </Link>
         </div>
+        <ActivitySignupTabs activeTab="EN" />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
           {/* Poster */}

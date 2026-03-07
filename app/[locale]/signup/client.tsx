@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import SignupForm, { SignupFormValues } from '@/components/SignupForm';
 import Turnstile from '@/components/Turnstile';
+import ActivitySignupTabs from '@/components/ActivitySignupTabs';
 import { BLUR_POSTER } from '@/lib/constants';
 
 type SlotStatus = {
@@ -152,6 +153,7 @@ function SignupContent() {
             {t('backToEvents')}
           </Link>
         </div>
+        <ActivitySignupTabs activeTab={activeLocation} />
         {!locationLocked && step === 0 && (
           <>
             <div className="mb-8">
@@ -162,37 +164,11 @@ function SignupContent() {
                 {t('chooseLocation')}
               </p>
             </div>
-
-            {/* 地點切換 */}
-            <div className="mb-8">
-              <div className="inline-flex bg-white/10 rounded-full p-1">
-                <button
-                  onClick={() => setActiveLocation('TW')}
-                  className={`px-5 py-2 rounded-full font-medium transition-all text-sm ${
-                    activeLocation === 'TW'
-                      ? 'bg-brand-pink text-brand-navy'
-                      : 'text-white/80 hover:text-white'
-                  }`}
-                >
-                  {t('taiwan')}
-                </button>
-                <button
-                  onClick={() => setActiveLocation('NL')}
-                  className={`px-5 py-2 rounded-full font-medium transition-all text-sm ${
-                    activeLocation === 'NL'
-                      ? 'bg-brand-pink text-brand-navy'
-                      : 'text-white/80 hover:text-white'
-                  }`}
-                >
-                  {t('netherlands')}
-                </button>
-              </div>
-            </div>
           </>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
-          <div className="flex justify-center lg:justify-end">
+          <div className={`flex justify-center ${isNlComingSoon ? 'order-2 lg:order-2 lg:justify-end' : 'order-1 lg:order-1 lg:justify-end'}`}>
             <div className="relative w-full max-w-[480px] lg:w-[480px] h-auto rounded-xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
               <Image
                 src={activeLocation === 'TW' ? '/images/elements/poster_202603_taiwan.webp' : '/images/elements/AD-15.webp'}
@@ -206,7 +182,7 @@ function SignupContent() {
             </div>
           </div>
 
-          <div className="flex justify-center lg:justify-start">
+          <div className={`flex justify-center ${isNlComingSoon ? 'order-1 lg:order-1 lg:justify-start' : 'order-2 lg:order-2 lg:justify-start'}`}>
             <div className={isNlComingSoon ? "flex flex-col justify-start pt-10" : `w-full max-w-[700px] rounded-2xl p-6 lg:p-8 transition-colors duration-300 ${formBgClass}`}>
               {isNlComingSoon ? (
                 <div className="space-y-6">

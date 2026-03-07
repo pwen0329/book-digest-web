@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import Image from 'next/image';
 import Link from 'next/link';
+import ActivitySignupTabs from '@/components/ActivitySignupTabs';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { BLUR_POSTER } from '@/lib/constants';
 import { getLocaleAlternates } from '@/lib/seo';
@@ -37,12 +38,12 @@ export default async function DetoxPage({ params }: { params: Promise<{ locale: 
             {t('backToEvents')}
           </Link>
         </div>
+        <ActivitySignupTabs activeTab="DETOX" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
           {/* Left Copy */}
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold font-outfit">{t('detoxPage.leftTitle')}</h1>
-              <p className="mt-2 text-brand-pink/90 font-outfit">{t('detoxPage.leftSubtitle')}</p>
             </div>
             <p className="font-bold text-white text-lg font-outfit">Coming soon…</p>
           </div>

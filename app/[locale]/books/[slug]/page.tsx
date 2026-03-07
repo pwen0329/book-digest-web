@@ -130,10 +130,10 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
       />
       {/* Hero Section */}
       <header className="relative bg-gradient-to-b from-brand-navy to-brand-blue">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-12 pb-24 md:pt-16 md:pb-32">
-          <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-10 pb-14 md:pt-12 md:pb-20">
+          <div className="flex flex-col gap-8 items-center">
             {/* Book Cover - Optimized image loading */}
-            <div className="flex-shrink-0 flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar">
+            <div className="flex-shrink-0 flex justify-center gap-4 overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar">
               {(book.displayCoverUrls && book.displayCoverUrls.length > 0
                 ? book.displayCoverUrls
                 : [book.displayCoverUrl || book.coverUrl || '/images/placeholder-cover.svg']
@@ -154,15 +154,15 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
             </div>
 
             {/* Book Info */}
-            <div className="text-center md:text-left text-white">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+            <div className="text-center text-white max-w-3xl mx-auto">
+              <h1 className="text-center text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
                 {book.displayTitle}
               </h1>
               <p className="mt-3 text-lg md:text-xl text-white/80">
                 {t('byAuthor')} {book.displayAuthor}
               </p>
               {book.tags && book.tags.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
                   {book.tags.map((tag) => (
                     <span
                       key={tag}
@@ -187,7 +187,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
       </header>
 
       {/* Main Content - clean white background */}
-      <div className="mx-auto max-w-6xl py-12 px-3 sm:px-6">
+      <div className="mx-auto max-w-6xl py-8 px-3 sm:px-6">
         <div className="bg-white rounded-2xl p-4 sm:p-6 md:p-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Article Content */}

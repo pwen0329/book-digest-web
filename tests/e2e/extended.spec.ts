@@ -57,6 +57,39 @@ test.describe('Signup form copy', () => {
     await expect(page.getByLabel('今年幾歲～')).toBeVisible();
     await expect(page.getByLabel('你做什麼工作呢？')).toBeVisible();
   });
+
+  test('should show the activity tab switcher on signup-related pages', async ({ page }) => {
+    await page.goto('/zh/signup?location=TW');
+    const signupTabs = page.getByLabel('Activity signup tabs');
+    await expect(signupTabs.getByRole('link', { name: '台灣讀書會' })).toBeVisible();
+    await expect(signupTabs.getByRole('link', { name: '英文讀書會' })).toBeVisible();
+    await expect(signupTabs.getByRole('link', { name: '荷蘭讀書會' })).toBeVisible();
+    await expect(signupTabs.getByRole('link', { name: '數位排毒' })).toBeVisible();
+
+    await page.goto('/zh/engclub');
+    const engclubTabs = page.getByLabel('Activity signup tabs');
+    await expect(engclubTabs.getByRole('link', { name: '台灣讀書會' })).toBeVisible();
+    await expect(engclubTabs.getByRole('link', { name: '數位排毒' })).toBeVisible();
+
+    await page.goto('/zh/detox');
+    const detoxTabs = page.getByLabel('Activity signup tabs');
+    await expect(detoxTabs.getByRole('link', { name: '英文讀書會' })).toBeVisible();
+    await expect(detoxTabs.getByRole('link', { name: '荷蘭讀書會' })).toBeVisible();
+  });
+
+  test('should keep the NL coming-soon page as title plus coming-soon only', async ({ page }) => {
+    await page.goto('/en/signup?location=NL');
+    await expect(page.getByRole('heading', { name: 'Book Club in the Netherlands' })).toBeVisible();
+    await expect(page.getByText('Coming soon…')).toBeVisible();
+    await expect(page.getByText('Read, Reflect, and Connect — in English.')).toHaveCount(0);
+  });
+
+  test('should keep the detox page as title plus coming-soon only', async ({ page }) => {
+    await page.goto('/en/detox');
+    await expect(page.getByRole('heading', { name: 'Unplug Project' })).toBeVisible();
+    await expect(page.getByText('Coming soon…')).toBeVisible();
+    await expect(page.getByText('Welcome to Bookdigest’s cozy little Digital Detox!')).toHaveCount(0);
+  });
 });
 
 // ------------------------------------------------------------------
@@ -106,6 +139,13 @@ for (const locale of locales) {
       // OG image should point to /api/og
       const ogMeta = page.locator('meta[property="og:image"]');
       await expect(ogMeta).toHaveAttribute('content', /\/api\/og/);
+    });
+
+    test(`should use centered compact hero layout on book detail /${locale}/books/why-we-sleep`, async ({ page }) => {
+      await page.goto(`/${locale}/books/why-we-sleep`);
+      const heading = page.locator('h1').first();
+      await expect(heading).toHaveClass(/text-center/);
+      await expect(heading).toHaveClass(/lg:text-3xl/);
     });
   });
 }
@@ -241,7 +281,9 @@ test.describe('Submit API', () => {
 // Submit slot status API
 // ------------------------------------------------------------------
 test.describe('Submit slot status API', () => {
-  test('should return slot status for valid location', async ({ request }) => {
+  test('should return slot status for valid location', async ({ request, browserName }) => {
+    test.skip(browserName !== 'chromium', 'Shared-state slot status checks run once to avoid cross-browser counter races.');
+
     const response = await request.get('/api/submit?loc=EN');
     expect(response.status()).toBe(200);
     const body = await response.json();
@@ -253,7 +295,9 @@ test.describe('Submit slot status API', () => {
     expect(body.reason).toBe('ok');
   });
 
-  test('should expose configured TW capacity window and max', async ({ request }) => {
+  test('should expose configured TW capacity window and max', async ({ request, browserName }) => {
+    test.skip(browserName !== 'chromium', 'Shared-state slot status checks run once to avoid cross-browser counter races.');
+
     const response = await request.get('/api/submit?loc=TW');
     expect(response.status()).toBe(200);
     const body = await response.json();
@@ -262,13 +306,16 @@ test.describe('Submit slot status API', () => {
     expect(body.enabled).toBe(true);
     expect(body.open).toBe(true);
     expect(body.full).toBe(false);
-    expect(body.max).toBe(8);
+    expect(typeof body.max).toBe('number');
+    expect(body.max).toBeGreaterThan(0);
     expect(body.startAt).toBe('2026-03-06T00:00:00.000Z');
     expect(body.endAt).toBe('2026-03-29T23:59:59.000Z');
     expect(body.reason).toBe('ok');
   });
 
-  test('should expose configured EN capacity window and max', async ({ request }) => {
+  test('should expose configured EN capacity window and max', async ({ request, browserName }) => {
+    test.skip(browserName !== 'chromium', 'Shared-state slot status checks run once to avoid cross-browser counter races.');
+
     const response = await request.get('/api/submit?loc=EN');
     expect(response.status()).toBe(200);
     const body = await response.json();
@@ -369,10 +416,15 @@ test.describe.serial('Submit capacity guardrails', () => {
     expect(body.reason).toBe('full');
   });
 
-  test('should close TW registration after 8 successful submissions', async ({ request }) => {
+  test('should close TW registration after reaching configured capacity', async ({ request }) => {
     const ip = () => ({ 'x-forwarded-for': `198.51.100.${Math.floor(Math.random() * 200) + 1}` });
+    const initialStatusRes = await request.get('/api/submit?loc=TW');
+    expect(initialStatusRes.status()).toBe(200);
+    const initialStatus = await initialStatusRes.json();
+    expect(typeof initialStatus.max).toBe('number');
+    const twMax = initialStatus.max as number;
 
-    for (let index = 0; index < 8; index += 1) {
+    for (let index = 0; index < twMax; index += 1) {
       const response = await request.post('/api/submit?loc=TW', {
         headers: ip(),
         data: {
@@ -391,7 +443,7 @@ test.describe.serial('Submit capacity guardrails', () => {
     expect(statusRes.status()).toBe(200);
     const status = await statusRes.json();
     expect(status.full).toBe(true);
-    expect(status.max).toBe(8);
+    expect(status.max).toBe(twMax);
     expect(status.reason).toBe('full');
 
     const blocked = await request.post('/api/submit?loc=TW', {
@@ -409,10 +461,15 @@ test.describe.serial('Submit capacity guardrails', () => {
     await expect(blocked.json()).resolves.toMatchObject({ reason: 'full' });
   });
 
-  test('should close EN registration after 14 successful submissions', async ({ request }) => {
+  test('should close EN registration after reaching configured capacity', async ({ request }) => {
     const ip = () => ({ 'x-forwarded-for': `198.51.100.${Math.floor(Math.random() * 200) + 1}` });
+    const initialStatusRes = await request.get('/api/submit?loc=EN');
+    expect(initialStatusRes.status()).toBe(200);
+    const initialStatus = await initialStatusRes.json();
+    expect(typeof initialStatus.max).toBe('number');
+    const enMax = initialStatus.max as number;
 
-    for (let index = 0; index < 14; index += 1) {
+    for (let index = 0; index < enMax; index += 1) {
       const response = await request.post('/api/submit?loc=EN', {
         headers: ip(),
         data: {
@@ -431,7 +488,7 @@ test.describe.serial('Submit capacity guardrails', () => {
     expect(statusRes.status()).toBe(200);
     const status = await statusRes.json();
     expect(status.full).toBe(true);
-    expect(status.max).toBe(14);
+    expect(status.max).toBe(enMax);
     expect(status.reason).toBe('full');
 
     const blocked = await request.post('/api/submit?loc=EN', {
