@@ -183,11 +183,11 @@ function SignupContent() {
           </div>
 
           <div className={`flex justify-center ${isNlComingSoon ? 'order-1 lg:order-1 lg:justify-start' : 'order-2 lg:order-2 lg:justify-start'}`}>
-            <div className={isNlComingSoon ? "flex flex-col justify-start pt-10" : `w-full max-w-[700px] rounded-2xl p-6 lg:p-8 transition-colors duration-300 ${formBgClass}`}>
+            <div className={isNlComingSoon ? 'flex w-full max-w-[700px] flex-col justify-start py-6 lg:py-10' : `w-full max-w-[700px] rounded-2xl p-6 lg:p-8 transition-colors duration-300 ${formBgClass}`}>
               {isNlComingSoon ? (
                 <div className="space-y-6">
                   <div>
-                    <h1 className="text-3xl md:text-4xl font-bold font-outfit">{t('nlTitle')}</h1>
+                    <h1 className="text-3xl md:text-4xl font-bold font-outfit leading-tight">{t('nlTitle')}</h1>
                   </div>
                   <p className="font-bold text-white text-lg font-outfit">Coming soon…</p>
                 </div>

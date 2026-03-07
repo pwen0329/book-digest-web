@@ -39,24 +39,27 @@ export default async function DetoxPage({ params }: { params: Promise<{ locale: 
           </Link>
         </div>
         <ActivitySignupTabs activeTab="DETOX" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
           {/* Left Copy */}
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold font-outfit">{t('detoxPage.leftTitle')}</h1>
+          <div className="order-1 flex justify-center lg:justify-start">
+            <div className="flex w-full max-w-[700px] flex-col justify-start py-6 lg:py-10">
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-bold font-outfit leading-tight">{t('detoxPage.leftTitle')}</h1>
+                </div>
+                <p className="font-bold text-white text-lg font-outfit">Coming soon…</p>
+              </div>
             </div>
-            <p className="font-bold text-white text-lg font-outfit">Coming soon…</p>
           </div>
 
-          {/* Right Copy + Poster */}
-          <div className="space-y-6">
-            <div />
-            <div className="relative w-full max-w-[280px] sm:max-w-[320px] lg:max-w-[420px] mx-auto rounded-2xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
+          {/* Right Poster */}
+          <div className="order-2 flex justify-center lg:justify-end">
+            <div className="relative w-full max-w-[480px] lg:w-[480px] h-auto rounded-xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
               <Image
                 src="/images/elements/AD-17.webp"
                 alt={t('detoxTitle')}
                 fill
-                sizes="(max-width: 1024px) 100vw, 50vw"
+                sizes="(max-width: 1024px) 420px, 50vw"
                 className="object-cover"
                 loading="lazy"
                 placeholder="blur"

@@ -131,9 +131,9 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
       {/* Hero Section */}
       <header className="relative bg-gradient-to-b from-brand-navy to-brand-blue">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-10 pb-14 md:pt-12 md:pb-20">
-          <div className="flex flex-col gap-8 items-center">
+          <div className="mx-auto flex max-w-5xl flex-col gap-8 items-center md:flex-row md:items-center md:justify-center">
             {/* Book Cover - Optimized image loading */}
-            <div className="flex-shrink-0 flex justify-center gap-4 overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar">
+            <div className="flex-shrink-0 flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar md:justify-start">
               {(book.displayCoverUrls && book.displayCoverUrls.length > 0
                 ? book.displayCoverUrls
                 : [book.displayCoverUrl || book.coverUrl || '/images/placeholder-cover.svg']
@@ -154,15 +154,15 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
             </div>
 
             {/* Book Info */}
-            <div className="text-center text-white max-w-3xl mx-auto">
-              <h1 className="text-center text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
+            <div className="max-w-2xl text-center text-white md:text-left">
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
                 {book.displayTitle}
               </h1>
               <p className="mt-3 text-lg md:text-xl text-white/80">
                 {t('byAuthor')} {book.displayAuthor}
               </p>
               {book.tags && book.tags.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
                   {book.tags.map((tag) => (
                     <span
                       key={tag}

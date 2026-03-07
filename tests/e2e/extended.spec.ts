@@ -141,11 +141,11 @@ for (const locale of locales) {
       await expect(ogMeta).toHaveAttribute('content', /\/api\/og/);
     });
 
-    test(`should use centered compact hero layout on book detail /${locale}/books/why-we-sleep`, async ({ page }) => {
+    test(`should use the restored book hero layout on book detail /${locale}/books/why-we-sleep`, async ({ page }) => {
       await page.goto(`/${locale}/books/why-we-sleep`);
       const heading = page.locator('h1').first();
-      await expect(heading).toHaveClass(/text-center/);
       await expect(heading).toHaveClass(/lg:text-3xl/);
+      await expect(heading.locator('..')).toHaveClass(/md:text-left/);
     });
   });
 }
