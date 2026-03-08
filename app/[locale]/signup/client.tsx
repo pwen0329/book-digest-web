@@ -1,6 +1,5 @@
 'use client';
-import { useState, useEffect, Suspense, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
@@ -19,12 +18,11 @@ type SlotStatus = {
   reason: 'ok' | 'closed' | 'full';
 };
 
-function SignupContent() {
+function SignupContent({ initialLocation }: { initialLocation?: string }) {
   const t = useTranslations('events');
   const tSignup = useTranslations('signupFlow');
   const locale = useLocale();
-  const searchParams = useSearchParams();
-  const [activeLocation, setActiveLocation] = useState<'TW' | 'NL'>('TW');
+  const activeLocation: 'TW' | 'NL' = initialLocation === 'NL' ? 'NL' : 'TW';
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [formValues, setFormValues] = useState<SignupFormValues | null>(null);
   const [bankLast5, setBankLast5] = useState('');
@@ -43,15 +41,7 @@ function SignupContent() {
     setTurnstileToken(null);
   }, []);
 
-  // 保留舊版：從 URL 讀取地點參數
-  useEffect(() => {
-    const loc = searchParams.get('location');
-    if (loc === 'NL' || loc === 'TW') {
-      setActiveLocation(loc);
-    }
-  }, [searchParams]);
-
-  const locationLocked = searchParams.get('location') !== null;
+  const locationLocked = initialLocation === 'TW' || initialLocation === 'NL';
   const isNlComingSoon = activeLocation === 'NL';
   const formBgClass = 'bg-white/20 backdrop-blur-xl rounded-2xl';
 
@@ -306,16 +296,6 @@ function SignupContent() {
   );
 }
 
-export default function SignupClient() {
-  return (
-    <Suspense
-      fallback={
-        <div className="bg-brand-navy text-white min-h-screen flex items-center justify-center">
-          <div className="animate-pulse">Loading...</div>
-        </div>
-      }
-    >
-      <SignupContent />
-    </Suspense>
-  );
+export default function SignupClient({ initialLocation }: { initialLocation?: string }) {
+  return <SignupContent initialLocation={initialLocation} />;
 }

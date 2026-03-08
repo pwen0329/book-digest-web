@@ -10,8 +10,15 @@ export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
 
-export default async function SignupPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function SignupPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ location?: string }>;
+}) {
   const { locale } = await params;
+  const { location } = await searchParams;
   setRequestLocale(locale);
-  return <SignupClient />;
+  return <SignupClient initialLocation={location} />;
 }
