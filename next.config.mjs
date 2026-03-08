@@ -81,6 +81,8 @@ const nextConfig = {
         poll: 1000, // Check for changes every second
         aggregateTimeout: 300, // Delay before rebuilding
       };
+    } else {
+      config.cache = false;
     }
     return config;
   },

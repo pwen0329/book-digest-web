@@ -13,7 +13,7 @@ for (const locale of locales) {
     });
 
     test(`should navigate to about page /${locale}/about`, async ({ page }) => {
-      await page.goto(`/${locale}/about`);
+      await page.goto(`/${locale}/about`, { waitUntil: 'domcontentloaded' });
       await expect(page.locator('h1')).toBeVisible();
     });
 

@@ -1,8 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 
-export const runtime = 'edge';
-
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
 
 export async function GET(req: NextRequest) {
