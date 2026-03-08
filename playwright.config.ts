@@ -62,11 +62,16 @@ export default defineConfig({
     // },
   ],
 
-  // Run a local server automatically in CI to make e2e self-contained.
-  webServer: process.env.CI ? {
+  // Start a local app automatically unless an external BASE_URL is provided.
+  webServer: process.env.BASE_URL ? undefined : process.env.CI ? {
     command: 'ALLOW_CAPACITY_RESET=1 NEXT_DIST_DIR=.next-ci npm run start',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: false,
     timeout: 120 * 1000,
-  } : undefined,
+  } : {
+    command: 'ALLOW_CAPACITY_RESET=1 NEXT_DIST_DIR=.next-e2e npx next dev -H 127.0.0.1 -p 3000',
+    url: 'http://127.0.0.1:3000',
+    reuseExistingServer: true,
+    timeout: 120 * 1000,
+  },
 });

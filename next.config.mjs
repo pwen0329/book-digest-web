@@ -6,6 +6,7 @@ const withNextIntl = createNextIntlPlugin('./lib/i18n.ts');
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
+const sentryEnabled = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_AUTH_TOKEN);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -90,10 +91,12 @@ const nextConfig = {
 
 const baseConfig = withBundleAnalyzer(withNextIntl(nextConfig));
 
-export default withSentryConfig(baseConfig, {
-  // Suppress source map upload warnings when no auth token is set
-  silent: !process.env.SENTRY_AUTH_TOKEN,
-  // Disable source map upload in dev / when no token
-  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
-  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
-});
+export default sentryEnabled
+  ? withSentryConfig(baseConfig, {
+      // Suppress source map upload warnings when no auth token is set
+      silent: !process.env.SENTRY_AUTH_TOKEN,
+      // Disable source map upload in dev / when no token
+      disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+      disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+    })
+  : baseConfig;

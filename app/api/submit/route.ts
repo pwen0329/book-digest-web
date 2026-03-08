@@ -5,6 +5,7 @@ import { cryptoRandomId } from '@/lib/crypto-id';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTesting, _setForceFullForTesting } from '@/lib/signup-capacity';
+import { parseApiReferral } from '@/lib/signup';
 
 type Location = 'TW' | 'NL' | 'EN';
 
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const visitorId = req.headers.get('x-visitor-id') || null;
+    const referral = parseApiReferral(body.referral);
 
     // Honeypot — return silent success if filled by bots
     if (body.website) {
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest) {
       profession: String(body.profession || '').trim(),
       email: String(body.email || '').trim(),
       instagram: body.instagram ? String(body.instagram) : undefined,
-      referral: body.referral as RegistrationInput['referral'],
+      referral: referral || 'Others',
       referralOther: body.referralOther ? String(body.referralOther) : undefined,
       bankAccount: typeof body.bankAccount === 'string' ? String(body.bankAccount).trim() : undefined,
       timestamp: new Date().toISOString(),
@@ -121,7 +123,7 @@ export async function POST(req: NextRequest) {
     if (payload.age < 13 || payload.age > 120) {
       return NextResponse.json({ error: 'Invalid age' }, { status: 400 });
     }
-    if (!['Instagram', 'Facebook', 'Others'].includes(payload.referral)) {
+    if (!referral) {
       return NextResponse.json({ error: 'Invalid referral' }, { status: 400 });
     }
     if (payload.referral === 'Others' && (!payload.referralOther || payload.referralOther.trim().length < 2)) {
@@ -232,7 +234,12 @@ export async function POST(req: NextRequest) {
     if (reservedLoc && !tallySucceeded) {
       await releaseCapacity(reservedLoc);
     }
-    console.error('Submit error', err);
+    console.error('[api/submit] Submit error', {
+      error: err,
+      reservedLoc,
+      tallySucceeded,
+      url: req.url,
+    });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

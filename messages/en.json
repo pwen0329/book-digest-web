@@ -59,7 +59,7 @@
     "onlineTitle": "English Book Club",
     "onlineDesc": "Good Material is Dolly Alderton's witty yet tender new novel. It begins with protagonist Andy's sudden breakup at thirty-five and follows his stumbles through friendship, dating, and identity repair. Critics praise Alderton's sharp humor and her keen observations of thirty-something life; the book delivers both laughs and emotionally resonant turns, and the audiobook production has also been well received. Overall, it's a breezy yet thought-provoking breakup novel—perfect for readers who want something comforting, funny, and emotionally smart.\n\n<level>Recommended level: Intermediate to advanced (B2–C1)</level>",
     "detoxTitle": "Unplug Project",
-    "detoxDesc": "Welcome to Bookdigest’s cozy little Digital Detox!\n\nFor a few hours, we all unplug.\nNo screens, no scrolling, just books, shared food, and brilliant strangers who might become your next favourite conversation.\nWe wanted a space to slow down, where sharing a book feels like sharing a piece of yourself, and being present is the only thing that matters.\nCome unplug with us, your cosy little digital detox awaits.",
+    "detoxDesc": "Heroes, the interference from the Otherworld is too powerful! Those mysterious artifacts known as \"Screens\" are draining our very souls.\nThe Archmage has issued a decree: Before entering this realm, all digital artifacts must be sealed within the \"Space-Time Chest.\"\n\n<label>Quest Objective:</label> Break free from digital mind control and reconnect with your party members.\n<label>Adventure Gear:</label> A pencil, a few dice, and your boundless imagination.\n<label>Custom Characters:</label> Describe your character's appearance, clothing, accessories, class, and whether they possess magical powers. We will 3D print a unique miniature just for you!\n<label>Rewards:</label> Focus +10, Social Skills +5, and a truly legendary memory.",
     "signUp": "Sign Up",
     "digitalDetox": {
       "title": "Digital Detox",
@@ -71,9 +71,9 @@
     },
     "detoxPage": {
       "leftTitle": "Unplug Project",
-      "leftSubtitle": "Welcome to Bookdigest’s cozy little Digital Detox!",
-      "leftBody": "For a few hours, we all unplug.\nNo screens, no scrolling, just books, shared food, and brilliant strangers who might become your next favourite conversation.\nWe wanted a space to slow down, where sharing a book feels like sharing a piece of yourself, and being present is the only thing that matters.\nCome unplug with us, your cosy little digital detox awaits.",
-      "rightBody": "We’re getting everything ready. Can’t wait to share it with you!"
+      "leftSubtitle": "",
+      "leftBody": "Heroes, the interference from the Otherworld is too powerful! Those mysterious artifacts known as \"Screens\" are draining our very souls.\nThe Archmage has issued a decree: Before entering this realm, all digital artifacts must be sealed within the \"Space-Time Chest.\"\n\n<label>Quest Objective:</label> Break free from digital mind control and reconnect with your party members.\n<label>Adventure Gear:</label> A pencil, a few dice, and your boundless imagination.\n<label>Custom Characters:</label> Describe your character's appearance, clothing, accessories, class, and whether they possess magical powers. We will 3D print a unique miniature just for you!\n<label>Rewards:</label> Focus +10, Social Skills +5, and a truly legendary memory.",
+      "rightBody": ""
     },
     "engclubPage": {
       "leftTitle": "English Book Club",
@@ -230,6 +230,7 @@
     "fullBody": "This session has reached its capacity. Please watch our next event announcement.",
     "closedTitle": "Registration Closed",
     "closedBody": "Registration is currently closed for this time slot.",
+    "slotCheckError": "We couldn't check availability right now. Please refresh and try again.",
     "slotStats": "Registered: {count}/{max}",
     "successTitle": "Registration Successful!",
     "successBody": "Thanks for signing up! We'll send a confirmation email one week before the event with the venue and important notes. Please keep an eye on your inbox.",

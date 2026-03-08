@@ -46,7 +46,9 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next-local/types/**/*.ts"
+    ".next-*/types/**/*.ts",
+    ".next-release/types/**/*.ts",
+    ".next-lint/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

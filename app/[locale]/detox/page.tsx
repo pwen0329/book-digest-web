@@ -24,6 +24,8 @@ export default async function DetoxPage({ params }: { params: Promise<{ locale: 
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('events');
+  const subtitle = t('detoxPage.leftSubtitle');
+  const rightBody = t('detoxPage.rightBody');
 
   return (
     <section className="bg-brand-navy text-white min-h-screen">
@@ -47,7 +49,13 @@ export default async function DetoxPage({ params }: { params: Promise<{ locale: 
                 <div>
                   <h1 className="text-3xl md:text-4xl font-bold font-outfit leading-tight">{t('detoxPage.leftTitle')}</h1>
                 </div>
-                <p className="font-bold text-white text-lg font-outfit">Coming soon…</p>
+                {subtitle ? <p className="text-lg text-white font-outfit">{subtitle}</p> : null}
+                <div className="text-white/85 leading-relaxed whitespace-pre-line text-base md:text-lg font-outfit">
+                  {t.rich('detoxPage.leftBody', {
+                    label: (chunks) => <strong className="font-bold text-white">{chunks}</strong>,
+                  })}
+                </div>
+                {rightBody ? <p className="text-white/70 text-base font-outfit">{rightBody}</p> : null}
               </div>
             </div>
           </div>
@@ -56,7 +64,7 @@ export default async function DetoxPage({ params }: { params: Promise<{ locale: 
           <div className="order-2 flex justify-center lg:justify-end">
             <div className="relative w-full max-w-[480px] lg:w-[480px] h-auto rounded-xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
               <Image
-                src="/images/elements/AD-17.webp"
+                src="/images/elements/poster_202604_detox.jpg"
                 alt={t('detoxTitle')}
                 fill
                 sizes="(max-width: 1024px) 420px, 50vw"

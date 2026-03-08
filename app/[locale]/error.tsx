@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import * as Sentry from '@sentry/nextjs';
 
 export default function Error({
   error,
@@ -14,7 +13,11 @@ export default function Error({
   const t = useTranslations('error');
 
   useEffect(() => {
-    Sentry.captureException(error);
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      void import('@sentry/nextjs').then((Sentry) => {
+        Sentry.captureException(error);
+      });
+    }
     console.error('Unhandled error:', error);
   }, [error]);
 

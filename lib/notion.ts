@@ -30,14 +30,13 @@ function getNotion(): Client | null {
   if (!token) return null;
 
   const proxy = process.env.https_proxy || process.env.http_proxy;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const options: Record<string, unknown> = { auth: token };
+  const options: ConstructorParameters<typeof Client>[0] = { auth: token };
 
   if (proxy) {
     options.agent = new HttpsProxyAgent(proxy);
   }
 
-  return new Client(options as ConstructorParameters<typeof Client>[0]);
+  return new Client(options);
 }
 
 export async function saveRegistrationToNotion(dbId: string, data: RegistrationInput) {

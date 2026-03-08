@@ -6,6 +6,7 @@ import { BLUR_POSTER } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { pageSEO, getLocaleAlternates } from '@/lib/seo';
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 
 // Counter is a client component below the fold; lazy-load it
 const Counter = dynamic(() => import('@/components/Counter'), { ssr: false });
@@ -37,7 +38,7 @@ function EventSection({
 }: {
   image: string;
   title: string;
-  description: React.ReactNode;
+  description: ReactNode;
   signupUrl?: string;
   signupText?: string;
   imagePosition?: 'left' | 'right';
@@ -225,9 +226,11 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
         {/* Digital Detox */}
         <div id="detox" className="py-12">
           <EventSection
-            image="/images/elements/AD-17.webp"
+            image="/images/elements/poster_202604_detox.jpg"
             title={t('detoxTitle')}
-            description={t('detoxDesc')}
+            description={t.rich('detoxDesc', {
+              label: (chunks) => <strong className="font-bold text-white">{chunks}</strong>,
+            })}
             signupUrl={`/${locale}/detox`}
             signupText={t('signUp')}
             imagePosition="right"

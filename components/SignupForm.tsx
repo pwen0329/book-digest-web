@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { z } from 'zod';
 import Turnstile from '@/components/Turnstile';
+import { EMPTY_SIGNUP_FORM_VALUES, mapClientReferralToApi, restoreSignupFormValues, type SignupFormValues } from '@/lib/signup';
 
 type Location = 'TW' | 'NL' | 'EN';
 
@@ -12,17 +13,6 @@ export type SignupFormProps = {
   disabled?: boolean;
   // When provided, form will validate and call onComplete instead of submitting.
   onComplete?: (values: SignupFormValues) => void;
-};
-
-export type SignupFormValues = {
-  name: string;
-  age: string;
-  profession: string;
-  email: string;
-  instagram?: string;
-  referral: 'BookDigestIG' | 'BookDigestFB' | 'Others';
-  referralOther?: string;
-  website?: string; // honeypot
 };
 
 // Move schema to module level for better performance (only created once)
@@ -78,24 +68,8 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
   const storageKey = `signup-form-${location}`;
 
   const [values, setValues] = useState<SignupFormValues>(() => {
-    if (typeof window === 'undefined') return { name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
-    try {
-      const saved = sessionStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved) as Partial<SignupFormValues>;
-        return {
-          name: parsed.name || '',
-          age: parsed.age || '',
-          profession: parsed.profession || '',
-          email: parsed.email || '',
-          instagram: parsed.instagram || '',
-          referral: parsed.referral || 'BookDigestIG',
-          referralOther: parsed.referralOther || '',
-          website: '',
-        };
-      }
-    } catch { /* ignore */ }
-    return { name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: '' };
+    if (typeof window === 'undefined') return { ...EMPTY_SIGNUP_FORM_VALUES };
+    return restoreSignupFormValues(sessionStorage.getItem(storageKey));
   });
 
   // Persist form values to sessionStorage on change (exclude honeypot)
@@ -104,7 +78,9 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { website, ...toSave } = values;
       sessionStorage.setItem(storageKey, JSON.stringify(toSave));
-    } catch { /* ignore */ }
+    } catch (error) {
+      console.warn('[signup] Failed to persist form state.', error);
+    }
   }, [values, storageKey]);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -138,10 +114,12 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
     if (values.website && values.website.trim().length > 0) {
       setSuccess('ok');
       setSubmitting(false);
-      setValues({
-        name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
-      });
-      try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
+      setValues({ ...EMPTY_SIGNUP_FORM_VALUES });
+      try {
+        sessionStorage.removeItem(storageKey);
+      } catch (error) {
+        console.warn('[signup] Failed to clear saved form state.', error);
+      }
       return;
     }
 
@@ -154,16 +132,6 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
 
     try {
       if (endpoint) {
-        // Map client referral values to API expected values
-        let apiReferral: 'Instagram' | 'Facebook' | 'Others' = 'Instagram';
-        if (values.referral === 'BookDigestIG') {
-          apiReferral = 'Instagram';
-        } else if (values.referral === 'BookDigestFB') {
-          apiReferral = 'Facebook';
-        } else {
-          apiReferral = 'Others';
-        }
-
         const resp = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -174,7 +142,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             profession: values.profession,
             email: values.email,
             instagram: values.instagram || undefined,
-            referral: apiReferral,
+            referral: mapClientReferralToApi(values.referral),
             referralOther: values.referral === 'Others' ? values.referralOther : undefined,
             timestamp: new Date().toISOString(),
             turnstileToken: turnstileToken || undefined,
@@ -186,10 +154,12 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
       }
 
       setSuccess('ok');
-      setValues({
-        name: '', age: '', profession: '', email: '', instagram: '', referral: 'BookDigestIG', referralOther: '', website: ''
-      });
-      try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
+      setValues({ ...EMPTY_SIGNUP_FORM_VALUES });
+      try {
+        sessionStorage.removeItem(storageKey);
+      } catch (error) {
+        console.warn('[signup] Failed to clear saved form state.', error);
+      }
     } catch {
       setSuccess('error');
     } finally {

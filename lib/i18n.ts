@@ -9,11 +9,8 @@ export const defaultLocale: Locale = 'zh';
 export const setRequestLocale = nextIntlSetRequestLocale;
 
 export default getRequestConfig(async ({ requestLocale }) => {
-  // Get the locale from the request (new API as of next-intl 3.22)
   const locale = await requestLocale;
-  
-  // Validate that the incoming locale is supported
-  const validLocale = locales.includes(locale as Locale) ? locale : defaultLocale;
+  const validLocale = locales.includes(locale as Locale) ? (locale as Locale) : defaultLocale;
 
   return {
     locale: validLocale,

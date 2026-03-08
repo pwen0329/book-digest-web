@@ -4,10 +4,11 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import SignupForm, { SignupFormValues } from '@/components/SignupForm';
+import SignupForm from '@/components/SignupForm';
 import Turnstile from '@/components/Turnstile';
 import ActivitySignupTabs from '@/components/ActivitySignupTabs';
 import { BLUR_POSTER } from '@/lib/constants';
+import { mapClientReferralToApi, type SignupFormValues } from '@/lib/signup';
 
 type SlotStatus = {
   enabled: boolean;
@@ -32,6 +33,7 @@ function SignupContent() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [slotStatus, setSlotStatus] = useState<SlotStatus | null>(null);
   const [checkingSlot, setCheckingSlot] = useState(false);
+  const [slotError, setSlotError] = useState<string | null>(null);
 
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
@@ -60,13 +62,20 @@ function SignupContent() {
 
   const refreshSlotStatus = useCallback(async () => {
     setCheckingSlot(true);
+    setSlotError(null);
     try {
       const res = await fetch(`/api/submit?loc=${activeLocation}`, { method: 'GET' });
       if (!res.ok) {
         setSlotStatus(null);
+        setSlotError(tSignup('slotCheckError'));
         return;
       }
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (!data || typeof data !== 'object') {
+        setSlotStatus(null);
+        setSlotError(tSignup('slotCheckError'));
+        return;
+      }
       setSlotStatus({
         enabled: data.enabled === true,
         open: data.open !== false,
@@ -77,10 +86,11 @@ function SignupContent() {
       });
     } catch {
       setSlotStatus(null);
+      setSlotError(tSignup('slotCheckError'));
     } finally {
       setCheckingSlot(false);
     }
-  }, [activeLocation]);
+  }, [activeLocation, tSignup]);
 
   useEffect(() => {
     if (isNlComingSoon) return;
@@ -89,12 +99,6 @@ function SignupContent() {
 
   const isSlotBlocked = Boolean(slotStatus?.enabled && (slotStatus.full || !slotStatus.open));
   const blockReason = slotStatus?.reason === 'full' ? 'full' : 'closed';
-
-  const mapReferral = (ref: SignupFormValues['referral']): 'Instagram' | 'Facebook' | 'Others' => {
-    if (ref === 'BookDigestIG') return 'Instagram';
-    if (ref === 'BookDigestFB') return 'Facebook';
-    return 'Others';
-  };
 
   const handleFinalize = async () => {
     if (!formValues) return;
@@ -116,7 +120,7 @@ function SignupContent() {
           profession: formValues.profession,
           email: formValues.email,
           instagram: formValues.instagram || undefined,
-          referral: mapReferral(formValues.referral),
+          referral: mapClientReferralToApi(formValues.referral),
           referralOther: formValues.referral === 'Others' ? formValues.referralOther : undefined,
           bankAccount: bankLast5,
           timestamp: new Date().toISOString(),
@@ -206,6 +210,10 @@ function SignupContent() {
                       </div>
                     ) : checkingSlot ? (
                       <div className="text-white/80">Checking availability...</div>
+                    ) : slotError ? (
+                      <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-6 text-red-100">
+                        {slotError}
+                      </div>
                     ) : (
                       <SignupForm
                         key={activeLocation}

@@ -84,11 +84,13 @@ test.describe('Signup form copy', () => {
     await expect(page.getByText('Read, Reflect, and Connect — in English.')).toHaveCount(0);
   });
 
-  test('should keep the detox page as title plus coming-soon only', async ({ page }) => {
+  test('should render the updated detox event copy', async ({ page }) => {
     await page.goto('/en/detox');
     await expect(page.getByRole('heading', { name: 'Unplug Project' })).toBeVisible();
-    await expect(page.getByText('Coming soon…')).toBeVisible();
-    await expect(page.getByText('Welcome to Bookdigest’s cozy little Digital Detox!')).toHaveCount(0);
+    await expect(page.getByText('Heroes, the interference from the Otherworld is too powerful!')).toBeVisible();
+    await expect(page.getByText('Quest Objective:')).toBeVisible();
+    await expect(page.getByText('Custom Characters:')).toBeVisible();
+    await expect(page.getByText('Coming soon…')).toHaveCount(0);
   });
 });
 

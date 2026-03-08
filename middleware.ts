@@ -9,8 +9,14 @@ const intlMiddleware = createIntlMiddleware({
 });
 
 export default function middleware(req: NextRequest) {
-  // Run the intl middleware first
-  const response = intlMiddleware(req);
+  const pathname = req.nextUrl.pathname;
+  const hasLocalePrefix = locales.some(
+    (locale) => pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)
+  );
+
+  // Locale-prefixed routes already encode the locale in the pathname.
+  // Only run next-intl's routing middleware when locale negotiation is still needed.
+  const response = hasLocalePrefix ? NextResponse.next() : intlMiddleware(req);
 
   // Generate a CSP nonce in an Edge-compatible way (Buffer is not guaranteed in Edge runtime).
   const nonce = btoa(crypto.randomUUID());
