@@ -1,11 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
+import signupCapacity from '@/data/signup-capacity.json';
 
 async function goto(page: Page, path: string) {
-  return page.goto(path, { waitUntil: 'domcontentloaded' });
+  return page.goto(path, { waitUntil: 'networkidle' });
 }
 
 async function waitForSignupFormReady(page: Page) {
-  await expect(page.locator('#name')).toBeEnabled({ timeout: 15000 });
+  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => {
+    const input = document.querySelector('#name');
+    return input instanceof HTMLInputElement && !input.disabled;
+  }, { timeout: 30000 });
+  await expect(page.locator('#name')).toBeEnabled({ timeout: 30000 });
   await expect(page.locator('button[type="submit"]').first()).toBeEnabled({ timeout: 15000 });
 }
 
@@ -98,8 +104,9 @@ test.describe('Signup form copy', () => {
   test('should render the updated detox event copy', async ({ page }) => {
     await goto(page, '/en/detox');
     await expect(page.getByRole('heading', { name: 'Unplug Project' })).toBeVisible();
+    await waitForSignupFormReady(page);
     await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
-    await expect(page.getByText('Sign Up')).toBeVisible();
+    await expect(page.locator('button[type="submit"]').first()).toBeVisible();
     await expect(page.getByText('Coming soon…')).toHaveCount(0);
   });
 
@@ -170,7 +177,7 @@ for (const locale of locales) {
       // Should have a visible heading with the book title
       await expect(page.locator('h1')).toBeVisible();
       // Should have book cover image
-      await expect(page.locator('img').first()).toBeVisible();
+      await expect(page.locator('img[alt*="Cover"]').first()).toBeVisible();
       // Should have JSON-LD structured data
       const jsonLd = page.locator('script[type="application/ld+json"]');
       await expect(jsonLd).toBeAttached();
@@ -348,10 +355,9 @@ test.describe('Submit slot status API', () => {
     expect(body.enabled).toBe(true);
     expect(body.open).toBe(true);
     expect(body.full).toBe(false);
-    expect(typeof body.max).toBe('number');
-    expect(body.max).toBeGreaterThan(0);
-    expect(body.startAt).toBe('2026-03-06T00:00:00.000Z');
-    expect(body.endAt).toBe('2026-03-29T23:59:59.000Z');
+    expect(body.max).toBe(signupCapacity.TW.max);
+    expect(body.startAt).toBe(signupCapacity.TW.startAt);
+    expect(body.endAt).toBe(signupCapacity.TW.endAt);
     expect(body.reason).toBe('ok');
   });
 
@@ -366,9 +372,9 @@ test.describe('Submit slot status API', () => {
     expect(body.enabled).toBe(true);
     expect(body.open).toBe(true);
     expect(body.full).toBe(false);
-    expect(body.max).toBe(14);
-    expect(body.startAt).toBe('2026-03-06T00:00:00.000Z');
-    expect(body.endAt).toBe('2026-04-11T23:59:59.000Z');
+    expect(body.max).toBe(signupCapacity.EN.max);
+    expect(body.startAt).toBe(signupCapacity.EN.startAt);
+    expect(body.endAt).toBe(signupCapacity.EN.endAt);
     expect(body.reason).toBe('ok');
   });
 

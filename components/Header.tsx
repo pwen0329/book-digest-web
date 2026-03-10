@@ -100,7 +100,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-40 border-b border-white/10 py-3 md:py-4">
+    <header className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-60 border-b border-white/10 py-3 md:py-4">
       <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
         {/* Desktop/tablet: grid layout with equal width nav items */}
         <nav aria-label="Primary" className="hidden md:grid grid-cols-5 items-center h-full">
