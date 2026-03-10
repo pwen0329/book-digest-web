@@ -10,7 +10,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { cryptoRandomId } from '@/lib/crypto-id';
 
 export type RegistrationInput = {
-  location: 'TW' | 'NL' | 'EN';
+  location: 'TW' | 'NL' | 'EN' | 'DETOX';
   firstName?: string;
   lastName?: string;
   name: string;

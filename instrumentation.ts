@@ -16,12 +16,4 @@ export async function register() {
       tracesSampleRate: 0.1,
     });
   }
-
-  if (process.env.NEXT_RUNTIME === 'edge') {
-    const { init } = await import('@sentry/nextjs');
-    init({
-      dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || '',
-      enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
-    });
-  }
 }

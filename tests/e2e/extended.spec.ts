@@ -1,4 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+async function goto(page: Page, path: string) {
+  return page.goto(path, { waitUntil: 'domcontentloaded' });
+}
 
 const locales = ['en', 'zh'];
 
@@ -7,7 +11,7 @@ const locales = ['en', 'zh'];
 // ------------------------------------------------------------------
 test.describe('Signup form validation', () => {
   test('should show validation errors for empty fields', async ({ page }) => {
-    await page.goto('/en/signup');
+    await goto(page, '/en/signup');
     // Submit the form without filling in anything
     await page.click('button[type="submit"]');
     // Should show name validation error
@@ -15,7 +19,7 @@ test.describe('Signup form validation', () => {
   });
 
   test('should reject invalid age', async ({ page }) => {
-    await page.goto('/en/signup');
+    await goto(page, '/en/signup');
     await page.fill('#name', 'Test User');
     await page.fill('#age', '10');
     await page.fill('#profession', 'Engineer');
@@ -31,66 +35,93 @@ test.describe('Signup form validation', () => {
 // ------------------------------------------------------------------
 test.describe('Signup form copy', () => {
   test('should show the restored English field copy on the TW signup page', async ({ page }) => {
-    await page.goto('/en/signup?location=TW');
+    await goto(page, '/en/signup?location=TW');
     await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
     await expect(page.getByLabel('How old are you?')).toBeVisible();
     await expect(page.getByLabel('What do you do?')).toBeVisible();
   });
 
   test('should show the restored Chinese field copy on the TW signup page', async ({ page }) => {
-    await page.goto('/zh/signup?location=TW');
+    await goto(page, '/zh/signup?location=TW');
     await expect(page.getByLabel('嗨，怎麼稱呼您？')).toBeVisible();
     await expect(page.getByLabel('今年幾歲～')).toBeVisible();
     await expect(page.getByLabel('你做什麼工作呢？')).toBeVisible();
   });
 
   test('should reuse the restored English field copy on the English book club page', async ({ page }) => {
-    await page.goto('/en/engclub');
+    await goto(page, '/en/engclub');
     await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
     await expect(page.getByLabel('How old are you?')).toBeVisible();
     await expect(page.getByLabel('What do you do?')).toBeVisible();
   });
 
   test('should reuse the restored Chinese field copy on the English book club page', async ({ page }) => {
-    await page.goto('/zh/engclub');
+    await goto(page, '/zh/engclub');
     await expect(page.getByLabel('嗨，怎麼稱呼您？')).toBeVisible();
     await expect(page.getByLabel('今年幾歲～')).toBeVisible();
     await expect(page.getByLabel('你做什麼工作呢？')).toBeVisible();
   });
 
   test('should show the activity tab switcher on signup-related pages', async ({ page }) => {
-    await page.goto('/zh/signup?location=TW');
+    await goto(page, '/zh/signup?location=TW');
     const signupTabs = page.getByLabel('Activity signup tabs');
     await expect(signupTabs.getByRole('link', { name: '台灣讀書會' })).toBeVisible();
     await expect(signupTabs.getByRole('link', { name: '英文讀書會' })).toBeVisible();
     await expect(signupTabs.getByRole('link', { name: '荷蘭讀書會' })).toBeVisible();
     await expect(signupTabs.getByRole('link', { name: '數位排毒' })).toBeVisible();
 
-    await page.goto('/zh/engclub');
+    await goto(page, '/zh/engclub');
     const engclubTabs = page.getByLabel('Activity signup tabs');
     await expect(engclubTabs.getByRole('link', { name: '台灣讀書會' })).toBeVisible();
     await expect(engclubTabs.getByRole('link', { name: '數位排毒' })).toBeVisible();
 
-    await page.goto('/zh/detox');
+    await goto(page, '/zh/detox');
     const detoxTabs = page.getByLabel('Activity signup tabs');
     await expect(detoxTabs.getByRole('link', { name: '英文讀書會' })).toBeVisible();
     await expect(detoxTabs.getByRole('link', { name: '荷蘭讀書會' })).toBeVisible();
   });
 
   test('should keep the NL coming-soon page as title plus coming-soon only', async ({ page }) => {
-    await page.goto('/en/signup?location=NL');
+    await goto(page, '/en/signup?location=NL');
     await expect(page.getByRole('heading', { name: 'Book Club in the Netherlands' })).toBeVisible();
     await expect(page.getByText('Coming soon…')).toBeVisible();
     await expect(page.getByText('Read, Reflect, and Connect — in English.')).toHaveCount(0);
   });
 
   test('should render the updated detox event copy', async ({ page }) => {
-    await page.goto('/en/detox');
+    await goto(page, '/en/detox');
     await expect(page.getByRole('heading', { name: 'Unplug Project' })).toBeVisible();
-    await expect(page.getByText('Heroes, the interference from the Otherworld is too powerful!')).toBeVisible();
-    await expect(page.getByText('Quest Objective:')).toBeVisible();
-    await expect(page.getByText('Custom Characters:')).toBeVisible();
+    await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
+    await expect(page.getByText('Sign Up')).toBeVisible();
     await expect(page.getByText('Coming soon…')).toHaveCount(0);
+  });
+
+  test('should show the detox-specific post-form English copy', async ({ page }) => {
+    await goto(page, '/en/detox');
+    await page.fill('#name', 'Detox Adventurer');
+    await page.fill('#age', '28');
+    await page.fill('#profession', 'Designer');
+    await page.fill('#email', 'detox@example.com');
+    await page.click('button[type="submit"]');
+
+    await expect(page.getByText('Adventurer, welcome to the edge of the real world!')).toBeVisible();
+    await expect(page.getByText('The registration fee for this event is NT$850')).toBeVisible();
+  });
+
+  test('should show the detox-specific success guidance in Chinese', async ({ page }) => {
+    await goto(page, '/zh/detox');
+    await page.fill('#name', '排毒勇者');
+    await page.fill('#age', '29');
+    await page.fill('#profession', '工程師');
+    await page.fill('#email', 'detox-zh@example.com');
+    await page.click('button[type="submit"]');
+    await page.getByRole('button', { name: '下一步' }).click();
+    await page.fill('input[inputmode="numeric"]', '12345');
+    await page.getByRole('button', { name: '提交' }).click();
+
+    await expect(page.getByText('報名成功後，請務必私訊我們的官方 IG，')).toBeVisible();
+    await expect(page.getByText('我們將為你 3D 列印出世上獨一無二的角色模型：')).toBeVisible();
+    await expect(page.getByText('我們在地城入口見！')).toBeVisible();
   });
 });
 
@@ -99,7 +130,7 @@ test.describe('Signup form copy', () => {
 // ------------------------------------------------------------------
 test.describe('Language switching', () => {
   test('should switch from English to Chinese', async ({ page }) => {
-    await page.goto('/en');
+    await goto(page, '/en');
     // Look for the language toggle link (zh toggle)
     const zhLink = page.locator('a[href="/zh"]').first();
     if (await zhLink.isVisible()) {
@@ -110,7 +141,7 @@ test.describe('Language switching', () => {
   });
 
   test('should switch from Chinese to English', async ({ page }) => {
-    await page.goto('/zh');
+    await goto(page, '/zh');
     const enLink = page.locator('a[href="/en"]').first();
     if (await enLink.isVisible()) {
       await enLink.click();
@@ -126,7 +157,7 @@ test.describe('Language switching', () => {
 for (const locale of locales) {
   test.describe(`${locale} book detail`, () => {
     test(`should load a book detail page /${locale}/books/why-we-sleep`, async ({ page }) => {
-      await page.goto(`/${locale}/books/why-we-sleep`);
+      await goto(page, `/${locale}/books/why-we-sleep`);
       // Should have a visible heading with the book title
       await expect(page.locator('h1')).toBeVisible();
       // Should have book cover image
@@ -137,14 +168,14 @@ for (const locale of locales) {
     });
 
     test(`should have proper meta tags on book detail /${locale}/books/why-we-sleep`, async ({ page }) => {
-      await page.goto(`/${locale}/books/why-we-sleep`);
+      await goto(page, `/${locale}/books/why-we-sleep`);
       // OG image should point to /api/og
       const ogMeta = page.locator('meta[property="og:image"]');
       await expect(ogMeta).toHaveAttribute('content', /\/api\/og/);
     });
 
     test(`should use the restored book hero layout on book detail /${locale}/books/why-we-sleep`, async ({ page }) => {
-      await page.goto(`/${locale}/books/why-we-sleep`);
+      await goto(page, `/${locale}/books/why-we-sleep`);
       const heading = page.locator('h1').first();
       await expect(heading).toHaveClass(/lg:text-3xl/);
       await expect(heading.locator('..')).toHaveClass(/md:text-left/);
@@ -158,7 +189,7 @@ for (const locale of locales) {
 for (const locale of locales) {
   test.describe(`${locale} 404 page`, () => {
     test(`should return 404 status and show content /${locale}/this-doesnt-exist`, async ({ page }) => {
-      const response = await page.goto(`/${locale}/this-doesnt-exist`);
+      const response = await goto(page, `/${locale}/this-doesnt-exist`);
       expect(response?.status()).toBe(404);
     });
   });
@@ -549,13 +580,13 @@ test.describe.serial('Submit capacity guardrails', () => {
 // ------------------------------------------------------------------
 test.describe('Legal page SEO', () => {
   test('should expose canonical and indexable metadata on privacy page', async ({ page }) => {
-    await page.goto('/en/privacy');
+    await goto(page, '/en/privacy');
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/en\/privacy$/);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/i);
   });
 
   test('should expose canonical and indexable metadata on terms page', async ({ page }) => {
-    await page.goto('/en/terms');
+    await goto(page, '/en/terms');
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/en\/terms$/);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/i);
   });
@@ -584,7 +615,7 @@ test.describe('Middleware headers', () => {
 for (const locale of locales) {
   test.describe(`${locale} events`, () => {
     test(`should load events page /${locale}/events`, async ({ page }) => {
-      await page.goto(`/${locale}/events`);
+      await goto(page, `/${locale}/events`);
       // Events page uses h3 headings for event titles
       await expect(page.locator('h3').first()).toBeVisible();
       // Should have event sections

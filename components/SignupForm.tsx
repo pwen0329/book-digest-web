@@ -1,14 +1,12 @@
 'use client';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { z } from 'zod';
 import Turnstile from '@/components/Turnstile';
-import { EMPTY_SIGNUP_FORM_VALUES, mapClientReferralToApi, restoreSignupFormValues, type SignupFormValues } from '@/lib/signup';
-
-type Location = 'TW' | 'NL' | 'EN';
+import { EMPTY_SIGNUP_FORM_VALUES, mapClientReferralToApi, restoreSignupFormValues, type SignupFormValues, type SignupLocation } from '@/lib/signup';
 
 export type SignupFormProps = {
-  location: Location;
+  location: SignupLocation;
   endpoint?: string;
   disabled?: boolean;
   // When provided, form will validate and call onComplete instead of submitting.
@@ -52,10 +50,12 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
   const t = useTranslations('form');
   const tEvents = useTranslations('events');
   const locale = useLocale();
+  const [isHydrated, setIsHydrated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<null | 'ok' | 'error'>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const submitRequestRef = useRef<AbortController | null>(null);
 
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
@@ -74,6 +74,10 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
 
   // Persist form values to sessionStorage on change (exclude honeypot)
   useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { website, ...toSave } = values;
@@ -82,6 +86,10 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
       console.warn('[signup] Failed to persist form state.', error);
     }
   }, [values, storageKey]);
+
+  useEffect(() => () => {
+    submitRequestRef.current?.abort();
+  }, []);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (disabled) return;
@@ -132,9 +140,13 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
 
     try {
       if (endpoint) {
+        submitRequestRef.current?.abort();
+        const controller = new AbortController();
+        submitRequestRef.current = controller;
         const resp = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             location,
             name: values.name,
@@ -149,6 +161,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           }),
         });
         if (!resp.ok) throw new Error('Request failed');
+        submitRequestRef.current = null;
       } else {
         await new Promise((r) => setTimeout(r, 800));
       }
@@ -160,7 +173,10 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
       } catch (error) {
         console.warn('[signup] Failed to clear saved form state.', error);
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
       setSuccess('error');
     } finally {
       setSubmitting(false);
@@ -176,7 +192,18 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
     ? 'bg-[#FFDD57] text-brand-navy'
     : location === 'EN'
       ? 'bg-emerald-400 text-brand-navy'
+      : location === 'DETOX'
+        ? 'bg-cyan-300 text-brand-navy'
       : 'bg-brand-pink text-brand-navy';
+
+  const locationLabel = location === 'TW'
+    ? tEvents('taiwan')
+    : location === 'NL'
+      ? tEvents('netherlands')
+      : location === 'EN'
+        ? tEvents('english')
+        : tEvents('detoxTitle');
+  const isInputDisabled = disabled || !isHydrated;
 
   return (
     <div>
@@ -185,7 +212,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           {tEvents('signUp')}
         </h3>
         <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${locationBadgeClass}`}>
-          📍 {location === 'TW' ? tEvents('taiwan') : location === 'NL' ? tEvents('netherlands') : tEvents('english')}
+          📍 {locationLabel}
         </span>
       </div>
 
@@ -218,8 +245,8 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             <label htmlFor="name" className="block text-sm font-medium text-white mb-2">{t('nameLabel')}</label>
             <input
               id="name" name="name" value={values.name} onChange={onChange}
-              readOnly={disabled}
-              disabled={disabled}
+              readOnly={isInputDisabled}
+              disabled={isInputDisabled}
               className={inputClass(!!errors.name)}
               autoComplete="name"
               aria-invalid={errors.name ? true : undefined}
@@ -233,8 +260,8 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             <label htmlFor="age" className="block text-sm font-medium text-white mb-2">{t('ageLabel')}</label>
             <input
               id="age" name="age" inputMode="numeric" pattern="[0-9]*" value={values.age} onChange={onChange}
-              readOnly={disabled}
-              disabled={disabled}
+              readOnly={isInputDisabled}
+              disabled={isInputDisabled}
               className={inputClass(!!errors.age)}
               aria-invalid={errors.age ? true : undefined}
               aria-describedby={errors.age ? 'age-error' : undefined}
@@ -247,8 +274,8 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             <label htmlFor="profession" className="block text-sm font-medium text-white mb-2">{t('professionLabel')}</label>
             <input
               id="profession" name="profession" value={values.profession} onChange={onChange}
-              readOnly={disabled}
-              disabled={disabled}
+              readOnly={isInputDisabled}
+              disabled={isInputDisabled}
               className={inputClass(!!errors.profession)}
               aria-invalid={errors.profession ? true : undefined}
               aria-describedby={errors.profession ? 'profession-error' : undefined}
@@ -261,8 +288,8 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             <label htmlFor="email" className="block text-sm font-medium text-white mb-2">{t('emailLabel')}</label>
             <input
               id="email" name="email" type="email" value={values.email} onChange={onChange}
-              readOnly={disabled}
-              disabled={disabled}
+              readOnly={isInputDisabled}
+              disabled={isInputDisabled}
               className={inputClass(!!errors.email)}
               autoComplete="email"
               aria-invalid={errors.email ? true : undefined}
@@ -277,8 +304,8 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           <label htmlFor="instagram" className="block text-sm font-medium text-white mb-2">{t('instagramLabel')}</label>
           <input
             id="instagram" name="instagram" value={values.instagram} onChange={onChange}
-            readOnly={disabled}
-            disabled={disabled}
+            readOnly={isInputDisabled}
+            disabled={isInputDisabled}
             className={inputClass(false)}
             placeholder="bookdigest_tw"
           />
@@ -289,7 +316,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           <label htmlFor="referral" className="block text-sm font-medium text-white mb-2">{t('referralLabel')}</label>
           <select
             id="referral" name="referral" value={values.referral} onChange={onChange}
-            disabled={disabled}
+            disabled={isInputDisabled}
             className={`${inputClass(false)} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%23666%22%3E%3Cpath%20stroke-linecap%3D%22round%20stroke-linejoin%3D%22round%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_1rem_center] bg-[length:1.25rem]`}
           >
             <option value="BookDigestIG">{t('referralBookDigestIG')}</option>
@@ -304,8 +331,8 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             <label htmlFor="referralOther" className="block text-sm font-medium text-white mb-2">{t('referralOtherLabel')}</label>
             <input
               id="referralOther" name="referralOther" value={values.referralOther} onChange={onChange}
-              readOnly={disabled}
-              disabled={disabled}
+              readOnly={isInputDisabled}
+              disabled={isInputDisabled}
               className={inputClass(!!errors.referralOther)}
               placeholder={t('referralOtherPlaceholder')}
               aria-invalid={errors.referralOther ? true : undefined}
@@ -322,7 +349,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
         <div className="pt-4">
           <button
             type="submit"
-            disabled={submitting || disabled}
+            disabled={submitting || disabled || !isHydrated}
             className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all disabled:opacity-60 ${locale === 'zh' ? 'tracking-widest' : ''}`}
           >
             {submitting ? t('submitting') : t('submit')}

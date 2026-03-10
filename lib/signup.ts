@@ -1,5 +1,6 @@
 export type ClientReferral = 'BookDigestIG' | 'BookDigestFB' | 'Others';
 export type ApiReferral = 'Instagram' | 'Facebook' | 'Others';
+export type SignupLocation = 'TW' | 'NL' | 'EN' | 'DETOX';
 
 export type SignupFormValues = {
   name: string;

@@ -48,7 +48,9 @@
     ".next/types/**/*.ts",
     ".next-*/types/**/*.ts",
     ".next-release/types/**/*.ts",
-    ".next-lint/types/**/*.ts"
+    ".next-lint/types/**/*.ts",
+    ".next-clean/types/**/*.ts",
+    ".next-e2e/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

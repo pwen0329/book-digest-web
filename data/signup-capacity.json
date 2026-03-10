@@ -19,5 +19,9 @@
     "startAt": "2026-03-06T00:00:00.000Z",
     "endAt": "2026-04-11T23:59:59.000Z",
     "max": 14
+  },
+  "DETOX": {
+    "enabled": false,
+    "forceFull": false
   }
 }

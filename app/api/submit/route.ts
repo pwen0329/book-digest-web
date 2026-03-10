@@ -7,16 +7,16 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTesting, _setForceFullForTesting } from '@/lib/signup-capacity';
 import { parseApiReferral } from '@/lib/signup';
 
-type Location = 'TW' | 'NL' | 'EN';
+type Location = 'TW' | 'NL' | 'EN' | 'DETOX';
 
 function parseLocation(url: string): Location | null {
   const { searchParams } = new URL(url);
   const loc = (searchParams.get('loc') || '') as Location;
-  if (loc !== 'TW' && loc !== 'NL' && loc !== 'EN') return null;
+  if (loc !== 'TW' && loc !== 'NL' && loc !== 'EN' && loc !== 'DETOX') return null;
   return loc;
 }
 
-// GET /api/submit?loc=TW|NL
+// GET /api/submit?loc=TW|NL|EN|DETOX
 // Returns the current slot/capacity status for the requested location.
 export async function GET(req: NextRequest) {
   const loc = parseLocation(req.url);
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, location: loc, ...status }, { status: 200, headers: { 'Cache-Control': 'public, max-age=30, stale-while-revalidate=60' } });
 }
 
-// DELETE /api/submit?loc=TW|NL&tempMax=N
+// DELETE /api/submit?loc=TW|NL|EN|DETOX&tempMax=N
 // Resets in-memory count and optionally sets a temporary max override.
 // Only available outside production; used for automated testing.
 export async function DELETE(req: NextRequest) {
@@ -52,7 +52,7 @@ export async function DELETE(req: NextRequest) {
   return NextResponse.json({ ok: true, location: loc, reset: true }, { status: 200 });
 }
 
-// POST /api/submit?loc=TW|NL
+// POST /api/submit?loc=TW|NL|EN|DETOX
 export async function POST(req: NextRequest) {
   let reservedLoc: Location | null = null;
   let tallySucceeded = false;
@@ -162,7 +162,14 @@ export async function POST(req: NextRequest) {
     const tallyTW = process.env.TALLY_ENDPOINT_TW;
     const tallyNL = process.env.TALLY_ENDPOINT_NL;
     const tallyEN = process.env.TALLY_ENDPOINT_EN;
-    const tallyEndpoint = payload.location === 'TW' ? tallyTW : payload.location === 'NL' ? tallyNL : tallyEN;
+    const tallyDetox = process.env.TALLY_ENDPOINT_DETOX;
+    const tallyEndpoint = payload.location === 'TW'
+      ? tallyTW
+      : payload.location === 'NL'
+        ? tallyNL
+        : payload.location === 'EN'
+          ? tallyEN
+          : tallyDetox;
 
     if (tallyEndpoint) {
       // Map payload to the requested column names for Tally or generic webhook.

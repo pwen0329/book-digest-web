@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useRef, useCallback } from 'react';
 
+let turnstileScriptRequested = false;
+
 declare global {
   interface Window {
     turnstile?: {
@@ -35,6 +37,7 @@ const TURNSTILE_SITEKEY = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY || '';
 export default function Turnstile({ onVerify, onExpire, onError, theme = 'dark', size = 'normal' }: TurnstileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const renderWidget = useCallback(() => {
     if (!containerRef.current || !window.turnstile || widgetIdRef.current) return;
@@ -49,38 +52,71 @@ export default function Turnstile({ onVerify, onExpire, onError, theme = 'dark',
   }, [onVerify, onExpire, onError, theme, size]);
 
   useEffect(() => {
-    if (!TURNSTILE_SITEKEY) return;
+    if (!TURNSTILE_SITEKEY) {
+      console.warn('[turnstile] NEXT_PUBLIC_TURNSTILE_SITEKEY is not configured; bot protection is disabled.');
+      return;
+    }
 
     // If Turnstile script is already loaded
     if (window.turnstile) {
       renderWidget();
-      return;
+      return () => {
+        if (widgetIdRef.current && window.turnstile) {
+          window.turnstile.remove(widgetIdRef.current);
+          widgetIdRef.current = null;
+        }
+      };
     }
 
     // If script tag already exists, wait for load
     if (document.querySelector('script[src*="challenges.cloudflare.com"]')) {
       // Script already injected, just wait for it to load
-      const checkInterval = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         if (window.turnstile) {
-          clearInterval(checkInterval);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
           renderWidget();
         }
       }, 100);
-      return () => clearInterval(checkInterval);
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        if (widgetIdRef.current && window.turnstile) {
+          window.turnstile.remove(widgetIdRef.current);
+          widgetIdRef.current = null;
+        }
+        if (window.onTurnstileLoad === renderWidget) {
+          delete window.onTurnstileLoad;
+        }
+      };
     }
 
     window.onTurnstileLoad = renderWidget;
 
-    const script = document.createElement('script');
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
+    if (!turnstileScriptRequested) {
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+      turnstileScriptRequested = true;
+    }
 
     return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
+      }
+      if (window.onTurnstileLoad === renderWidget) {
+        delete window.onTurnstileLoad;
       }
     };
   }, [renderWidget]);

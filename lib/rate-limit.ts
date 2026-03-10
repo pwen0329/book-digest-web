@@ -53,7 +53,11 @@ async function redisRateLimit(ip: string): Promise<{ allowed: boolean; remaining
 const requestLog = new Map<string, number[]>();
 
 const cleanupTimer = setInterval(() => {
-  const now = Date.now();
+  cleanupMap();
+}, 5 * 60 * 1000);
+if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
+
+function cleanupMap(now = Date.now()): void {
   for (const [key, timestamps] of requestLog) {
     const valid = timestamps.filter((t) => now - t < WINDOW_MS);
     if (valid.length === 0) {
@@ -62,11 +66,13 @@ const cleanupTimer = setInterval(() => {
       requestLog.set(key, valid);
     }
   }
-}, 5 * 60 * 1000);
-if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
+}
 
 function memoryRateLimit(ip: string): { allowed: boolean; remaining: number; retryAfterMs: number } {
   const now = Date.now();
+  if (!requestLog.has(ip) && requestLog.size >= Math.floor(MAX_ENTRIES * 0.9)) {
+    cleanupMap(now);
+  }
   const timestamps = requestLog.get(ip) || [];
   const recent = timestamps.filter((t) => t > now - WINDOW_MS);
 

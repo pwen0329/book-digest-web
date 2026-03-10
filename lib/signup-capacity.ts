@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import capacityConfig from '@/data/signup-capacity.json';
 
-type Location = 'TW' | 'NL' | 'EN';
+type Location = 'TW' | 'NL' | 'EN' | 'DETOX';
 
 type SlotConfig = {
   enabled: boolean;
@@ -24,6 +24,7 @@ type CapacityConfigFile = {
   TW?: ConfigSlot;
   NL?: ConfigSlot;
   EN?: ConfigSlot;
+  DETOX?: ConfigSlot;
 };
 
 export type CapacityStatus = {
