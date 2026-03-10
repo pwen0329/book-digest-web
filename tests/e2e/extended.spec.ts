@@ -4,6 +4,11 @@ async function goto(page: Page, path: string) {
   return page.goto(path, { waitUntil: 'domcontentloaded' });
 }
 
+async function waitForSignupFormReady(page: Page) {
+  await expect(page.locator('#name')).toBeEnabled({ timeout: 15000 });
+  await expect(page.locator('button[type="submit"]').first()).toBeEnabled({ timeout: 15000 });
+}
+
 const locales = ['en', 'zh'];
 
 // ------------------------------------------------------------------
@@ -12,6 +17,7 @@ const locales = ['en', 'zh'];
 test.describe('Signup form validation', () => {
   test('should show validation errors for empty fields', async ({ page }) => {
     await goto(page, '/en/signup');
+    await waitForSignupFormReady(page);
     // Submit the form without filling in anything
     await page.click('button[type="submit"]');
     // Should show name validation error
@@ -20,6 +26,7 @@ test.describe('Signup form validation', () => {
 
   test('should reject invalid age', async ({ page }) => {
     await goto(page, '/en/signup');
+    await waitForSignupFormReady(page);
     await page.fill('#name', 'Test User');
     await page.fill('#age', '10');
     await page.fill('#profession', 'Engineer');
@@ -98,6 +105,7 @@ test.describe('Signup form copy', () => {
 
   test('should show the detox-specific post-form English copy', async ({ page }) => {
     await goto(page, '/en/detox');
+    await waitForSignupFormReady(page);
     await page.fill('#name', 'Detox Adventurer');
     await page.fill('#age', '28');
     await page.fill('#profession', 'Designer');
@@ -110,6 +118,7 @@ test.describe('Signup form copy', () => {
 
   test('should show the detox-specific success guidance in Chinese', async ({ page }) => {
     await goto(page, '/zh/detox');
+    await waitForSignupFormReady(page);
     await page.fill('#name', '排毒勇者');
     await page.fill('#age', '29');
     await page.fill('#profession', '工程師');

@@ -5,15 +5,18 @@ let registered = false;
 
 export async function register() {
   if (registered) return;
+
+  if (process.env.NODE_ENV !== 'production' || process.env.NEXT_RUNTIME !== 'nodejs' || !process.env.NEXT_PUBLIC_SENTRY_DSN) {
+    return;
+  }
+
   registered = true;
 
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
-    // Dynamic import: load Sentry only in the Node.js runtime, not edge.
-    const { init } = await import('@sentry/nextjs');
-    init({
-      dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || '',
-      enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
-      tracesSampleRate: 0.1,
-    });
-  }
+  // Dynamic import: load Sentry only for production Node.js requests.
+  const { init } = await import('@sentry/nextjs');
+  init({
+    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    enabled: true,
+    tracesSampleRate: 0.1,
+  });
 }

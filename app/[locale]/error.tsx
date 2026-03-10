@@ -13,7 +13,7 @@ export default function Error({
   const t = useTranslations('error');
 
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+    if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_SENTRY_DSN) {
       void import('@sentry/nextjs').then((Sentry) => {
         Sentry.captureException(error);
       });

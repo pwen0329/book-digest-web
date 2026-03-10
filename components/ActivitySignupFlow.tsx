@@ -298,8 +298,9 @@ export default function ActivitySignupFlow({
                       </div>
                       <p className="mt-4 text-white/90">{tSignup('remitPrompt')}</p>
                       <div className="mt-3">
-                        <label className="block text-sm font-medium text-white mb-2">{tSignup('last5Label')}</label>
+                        <label htmlFor="bank-last-5" className="block text-sm font-medium text-white mb-2">{tSignup('last5Label')}</label>
                         <input
+                          id="bank-last-5"
                           inputMode="numeric"
                           pattern="[0-9]*"
                           maxLength={5}
