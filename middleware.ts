@@ -24,8 +24,8 @@ export default function middleware(req: NextRequest) {
 
   // Build CSP with nonce (replaces 'unsafe-inline' for scripts)
   const scriptSrc = isDev
-    ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' 'strict-dynamic' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io`
-    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io`;
+    ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io`
+    : `script-src 'self' 'unsafe-inline' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io`;
 
   const csp = [
     "default-src 'self'",

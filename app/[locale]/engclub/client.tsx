@@ -1,5 +1,4 @@
 'use client';
-import { Suspense } from 'react';
 import { useTranslations } from 'next-intl';
 import ActivitySignupFlow from '@/components/ActivitySignupFlow';
 
@@ -19,15 +18,5 @@ function EngClubContent() {
 }
 
 export default function EngClubClient() {
-  return (
-    <Suspense
-      fallback={
-        <div className="bg-brand-navy text-white min-h-screen flex items-center justify-center">
-          <div className="animate-pulse">Loading...</div>
-        </div>
-      }
-    >
-      <EngClubContent />
-    </Suspense>
-  );
+  return <EngClubContent />;
 }

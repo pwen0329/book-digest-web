@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, useEffect, memo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 
 // Use memo to optimize navigation link component
@@ -68,7 +68,12 @@ export default function Header() {
   const t = useTranslations('nav');
   const locale = useLocale();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
 
   // Helper to check if link is active
   const isActive = useCallback((href: string) => {
@@ -100,7 +105,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-60 border-b border-white/10 py-3 md:py-4">
+    <header data-ready={isReady ? 'true' : 'false'} className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-60 border-b border-white/10 py-3 md:py-4">
       <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
         {/* Desktop/tablet: grid layout with equal width nav items */}
         <nav aria-label="Primary" className="hidden md:grid grid-cols-5 items-center h-full">
@@ -121,6 +126,7 @@ export default function Header() {
             className="p-2 -ml-2 text-white hover:bg-white/10 rounded-lg transition-colors"
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}
+            data-ready={isReady ? 'true' : 'false'}
           >
             {mobileMenuOpen ? (
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

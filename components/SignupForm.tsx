@@ -67,17 +67,24 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
 
   const storageKey = `signup-form-${location}`;
 
-  const [values, setValues] = useState<SignupFormValues>(() => {
-    if (typeof window === 'undefined') return { ...EMPTY_SIGNUP_FORM_VALUES };
-    return restoreSignupFormValues(sessionStorage.getItem(storageKey));
-  });
+  const [values, setValues] = useState<SignupFormValues>({ ...EMPTY_SIGNUP_FORM_VALUES });
 
-  // Persist form values to sessionStorage on change (exclude honeypot)
   useEffect(() => {
+    let restoredValues = { ...EMPTY_SIGNUP_FORM_VALUES };
+
+    try {
+      restoredValues = restoreSignupFormValues(sessionStorage.getItem(storageKey));
+    } catch (error) {
+      console.warn('[signup] Failed to restore saved form state.', error);
+    }
+
+    setValues(restoredValues);
     setIsHydrated(true);
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
+    if (!isHydrated) return;
+
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { website, ...toSave } = values;
@@ -85,7 +92,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
     } catch (error) {
       console.warn('[signup] Failed to persist form state.', error);
     }
-  }, [values, storageKey]);
+  }, [isHydrated, values, storageKey]);
 
   useEffect(() => () => {
     submitRequestRef.current?.abort();
@@ -205,6 +212,14 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
         : tEvents('detoxTitle');
   const isInputDisabled = disabled || !isHydrated;
 
+  if (!isHydrated) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/80" aria-busy="true">
+        {locale === 'zh' ? '載入表單中...' : 'Loading form...'}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
@@ -237,7 +252,17 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
 
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         {/* Honeypot */}
-        <input type="text" name="website" value={values.website} onChange={onChange} className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+        <input
+          type="text"
+          name="website"
+          value={values.website}
+          onChange={onChange}
+          className="hidden"
+          style={{ display: 'none', visibility: 'hidden', position: 'absolute', left: '-9999px' }}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
           {/* Name */}

@@ -1,7 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 
 async function goto(page: Page, path: string) {
-  const response = await page.goto(path, { waitUntil: 'networkidle' });
+  const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('header')).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
   await expect(page.getByRole('button', { name: 'Toggle menu' })).toBeVisible();
   return response;
 }
@@ -44,6 +45,7 @@ test.describe('Mobile header', () => {
       const menuButton = page.getByRole('button', { name: 'Toggle menu' });
       await expect(menuButton).toBeVisible();
       await menuButton.click();
+      await expect(menuButton).toHaveAttribute('aria-expanded', 'true');
 
       const aboutLabel = locale === 'zh' ? '關於我們' : 'About Us';
       const aboutLink = page.getByRole('link', { name: aboutLabel });

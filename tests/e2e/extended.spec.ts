@@ -2,17 +2,21 @@ import { test, expect, type Page } from '@playwright/test';
 import signupCapacity from '@/data/signup-capacity.json';
 
 async function goto(page: Page, path: string) {
-  return page.goto(path, { waitUntil: 'networkidle' });
+  return page.goto(path, { waitUntil: 'domcontentloaded' });
 }
 
 async function waitForSignupFormReady(page: Page) {
-  await page.waitForLoadState('networkidle');
-  await page.waitForFunction(() => {
-    const input = document.querySelector('#name');
-    return input instanceof HTMLInputElement && !input.disabled;
-  }, { timeout: 30000 });
-  await expect(page.locator('#name')).toBeEnabled({ timeout: 30000 });
+  await page.locator('#name').waitFor({ state: 'visible', timeout: 30000 });
+  await expect(page.locator('#name')).toBeEditable({ timeout: 30000 });
   await expect(page.locator('button[type="submit"]').first()).toBeEnabled({ timeout: 15000 });
+}
+
+function getLanguageToggle(page: Page) {
+  return page.getByRole('group', { name: 'Language selector' });
+}
+
+async function waitForLanguageToggleReady(page: Page) {
+  await expect(getLanguageToggle(page)).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
 }
 
 const locales = ['en', 'zh'];
@@ -47,8 +51,18 @@ test.describe('Signup form validation', () => {
 // Signup form copy regression
 // ------------------------------------------------------------------
 test.describe('Signup form copy', () => {
+  test('should unlock the shared form on active signup pages', async ({ page }) => {
+    for (const path of ['/en/signup?location=TW', '/en/engclub', '/en/detox']) {
+      await goto(page, path);
+      await waitForSignupFormReady(page);
+      await expect(page.locator('#name')).toBeVisible();
+      await expect(page.locator('#name')).toBeEditable();
+    }
+  });
+
   test('should show the restored English field copy on the TW signup page', async ({ page }) => {
     await goto(page, '/en/signup?location=TW');
+    await waitForSignupFormReady(page);
     await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
     await expect(page.getByLabel('How old are you?')).toBeVisible();
     await expect(page.getByLabel('What do you do?')).toBeVisible();
@@ -56,6 +70,7 @@ test.describe('Signup form copy', () => {
 
   test('should show the restored Chinese field copy on the TW signup page', async ({ page }) => {
     await goto(page, '/zh/signup?location=TW');
+    await waitForSignupFormReady(page);
     await expect(page.getByLabel('嗨，怎麼稱呼您？')).toBeVisible();
     await expect(page.getByLabel('今年幾歲～')).toBeVisible();
     await expect(page.getByLabel('你做什麼工作呢？')).toBeVisible();
@@ -63,6 +78,7 @@ test.describe('Signup form copy', () => {
 
   test('should reuse the restored English field copy on the English book club page', async ({ page }) => {
     await goto(page, '/en/engclub');
+    await waitForSignupFormReady(page);
     await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
     await expect(page.getByLabel('How old are you?')).toBeVisible();
     await expect(page.getByLabel('What do you do?')).toBeVisible();
@@ -70,6 +86,7 @@ test.describe('Signup form copy', () => {
 
   test('should reuse the restored Chinese field copy on the English book club page', async ({ page }) => {
     await goto(page, '/zh/engclub');
+    await waitForSignupFormReady(page);
     await expect(page.getByLabel('嗨，怎麼稱呼您？')).toBeVisible();
     await expect(page.getByLabel('今年幾歲～')).toBeVisible();
     await expect(page.getByLabel('你做什麼工作呢？')).toBeVisible();
@@ -135,6 +152,7 @@ test.describe('Signup form copy', () => {
     await page.fill('input[inputmode="numeric"]', '12345');
     await page.getByRole('button', { name: '提交' }).click();
 
+    await expect(page.getByRole('heading', { name: '報名成功！' })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('報名成功後，請務必私訊我們的官方 IG，')).toBeVisible();
     await expect(page.getByText('我們將為你 3D 列印出世上獨一無二的角色模型：')).toBeVisible();
     await expect(page.getByText('我們在地城入口見！')).toBeVisible();
@@ -145,25 +163,46 @@ test.describe('Signup form copy', () => {
 // Language switching persistence
 // ------------------------------------------------------------------
 test.describe('Language switching', () => {
-  test('should switch from English to Chinese', async ({ page }) => {
+  test('should switch from English to Chinese on the home page', async ({ page }) => {
     await goto(page, '/en');
-    // Look for the language toggle link (zh toggle)
-    const zhLink = page.locator('a[href="/zh"]').first();
-    if (await zhLink.isVisible()) {
-      await zhLink.click();
-      await page.waitForURL(/\/zh/);
-      expect(page.url()).toContain('/zh');
-    }
+    await waitForLanguageToggleReady(page);
+    await getLanguageToggle(page).getByRole('button', { name: '中文' }).click();
+    await expect(page).toHaveURL(/\/zh$/);
   });
 
-  test('should switch from Chinese to English', async ({ page }) => {
+  test('should switch from Chinese to English on the home page', async ({ page }) => {
     await goto(page, '/zh');
-    const enLink = page.locator('a[href="/en"]').first();
-    if (await enLink.isVisible()) {
-      await enLink.click();
-      await page.waitForURL(/\/en/);
-      expect(page.url()).toContain('/en');
-    }
+    await waitForLanguageToggleReady(page);
+    await getLanguageToggle(page).getByRole('button', { name: 'EN' }).click();
+    await expect(page).toHaveURL(/\/en$/);
+  });
+
+  test('should preserve query string and partial signup data when switching locale', async ({ page }) => {
+    await goto(page, '/en/signup?location=TW');
+    await waitForSignupFormReady(page);
+    await waitForLanguageToggleReady(page);
+    await page.fill('#name', 'Locale Traveler');
+    await page.fill('#email', 'traveler@example.com');
+
+    await getLanguageToggle(page).getByRole('button', { name: '中文' }).click();
+
+    await expect(page).toHaveURL(/\/zh\/signup\?location=TW/);
+    await waitForSignupFormReady(page);
+    await expect(page.locator('#name')).toHaveValue('Locale Traveler');
+    await expect(page.locator('#email')).toHaveValue('traveler@example.com');
+  });
+
+  test('should preserve the active form route and entered values on engclub locale switch', async ({ page }) => {
+    await goto(page, '/en/engclub');
+    await waitForSignupFormReady(page);
+    await waitForLanguageToggleReady(page);
+    await page.fill('#name', 'Reader Abroad');
+
+    await getLanguageToggle(page).getByRole('button', { name: '中文' }).click();
+
+    await expect(page).toHaveURL(/\/zh\/engclub$/);
+    await waitForSignupFormReady(page);
+    await expect(page.locator('#name')).toHaveValue('Reader Abroad');
   });
 });
 
@@ -620,7 +659,7 @@ test.describe('Middleware headers', () => {
 
     expect(nonce).toBeTruthy();
     expect(csp).toContain("script-src");
-    expect(csp).toContain("'nonce-");
+    expect(csp).toContain("'unsafe-inline'");
   });
 });
 

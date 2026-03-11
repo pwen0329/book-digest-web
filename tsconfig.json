@@ -50,7 +50,10 @@
     ".next-release/types/**/*.ts",
     ".next-lint/types/**/*.ts",
     ".next-clean/types/**/*.ts",
-    ".next-e2e/types/**/*.ts"
+    ".next-e2e/types/**/*.ts",
+    ".next-live/types/**/*.ts",
+    ".next-buildfix/types/**/*.ts",
+    ".next-homedebug/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
