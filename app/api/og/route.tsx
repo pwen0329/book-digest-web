@@ -3,12 +3,24 @@ import { NextRequest } from 'next/server';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
 
+function truncate(value: string | null, maxLength: number, fallback = '') {
+  return (value || fallback).trim().slice(0, maxLength);
+}
+
+function normalizeCoverUrl(value: string | null) {
+  const cover = (value || '').trim();
+  if (!cover) return '';
+  if (cover.startsWith('http://') || cover.startsWith('https://')) return cover;
+  if (cover.startsWith('/')) return `${siteUrl}${cover}`;
+  return '';
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const title = searchParams.get('title') || 'Book Digest';
-  const author = searchParams.get('author') || '';
-  const cover = searchParams.get('cover') || '';
-  const locale = searchParams.get('locale') || 'en';
+  const title = truncate(searchParams.get('title'), 120, 'Book Digest');
+  const author = truncate(searchParams.get('author'), 80);
+  const cover = normalizeCoverUrl(searchParams.get('cover'));
+  const locale = searchParams.get('locale') === 'zh' ? 'zh' : 'en';
 
   const subtitle = locale === 'zh' ? '一頁一頁，重新連結' : 'A space to rest, read, and reconnect';
 
@@ -40,7 +52,7 @@ export async function GET(req: NextRequest) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={cover.startsWith('http') ? cover : `${siteUrl}${cover}`}
+              src={cover}
               alt=""
               width={280}
               height={420}
@@ -102,7 +114,7 @@ export async function GET(req: NextRequest) {
                 color: '#FFA6C3',
               }}
             >
-              📖 Book Digest
+              Book Digest
             </div>
             <div
               style={{

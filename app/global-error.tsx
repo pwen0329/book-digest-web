@@ -19,7 +19,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="zh">
+    <html lang="en">
       <body style={{ backgroundColor: '#0F2E66', color: 'white', fontFamily: 'system-ui, sans-serif' }}>
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div style={{ textAlign: 'center', maxWidth: '28rem' }}>
