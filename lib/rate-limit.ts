@@ -20,6 +20,12 @@ const redis =
 const REDIS_KEY_PREFIX = 'rl:';
 const WINDOW_SECONDS = Math.ceil(WINDOW_MS / 1000);
 
+function parseMemberTimestamp(member: string): number | null {
+  const [timestamp] = member.split('-', 1);
+  const value = Number.parseInt(timestamp, 10);
+  return Number.isFinite(value) ? value : null;
+}
+
 async function redisRateLimit(ip: string): Promise<{ allowed: boolean; remaining: number; retryAfterMs: number }> {
   const key = `${REDIS_KEY_PREFIX}${ip}`;
   const now = Date.now();
@@ -40,8 +46,9 @@ async function redisRateLimit(ip: string): Promise<{ allowed: boolean; remaining
     await redis!.zrem(key, member);
     // Get oldest score to calculate retry-after
     const oldest = await redis!.zrange<string[]>(key, 0, 0);
-    const retryAfterMs = oldest.length
-      ? Math.max(1000, parseInt(oldest[0], 10) + WINDOW_MS - now)
+    const oldestTimestamp = oldest.length ? parseMemberTimestamp(oldest[0]) : null;
+    const retryAfterMs = oldestTimestamp !== null
+      ? Math.max(1000, oldestTimestamp + WINDOW_MS - now)
       : 1000;
     return { allowed: false, remaining: 0, retryAfterMs };
   }

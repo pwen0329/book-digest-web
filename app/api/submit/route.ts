@@ -72,9 +72,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid location' }, { status: 400 });
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+    }
     const visitorId = req.headers.get('x-visitor-id') || null;
     const referral = parseApiReferral(body.referral);
+    const turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : '';
 
     // Honeypot — return silent success if filled by bots
     if (body.website) {
@@ -83,7 +89,7 @@ export async function POST(req: NextRequest) {
 
     // Turnstile verification (if secret key is configured)
     if (process.env.TURNSTILE_SECRET_KEY) {
-      const turnstileOk = await verifyTurnstileToken(body.turnstileToken || '', ip);
+      const turnstileOk = await verifyTurnstileToken(turnstileToken, ip);
       if (!turnstileOk) {
         return NextResponse.json({ error: 'Bot verification failed' }, { status: 403 });
       }

@@ -392,6 +392,20 @@ test.describe('Submit API', () => {
     expect(response.status()).toBe(400);
   });
 
+  test('should reject malformed JSON payloads', async ({ request }) => {
+    const response = await request.fetch('/api/submit?loc=TW', {
+      method: 'POST',
+      data: Buffer.from('{"name":'),
+      headers: {
+        ...testHeaders(),
+        'content-type': 'application/json',
+      },
+    });
+
+    expect(response.status()).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: 'Invalid JSON payload' });
+  });
+
   test('should silently accept honeypot submissions', async ({ request }) => {
     const response = await request.post('/api/submit?loc=TW', {
       data: {
