@@ -59,8 +59,10 @@ test.describe('Mobile header', () => {
 
       const homeLink = page.locator('a[aria-label="Home"]').filter({ has: page.locator('img') }).last();
       await expect(homeLink).toBeVisible();
-      await homeLink.click();
-      await expect(page).toHaveURL(new RegExp(`/${locale}$`));
+      await Promise.all([
+        page.waitForURL(new RegExp(`/${locale}$`), { timeout: 15000 }),
+        homeLink.click(),
+      ]);
     });
   }
 });

@@ -53,7 +53,8 @@
     ".next-e2e/types/**/*.ts",
     ".next-live/types/**/*.ts",
     ".next-buildfix/types/**/*.ts",
-    ".next-homedebug/types/**/*.ts"
+    ".next-homedebug/types/**/*.ts",
+    ".next-verify/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

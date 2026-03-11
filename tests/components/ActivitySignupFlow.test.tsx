@@ -114,13 +114,18 @@ const messages = {
   },
 } as const;
 
-const translators = Object.fromEntries(
-  Object.entries(messages).map(([namespace, values]) => [
-    namespace,
-    (key: string) => values[key as keyof typeof values] ?? `${String(namespace)}.${key}`,
-  ]),
-) as {
-  [Key in keyof typeof messages]: (key: string) => string;
+type MessageNamespaces = typeof messages;
+
+function createTranslator<Namespace extends keyof MessageNamespaces>(namespace: Namespace) {
+  const values = messages[namespace];
+  return (key: string) => values[key as keyof typeof values] ?? `${String(namespace)}.${key}`;
+}
+
+const translators: { [Key in keyof MessageNamespaces]: (key: string) => string } = {
+  events: createTranslator('events'),
+  form: createTranslator('form'),
+  signupFlow: createTranslator('signupFlow'),
+  detoxSignupFlow: createTranslator('detoxSignupFlow'),
 };
 
 vi.mock('next-intl', () => ({
@@ -259,5 +264,44 @@ describe('ActivitySignupFlow', () => {
       bankAccount: '12345',
       turnstileToken: 'turnstile-token',
     });
+  });
+
+  it('blocks finalize when remittance code is not exactly 5 digits', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(createJsonResponse({
+      enabled: true,
+      open: true,
+      full: false,
+      count: 1,
+      max: 18,
+      reason: 'ok',
+    }));
+
+    const user = userEvent.setup();
+
+    render(
+      <ActivitySignupFlow
+        activeTab="DETOX"
+        location="DETOX"
+        posterSrc="/poster.jpg"
+        posterAlt="Poster"
+        translationNamespace="detoxSignupFlow"
+      />,
+    );
+
+    await user.type(await screen.findByLabelText("Hi, what's your name?"), 'Detox Adventurer');
+    await user.type(screen.getByLabelText('How old are you?'), '28');
+    await user.type(screen.getByLabelText('What do you do?'), 'Designer');
+    await user.type(screen.getByLabelText('Email'), 'detox@example.com');
+    await user.click(screen.getByRole('button', { name: 'Sign Up' }));
+
+    await screen.findByText('THANKS FOR YOUR INTEREST!');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('Payment Details');
+    await user.type(screen.getByLabelText('Last 5 digits of remittance'), '1234');
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(await screen.findByText('Please enter exactly 5 digits')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

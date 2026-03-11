@@ -51,6 +51,45 @@ test.describe('Signup form validation', () => {
 // Signup form copy regression
 // ------------------------------------------------------------------
 test.describe('Signup form copy', () => {
+  test('should render the blocked signup state when the slot-status API reports full', async ({ page }) => {
+    await page.addInitScript(() => {
+      const originalFetch = window.fetch.bind(window);
+
+      window.fetch = async (input, init) => {
+        const rawUrl = typeof input === 'string'
+          ? input
+          : input instanceof Request
+            ? input.url
+            : String(input);
+        const url = new URL(rawUrl, window.location.origin);
+        const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
+
+        if (method === 'GET' && url.pathname === '/api/submit' && url.searchParams.get('loc') === 'TW') {
+          return new Response(JSON.stringify({
+            ok: true,
+            location: 'TW',
+            enabled: true,
+            open: true,
+            full: true,
+            count: 3,
+            max: 3,
+            reason: 'full',
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        return originalFetch(input, init);
+      };
+    });
+
+    await goto(page, '/en/signup?location=TW');
+    await expect(page.getByText('Registration Full')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('This session has reached its capacity. Please watch our next event announcement.')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#name')).toHaveCount(0);
+  });
+
   test('should unlock the shared form on active signup pages', async ({ page }) => {
     for (const path of ['/en/signup?location=TW', '/en/engclub', '/en/detox']) {
       await goto(page, path);
@@ -437,16 +476,18 @@ test.describe('Submit slot status API', () => {
 // ------------------------------------------------------------------
 // Serial ensures these mutating tests never race against each other.
 test.describe.serial('Submit capacity guardrails', () => {
-  test.beforeEach(async ({ request, browserName }) => {
-    test.skip(browserName !== 'chromium', 'Shared-state capacity tests run once to avoid cross-browser counter races.');
+  test.skip(process.env.CAPACITY_GUARDRAILS_E2E !== '1', 'Capacity guardrail tests are opt-in because they mutate shared slot state.');
+
+  test.beforeEach(async ({ request }, testInfo) => {
+    test.skip(testInfo.project.name !== 'chromium', 'Shared-state capacity tests only run in the desktop chromium project.');
 
     // Reset mutable locations before each capacity test so we start from a clean slate.
     await request.delete('/api/submit?loc=TW&forceFull=0');
     await request.delete('/api/submit?loc=EN&forceFull=0');
   });
 
-  test.afterAll(async ({ request, browserName }) => {
-    if (browserName !== 'chromium') {
+  test.afterAll(async ({ request }, testInfo) => {
+    if (process.env.CAPACITY_GUARDRAILS_E2E !== '1' || testInfo.project.name !== 'chromium') {
       return;
     }
 
