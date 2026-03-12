@@ -43,10 +43,14 @@ describe('Header', () => {
     const desktopToggle = within(header).getByTestId('header-lang-toggle-desktop');
     const mobileToggle = within(header).getByTestId('header-lang-toggle-mobile');
     const desktopOverlay = desktopToggle.parentElement;
+    const mobileHomeLink = within(header).getByTestId('header-home-link-mobile');
 
     expect(desktopToggle).toHaveClass('h-full');
     expect(mobileToggle).toHaveClass('h-full');
+    expect(desktopToggle).not.toHaveClass('items-start');
+    expect(mobileToggle).not.toHaveClass('items-start');
     expect(within(header).getAllByLabelText('Language selector')).toHaveLength(2);
+    expect(mobileHomeLink).toBeInTheDocument();
     expect(desktopOverlay).not.toBeNull();
     expect(desktopOverlay!.className).toContain('-right-5');
     expect(desktopOverlay!.className).toContain('lg:-right-20');

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState, useCallback, useEffect, memo } from 'react';
+import { useState, useCallback, useEffect, useRef, memo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import LangToggle from '@/components/LangToggle';
 
@@ -71,6 +71,7 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const pathname = usePathname();
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setIsReady(true);
@@ -105,6 +106,26 @@ export default function Header() {
     setMobileMenuOpen(prev => !prev);
   }, []);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      setMobileMenuOpen(false);
+      mobileMenuButtonRef.current?.focus();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
+
   return (
     <header data-ready={isReady ? 'true' : 'false'} className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-60 border-b border-white/10 py-3 md:py-4">
       <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
@@ -131,6 +152,7 @@ export default function Header() {
         <div className="md:hidden relative h-full">
           <div className="flex h-full items-center">
             <button
+              ref={mobileMenuButtonRef}
               onClick={toggleMobileMenu}
               className="p-2 -ml-2 text-white hover:bg-white/10 rounded-lg transition-colors"
               aria-label="Toggle menu"
@@ -150,7 +172,7 @@ export default function Header() {
           </div>
 
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <Link href={`/${locale}`} className="pointer-events-auto inline-flex items-center" aria-label="Home">
+            <Link href={`/${locale}`} className="pointer-events-auto inline-flex items-center" aria-label="Home" data-testid="header-home-link-mobile">
               <Image src="/images/logo/logo-t.gif" alt="Book Digest logo" width={70} height={56} className="h-14 w-auto" unoptimized priority />
             </Link>
           </div>
@@ -167,7 +189,7 @@ export default function Header() {
 
       {/* Mobile dropdown menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-white/10 bg-brand-navy/98 backdrop-blur">
+        <div className="md:hidden z-50 border-t border-white/10 bg-brand-navy/98 backdrop-blur">
           <nav aria-label="Primary mobile" className="mx-auto max-w-6xl px-6 py-4 flex flex-col gap-3">
             <MobileNavLink href={`/${locale}/books`} isActive={isActive('/books')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('books')}

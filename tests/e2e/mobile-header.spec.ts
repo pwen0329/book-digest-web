@@ -71,12 +71,25 @@ test.describe('Mobile header', () => {
     test(`should navigate back home from a secondary page via the mobile logo for /${locale}`, async ({ page }) => {
       await goto(page, `/${locale}/about`);
 
-      const homeLink = page.locator('a[aria-label="Home"]').filter({ has: page.locator('img') }).last();
+      const homeLink = page.getByTestId('header-home-link-mobile');
       await expect(homeLink).toBeVisible();
       await Promise.all([
         page.waitForURL(new RegExp(`/${locale}$`), { timeout: 15000 }),
         homeLink.click(),
       ]);
+    });
+
+    test(`should close the mobile menu with Escape for /${locale}`, async ({ page }) => {
+      await goto(page, `/${locale}`);
+
+      const menuButton = page.getByRole('button', { name: 'Toggle menu' });
+      await menuButton.click();
+      await expect(menuButton).toHaveAttribute('aria-expanded', 'true');
+
+      await page.keyboard.press('Escape');
+
+      await expect(menuButton).toHaveAttribute('aria-expanded', 'false');
+      await expect(menuButton).toBeFocused();
     });
   }
 });

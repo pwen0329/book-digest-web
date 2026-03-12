@@ -45,7 +45,7 @@ export default memo(function LangToggle({ className = '', buttonClassName = '', 
           type="button"
           aria-pressed={locale === 'en'}
           onClick={() => switchLocale('en')}
-          className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full font-medium font-outfit uppercase tracking-wider transition-colors ${
+          className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full font-medium font-outfit uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-pink focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy ${
             locale === 'en'
               ? 'bg-brand-pink text-brand-navy'
               : 'text-white hover:bg-white/10'
@@ -57,7 +57,7 @@ export default memo(function LangToggle({ className = '', buttonClassName = '', 
           type="button"
           aria-pressed={locale === 'zh'}
           onClick={() => switchLocale('zh')}
-          className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full font-medium font-outfit uppercase tracking-wider transition-colors ${
+          className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full font-medium font-outfit uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-pink focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy ${
             locale === 'zh'
               ? 'bg-brand-pink text-brand-navy'
               : 'text-white hover:bg-white/10'
