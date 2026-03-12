@@ -1,6 +1,22 @@
 "use client";
 import { useRef, useCallback, useEffect, useState } from 'react';
 
+function getInstagramButtonSize(width: number) {
+  return width >= 768 ? 48 : 44;
+}
+
+function clampTop(top: number, viewportHeight: number, buttonSize: number) {
+  const minTop = 56;
+  const maxTop = Math.max(minTop, viewportHeight - buttonSize - 24);
+  return Math.max(minTop, Math.min(maxTop, top));
+}
+
+function getInitialTop(width: number, height: number) {
+  const buttonSize = getInstagramButtonSize(width);
+  const anchorRatio = width >= 768 ? 0.31 : 0.68;
+  return clampTop(Math.round(height * anchorRatio), height, buttonSize);
+}
+
 export default function FloatingInstagram() {
   const btnRef = useRef<HTMLAnchorElement>(null);
   const dragging = useRef(false);
@@ -9,10 +25,17 @@ export default function FloatingInstagram() {
   const moved = useRef(false);
   const [topPx, setTopPx] = useState<number | null>(null);
 
-  // Initialize position: higher on desktop, near bottom on mobile
   useEffect(() => {
-    const isDesktop = window.innerWidth >= 768;
-    setTopPx(isDesktop ? Math.round(window.innerHeight * 0.25) : window.innerHeight - 80 - 48);
+    const syncPosition = () => {
+      setTopPx(getInitialTop(window.innerWidth, window.innerHeight));
+    };
+
+    syncPosition();
+    window.addEventListener('resize', syncPosition);
+
+    return () => {
+      window.removeEventListener('resize', syncPosition);
+    };
   }, []);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
@@ -28,7 +51,7 @@ export default function FloatingInstagram() {
     if (!dragging.current) return;
     const dy = e.clientY - startY.current;
     if (Math.abs(dy) > 3) moved.current = true;
-    const newTop = Math.max(60, Math.min(window.innerHeight - 60, startTop.current + dy));
+    const newTop = clampTop(startTop.current + dy, window.innerHeight, getInstagramButtonSize(window.innerWidth));
     setTopPx(newTop);
   }, []);
 
@@ -58,6 +81,7 @@ export default function FloatingInstagram() {
       className="fixed right-3 md:right-5 z-30 flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-full bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] shadow-lg hover:shadow-xl hover:scale-110 transition-shadow cursor-grab active:cursor-grabbing select-none touch-none"
       style={{ top: topPx }}
       aria-label="Follow us on Instagram"
+      data-top={topPx}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

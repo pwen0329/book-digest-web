@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic';
 import Script from 'next/script';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import LangToggle from '@/components/LangToggle';
 import { defaultViewport, getLocaleMetadata } from '@/lib/seo';
 import { NextIntlClientProvider } from 'next-intl';
 import { Outfit } from 'next/font/google';
@@ -40,6 +39,8 @@ type Props = {
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
+  const headerStore = headers();
+  const nonce = headerStore.get('x-nonce') || '';
   
   // Validate locale
   if (!locales.includes(locale as Locale)) {
@@ -51,15 +52,15 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   const messages = (await import(`../../messages/${locale}.json`)).default;
   const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
-  const nonce = plausibleDomain ? (headers().get('x-nonce') || '') : undefined;
 
   return (
     <>
+      {nonce ? <meta name="csp-nonce" content={nonce} /> : null}
       {/* Plausible Analytics — loaded after interactive (non-blocking) */}
       {plausibleDomain && (
         <Script
           strategy="afterInteractive"
-          nonce={nonce}
+          nonce={nonce || undefined}
           data-domain={plausibleDomain}
           src={process.env.NEXT_PUBLIC_PLAUSIBLE_SRC || 'https://plausible.io/js/script.js'}
         />
@@ -74,7 +75,6 @@ export default async function LocaleLayout({ children, params }: Props) {
             {messages.common.skipToMain}
           </a>
           <div className="min-h-screen flex flex-col">
-            <LangToggle />
             <FloatingInstagram />
             <Header />
             <main id="main-content" className="flex-1">{children}</main>

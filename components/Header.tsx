@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useCallback, useEffect, memo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import LangToggle from '@/components/LangToggle';
 
 // Use memo to optimize navigation link component
 const NavLink = memo(function NavLink({ 
@@ -107,8 +108,12 @@ export default function Header() {
   return (
     <header data-ready={isReady ? 'true' : 'false'} className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-60 border-b border-white/10 py-3 md:py-4">
       <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
+        <div className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 items-center">
+          <LangToggle data-testid="header-lang-toggle-desktop" />
+        </div>
+
         {/* Desktop/tablet: grid layout with equal width nav items */}
-        <nav aria-label="Primary" className="hidden md:grid grid-cols-5 items-center h-full">
+        <nav aria-label="Primary" className="hidden md:grid grid-cols-5 items-center h-full pr-28 lg:pr-32">
           <NavLink href={`/${locale}/books`} isActive={isActive('/books')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('books')}</NavLink>
           <NavLink href={`/${locale}/events`} isActive={isActive('/events')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('events')}</NavLink>
           <Link href={`/${locale}`} className="flex items-center justify-center" aria-label="Home" prefetch={true}>
@@ -145,9 +150,10 @@ export default function Header() {
               <Image src="/images/logo/logo-t.gif" alt="Book Digest logo" width={70} height={56} className="h-14 w-auto" unoptimized priority />
             </Link>
           </div>
-          
-          {/* Spacer to balance the hamburger button */}
-          <div className="w-10" />
+
+          <div className="flex items-center justify-end min-w-10">
+            <LangToggle data-testid="header-lang-toggle-mobile" buttonClassName="text-[9px] shadow-none" />
+          </div>
         </div>
       </div>
 

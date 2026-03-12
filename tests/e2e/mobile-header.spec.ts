@@ -15,12 +15,12 @@ test.describe('Mobile header', () => {
   });
 
   for (const locale of locales) {
-    test(`should keep utility controls out of the mobile header tap zone for /${locale}`, async ({ page }) => {
+    test(`should keep the language selector inside the mobile header for /${locale}`, async ({ page }) => {
       await goto(page, `/${locale}`);
 
       const boxes = await page.evaluate(() => {
         const header = document.querySelector('header');
-        const langToggle = document.querySelector('[aria-label="Language selector"]');
+        const langToggle = document.querySelector('[data-testid="header-lang-toggle-mobile"] [aria-label="Language selector"]');
 
         if (!header || !langToggle) {
           return null;
@@ -30,13 +30,16 @@ test.describe('Mobile header', () => {
         const langRect = langToggle.getBoundingClientRect();
 
         return {
+          headerTop: headerRect.top,
           headerBottom: headerRect.bottom,
+          langBottom: langRect.bottom,
           langTop: langRect.top,
         };
       });
 
       expect(boxes).not.toBeNull();
-      expect(boxes!.langTop).toBeGreaterThanOrEqual(boxes!.headerBottom);
+      expect(boxes!.langTop).toBeGreaterThanOrEqual(boxes!.headerTop);
+      expect(boxes!.langBottom).toBeLessThanOrEqual(boxes!.headerBottom);
     });
 
     test(`should open the mobile menu and navigate to about for /${locale}`, async ({ page }) => {
