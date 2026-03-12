@@ -1,0 +1,97 @@
+{
+  "TW": {
+    "posterSrc": "/images/elements/poster_202603_taiwan.webp",
+    "posterAlt": {
+      "zh": "台灣讀書會海報",
+      "en": "Taiwan Book Club poster"
+    },
+    "title": {
+      "zh": "台灣讀書會",
+      "en": "Book Club in Taipei, Taiwan"
+    },
+    "description": {
+      "zh": "芭芭拉．德米克在《竹林姊妹》以雙胞胎芳芳與留在湖南的雙潔為線索，剖析一胎化時代的拐賣、官僚貪腐與國際收養的灰色產業，調查式敘事帶出政策如何撕裂家庭與身份。\n\n作者不只還原被拐兒童的命運，也追蹤兩家人在文明與語言隔閡中重逢的複雜情感，場面既動人又充滿尷尬與不確定。\n\n同時，作品討論了國際收養的道德困境與全球不平等，讓讀者在個人故事之外看見制度性的歷史脈絡與後果。",
+      "en": "In Barbara Demick's Daughters of the Bamboo Grove, twin sisters Fangfang and Shuangjie become the thread that reveals child trafficking under the one-child era, bureaucratic corruption, and the gray industry of international adoption.\n\nThrough investigative storytelling, Demick shows how policy can tear apart families and identities. She not only reconstructs the fate of trafficked children, but also follows two families through emotionally complex reunions shaped by civilizational and language barriers.\n\nThe book also confronts the moral dilemmas of international adoption and global inequality, helping readers see the systemic historical forces and consequences beyond any single personal story."
+    },
+    "signupPath": "/signup?location=TW",
+    "imagePosition": "left",
+    "attendanceMode": "offline",
+    "locationName": {
+      "zh": "台北，台灣",
+      "en": "Taipei, Taiwan"
+    },
+    "addressCountry": "TW"
+  },
+  "NL": {
+    "posterSrc": "/images/elements/AD-15.webp",
+    "posterAlt": {
+      "zh": "荷蘭讀書會海報",
+      "en": "Netherlands Book Club poster"
+    },
+    "title": {
+      "zh": "荷蘭讀書會",
+      "en": "Book Club in the Netherlands"
+    },
+    "description": {
+      "zh": "荷蘭的面積比台灣略大 1.15 倍，說我們有點相像，卻又好像很不一樣。\n\n這本書分別就轉型、社會、環境永續三個面向，討論荷蘭的光明與陰暗。荷蘭的職場、對待多元性別或許沒有比較平等，對待職業婦女也有自己的問題。也收錄一個較少被媒體報導的話題：荷蘭人深入骨子裡的運動文化。\n\n讀完本書，你也會知道：原來大麻一直處在灰色地帶？「荷蘭病」會好嗎？荷蘭也會戰南北？還有紅燈區的種種歷史。",
+      "en": "The Netherlands is only about 1.15 times the size of Taiwan. In some ways we feel alike, yet in many ways we are strikingly different.\n\nThrough three lenses, transition, society, and environmental sustainability, this book explores both the bright and shadowed sides of Dutch life. It questions workplace norms, gender diversity in practice, and the realities faced by working women. It also dives into a topic rarely covered by mainstream media: the deeply rooted sports culture in Dutch society.\n\nAfter finishing this book, you will also learn why cannabis has long remained in a legal gray zone, whether the so-called Dutch disease can be cured, whether the Netherlands has its own north-south divide, and what histories lie behind the Red Light District."
+    },
+    "signupPath": "/signup?location=NL",
+    "imagePosition": "left",
+    "attendanceMode": "offline",
+    "locationName": {
+      "zh": "荷蘭",
+      "en": "Netherlands"
+    },
+    "addressCountry": "NL",
+    "comingSoon": true,
+    "comingSoonBody": {
+      "zh": "Coming soon…",
+      "en": "Coming soon…"
+    }
+  },
+  "EN": {
+    "posterSrc": "/images/elements/poster_202604_en_online.webp",
+    "posterAlt": {
+      "zh": "英文讀書會海報",
+      "en": "English Book Club poster"
+    },
+    "title": {
+      "zh": "英文讀書會",
+      "en": "English Book Club"
+    },
+    "description": {
+      "zh": "Good Material 是 Dolly Alderton 的幽默但溫柔的新作，從男主角 Andy 在三十五歲突遭分手的混亂出發，描繪他在友誼、約會與身分重整間的跌撞與自我修復。這本書從不同的角度看待男性視角，書中描繪主角的缺點、不安全感和人際關係。作者的機智筆觸與對三十多歲世代生活的敏銳觀察，並稱其既有笑點也有深刻情感轉折，也有出色的有聲書製作，整體來說是既輕鬆又能引人反思的一本分手小說，適合想找既療癒又帶笑的當代小說的讀者。\n\n建議程度：中級至進階 (B2-C1)",
+      "en": "Good Material is Dolly Alderton's witty yet tender new novel. It begins with protagonist Andy's sudden breakup at thirty-five and follows his stumbles through friendship, dating, and identity repair. Critics praise Alderton's sharp humor and her keen observations of thirty-something life; the book delivers both laughs and emotionally resonant turns, and the audiobook production has also been well received. Overall, it's a breezy yet thought-provoking breakup novel, perfect for readers who want something comforting, funny, and emotionally smart.\n\nRecommended level: Intermediate to advanced (B2-C1)"
+    },
+    "signupPath": "/engclub",
+    "imagePosition": "right",
+    "attendanceMode": "online",
+    "locationName": {
+      "zh": "線上",
+      "en": "Online"
+    }
+  },
+  "DETOX": {
+    "posterSrc": "/images/elements/poster_202604_detox.jpg",
+    "posterAlt": {
+      "zh": "數位排毒海報",
+      "en": "Digital Detox poster"
+    },
+    "title": {
+      "zh": "數位排毒",
+      "en": "Unplug Project"
+    },
+    "description": {
+      "zh": "勇者們，來自異世界的干擾太強大了！那些被稱為「螢幕」的神祕法器正在吸取我們的靈魂。大魔法師已下達禁令：進入本領地前，請將所有數位法器封印於「時空寶箱」中。\n\n任務目標：擺脫數位心靈控制，重新連結你的隊友\n冒險裝備：一支鉛筆、幾顆骰子，以及你無窮的想像力\n客製角色：告訴我們你的角色的外觀、衣著、飾品、職業、有無魔法，我們會幫你 3D 列印出屬於自己的角色！\n獎勵：專注力 +10、社交能力 +5、以及一段真正的傳奇回憶",
+      "en": "Heroes, the interference from the Otherworld is too powerful. Those mysterious artifacts known as Screens are draining our very souls. The Archmage has issued a decree: before entering this realm, all digital artifacts must be sealed within the Space-Time Chest.\n\nQuest Objective: Break free from digital mind control and reconnect with your party members.\nAdventure Gear: A pencil, a few dice, and your boundless imagination.\nCustom Characters: Describe your character's appearance, clothing, accessories, class, and whether they possess magical powers. We will 3D print a unique miniature just for you.\nRewards: Focus +10, Social Skills +5, and a truly legendary memory."
+    },
+    "signupPath": "/detox",
+    "imagePosition": "right",
+    "attendanceMode": "offline",
+    "locationName": {
+      "zh": "實體活動",
+      "en": "In-person event"
+    }
+  }
+}

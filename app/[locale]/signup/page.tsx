@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { locales, setRequestLocale } from '@/lib/i18n';
+import { getLocalizedEventsContent } from '@/lib/events-content';
 import SignupClient from './client';
 
 export const metadata: Metadata = {
@@ -20,5 +21,5 @@ export default async function SignupPage({
   const { locale } = await params;
   const { location } = await searchParams;
   setRequestLocale(locale);
-  return <SignupClient initialLocation={location} />;
+  return <SignupClient initialLocation={location} events={getLocalizedEventsContent(locale)} />;
 }

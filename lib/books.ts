@@ -1,7 +1,6 @@
 import 'server-only';
 
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
+import { readJsonFile } from '@/lib/json-store';
 import type { Book } from '@/types/book';
 import { unstable_cache } from 'next/cache';
 
@@ -18,19 +17,23 @@ type BooksStore = {
 };
 
 let booksStore: BooksStore | null = null;
+let booksSignature = '';
 
 function loadBooks(): Book[] {
-  const filePath = path.join(process.cwd(), 'data', 'books.json');
-  const raw = readFileSync(filePath, 'utf8');
-  return JSON.parse(raw) as Book[];
+  return readJsonFile<Book[]>('data/books.json');
 }
 
 function getBooksStore(): BooksStore {
-  if (booksStore) {
+  const books = loadBooks();
+  const nextSignature = JSON.stringify(
+    books.map((book) => [book.id, book.slug, book.title, book.titleEn, book.coverUrl, book.coverUrlEn, book.readDate])
+  );
+
+  if (booksStore && booksSignature === nextSignature) {
     return booksStore;
   }
 
-  const books = loadBooks();
+  booksSignature = nextSignature;
 
   // Pre-build slug index for O(1) lookup complexity
   const booksBySlug = new Map<string, Book>(books.map((book) => [book.slug, book]));

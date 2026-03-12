@@ -3,10 +3,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { BLUR_POSTER } from '@/lib/constants';
+import { getLocalizedEventsContent } from '@/lib/events-content';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { pageSEO, getLocaleAlternates } from '@/lib/seo';
 import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
 
 // Counter is a client component below the fold; lazy-load it
 const Counter = dynamic(() => import('@/components/Counter'), { ssr: false });
@@ -38,7 +38,7 @@ function EventSection({
 }: {
   image: string;
   title: string;
-  description: ReactNode;
+  description: string;
   signupUrl?: string;
   signupText?: string;
   imagePosition?: 'left' | 'right';
@@ -108,6 +108,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('events');
+  const events = getLocalizedEventsContent(locale);
   const ctaClass = locale === 'en' ? "inline-flex min-h-11 items-center justify-center rounded-full bg-brand-pink px-5 sm:px-7 py-2.5 sm:py-3 font-semibold text-white shadow font-outfit transition-all text-sm sm:text-base uppercase tracking-wider hover:brightness-110" : "inline-flex min-h-11 items-center justify-center rounded-full bg-brand-pink px-8 sm:px-9 py-2.5 sm:py-3 font-semibold text-white shadow transition-all text-base sm:text-lg tracking-[0.24em] sm:tracking-[0.3em] hover:brightness-110";
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
@@ -118,33 +119,33 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
     itemListElement: [
       {
         '@type': 'Event',
-        name: t('taiwanTitle'),
-        description: t('taiwanDesc'),
+        name: events.TW.title,
+        description: events.TW.description,
         eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
         eventSchedule: { '@type': 'Schedule', repeatFrequency: 'P1M', byDay: 'https://schema.org/Saturday' },
-        location: { '@type': 'Place', name: 'Taipei, Taiwan', address: { '@type': 'PostalAddress', addressLocality: 'Taipei', addressCountry: 'TW' } },
+        location: { '@type': 'Place', name: events.TW.locationName, address: { '@type': 'PostalAddress', addressLocality: 'Taipei', addressCountry: events.TW.addressCountry || 'TW' } },
         organizer: { '@type': 'Organization', name: 'Book Digest', url: siteUrl },
-        url: `${siteUrl}/${locale}/signup?location=TW`,
+        url: `${siteUrl}/${locale}${events.TW.signupPath}`,
       },
       {
         '@type': 'Event',
-        name: t('nlTitle'),
-        description: t('nlDesc'),
+        name: events.NL.title,
+        description: events.NL.description,
         eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
         eventSchedule: { '@type': 'Schedule', repeatFrequency: 'P1M', byDay: 'https://schema.org/Saturday' },
-        location: { '@type': 'Place', name: 'Netherlands', address: { '@type': 'PostalAddress', addressCountry: 'NL' } },
+        location: { '@type': 'Place', name: events.NL.locationName, address: { '@type': 'PostalAddress', addressCountry: events.NL.addressCountry || 'NL' } },
         organizer: { '@type': 'Organization', name: 'Book Digest', url: siteUrl },
-        url: `${siteUrl}/${locale}/signup?location=NL`,
+        url: `${siteUrl}/${locale}${events.NL.signupPath}`,
       },
       {
         '@type': 'Event',
-        name: t('onlineTitle'),
-        description: t.raw('onlineDesc').replace(/<[^>]+>/g, ''),
+        name: events.EN.title,
+        description: events.EN.description,
         eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
         eventSchedule: { '@type': 'Schedule', repeatFrequency: 'P1M' },
-        location: { '@type': 'VirtualLocation', url: `${siteUrl}/${locale}/engclub` },
+        location: { '@type': 'VirtualLocation', url: `${siteUrl}/${locale}${events.EN.signupPath}` },
         organizer: { '@type': 'Organization', name: 'Book Digest', url: siteUrl },
-        url: `${siteUrl}/${locale}/engclub`,
+        url: `${siteUrl}/${locale}${events.EN.signupPath}`,
       },
     ],
   };
@@ -180,12 +181,12 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
         {/* Taiwan Book Club */}
         <div className="py-12">
           <EventSection
-            image="/images/elements/poster_202603_taiwan.webp"
-            title={t('taiwanTitle')}
-            description={t('taiwanDesc')}
-            signupUrl={`/${locale}/signup?location=TW`}
+            image={events.TW.posterSrc}
+            title={events.TW.title}
+            description={events.TW.description}
+            signupUrl={`/${locale}${events.TW.signupPath}`}
             signupText={t('signUp')}
-            imagePosition="left"
+            imagePosition={events.TW.imagePosition}
             priority={true}
             ctaClass={ctaClass}
           />
@@ -196,12 +197,12 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
         {/* Online English Book Club */}
         <div className="py-12">
           <EventSection
-            image="/images/elements/poster_202604_en_online.webp"
-            title={t('onlineTitle')}
-            description={t.rich('onlineDesc', { level: (chunks) => <strong className="font-bold text-base block mt-3">{chunks}</strong> })}
-            signupUrl={`/${locale}/engclub`}
+            image={events.EN.posterSrc}
+            title={events.EN.title}
+            description={events.EN.description}
+            signupUrl={`/${locale}${events.EN.signupPath}`}
             signupText={t('signUp')}
-            imagePosition="right"
+            imagePosition={events.EN.imagePosition}
             ctaClass={ctaClass}
           />
         </div>
@@ -211,12 +212,12 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
         {/* Netherlands Book Club */}
         <div className="py-12">
           <EventSection
-            image="/images/elements/AD-15.webp"
-            title={t('nlTitle')}
-            description={t('nlDesc')}
-            signupUrl={`/${locale}/signup?location=NL`}
+            image={events.NL.posterSrc}
+            title={events.NL.title}
+            description={events.NL.description}
+            signupUrl={`/${locale}${events.NL.signupPath}`}
             signupText={t('signUp')}
-            imagePosition="left"
+            imagePosition={events.NL.imagePosition}
             ctaClass={ctaClass}
           />
         </div>
@@ -226,14 +227,12 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
         {/* Digital Detox */}
         <div id="detox" className="py-12">
           <EventSection
-            image="/images/elements/poster_202604_detox.jpg"
-            title={t('detoxTitle')}
-            description={t.rich('detoxDesc', {
-              label: (chunks) => <strong className="font-bold text-white">{chunks}</strong>,
-            })}
-            signupUrl={`/${locale}/detox`}
+            image={events.DETOX.posterSrc}
+            title={events.DETOX.title}
+            description={events.DETOX.description}
+            signupUrl={`/${locale}${events.DETOX.signupPath}`}
             signupText={t('signUp')}
-            imagePosition="right"
+            imagePosition={events.DETOX.imagePosition}
             ctaClass={ctaClass}
           />
         </div>

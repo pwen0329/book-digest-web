@@ -5,21 +5,26 @@ import { useLocale, useTranslations } from 'next-intl';
 
 type ActivityTab = 'TW' | 'EN' | 'NL' | 'DETOX';
 
+type ActivitySignupTabsProps = {
+  activeTab: ActivityTab;
+  labels?: Partial<Record<ActivityTab, string>>;
+};
+
 const tabHref = (locale: string, tab: ActivityTab) => {
   if (tab === 'EN') return `/${locale}/engclub`;
   if (tab === 'DETOX') return `/${locale}/detox`;
   return `/${locale}/signup?location=${tab}`;
 };
 
-export default function ActivitySignupTabs({ activeTab }: { activeTab: ActivityTab }) {
+export default function ActivitySignupTabs({ activeTab, labels }: ActivitySignupTabsProps) {
   const locale = useLocale();
   const t = useTranslations('events');
 
   const tabs: Array<{ id: ActivityTab; label: string }> = [
-    { id: 'TW', label: t('taiwanTitle') },
-    { id: 'EN', label: t('onlineTitle') },
-    { id: 'NL', label: t('nlTitle') },
-    { id: 'DETOX', label: t('detoxTitle') },
+    { id: 'TW', label: labels?.TW || t('taiwanTitle') },
+    { id: 'EN', label: labels?.EN || t('onlineTitle') },
+    { id: 'NL', label: labels?.NL || t('nlTitle') },
+    { id: 'DETOX', label: labels?.DETOX || t('detoxTitle') },
   ];
 
   return (

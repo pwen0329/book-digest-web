@@ -1,27 +1,28 @@
 'use client';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import ActivitySignupFlow from '@/components/ActivitySignupFlow';
+import type { LocalizedEventContentMap } from '@/types/event-content';
 
-function SignupContent({ initialLocation }: { initialLocation?: string }) {
+function SignupContent({ initialLocation, events }: { initialLocation?: string; events: LocalizedEventContentMap }) {
   const t = useTranslations('events');
-  const locale = useLocale();
   const activeLocation: 'TW' | 'NL' = initialLocation === 'NL' ? 'NL' : 'TW';
-
+  const activeEvent = events[activeLocation];
   const locationLocked = initialLocation === 'TW' || initialLocation === 'NL';
-  const isNlComingSoon = activeLocation === 'NL';
 
   return (
     <ActivitySignupFlow
       activeTab={activeLocation}
       location={activeLocation}
+      tabLabels={{ TW: events.TW.title, EN: events.EN.title, NL: events.NL.title, DETOX: events.DETOX.title }}
       translationNamespace="signupFlow"
       endpoint={
         activeLocation === 'TW'
           ? process.env.NEXT_PUBLIC_FORMS_ENDPOINT_TW || '/api/submit?loc=TW'
           : process.env.NEXT_PUBLIC_FORMS_ENDPOINT_NL || '/api/submit?loc=NL'
       }
-      posterSrc={activeLocation === 'TW' ? '/images/elements/poster_202603_taiwan.webp' : '/images/elements/AD-15.webp'}
-      posterAlt={activeLocation === 'TW' ? 'Taiwan Book Club' : 'Netherlands Book Club'}
+      posterSrc={activeEvent.posterSrc}
+      posterAlt={activeEvent.posterAlt}
+      comingSoon={activeEvent.comingSoon ? { title: activeEvent.title, body: activeEvent.comingSoonBody } : undefined}
       renderIntro={(step) => !locationLocked && step === 0 ? (
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold font-outfit">
@@ -32,11 +33,10 @@ function SignupContent({ initialLocation }: { initialLocation?: string }) {
           </p>
         </div>
       ) : null}
-      comingSoon={isNlComingSoon ? { title: t('nlTitle'), body: locale === 'zh' ? 'Coming soon…' : 'Coming soon…' } : undefined}
     />
   );
 }
 
-export default function SignupClient({ initialLocation }: { initialLocation?: string }) {
-  return <SignupContent initialLocation={initialLocation} />;
+export default function SignupClient({ initialLocation, events }: { initialLocation?: string; events: LocalizedEventContentMap }) {
+  return <SignupContent initialLocation={initialLocation} events={events} />;
 }

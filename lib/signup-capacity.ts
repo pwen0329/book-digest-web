@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
-import capacityConfig from '@/data/signup-capacity.json';
+import { getSignupCapacitySlot, type CapacityConfigSlot, type SignupLocation } from '@/lib/signup-capacity-config';
 
-type Location = 'TW' | 'NL' | 'EN' | 'DETOX';
+type Location = SignupLocation;
 
 type SlotConfig = {
   enabled: boolean;
@@ -10,21 +10,6 @@ type SlotConfig = {
   endAt?: Date;
   max?: number;
   key?: string;
-};
-
-type ConfigSlot = {
-  enabled?: boolean;
-  forceFull?: boolean;
-  startAt?: string;
-  endAt?: string;
-  max?: number;
-};
-
-type CapacityConfigFile = {
-  TW?: ConfigSlot;
-  NL?: ConfigSlot;
-  EN?: ConfigSlot;
-  DETOX?: ConfigSlot;
 };
 
 export type CapacityStatus = {
@@ -86,9 +71,8 @@ export function _setForceFullForTesting(location: Location, value: boolean): voi
   memoryForceFullOverrides.set(location, value);
 }
 
-function getConfigSlot(location: Location): ConfigSlot {
-  const fileConfig = capacityConfig as CapacityConfigFile;
-  return fileConfig[location] || {};
+function getConfigSlot(location: Location): CapacityConfigSlot {
+  return getSignupCapacitySlot(location);
 }
 
 function parseSlotConfig(location: Location): SlotConfig {

@@ -10,6 +10,11 @@ const intlMiddleware = createIntlMiddleware({
 
 export default function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    return NextResponse.next();
+  }
+
   const hasLocalePrefix = locales.some(
     (locale) => pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)
   );

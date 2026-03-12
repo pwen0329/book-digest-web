@@ -26,6 +26,7 @@ type ActivitySignupFlowProps = {
   location: SignupLocation;
   posterSrc: string;
   posterAlt: string;
+  tabLabels?: Partial<Record<ActivityTab, string>>;
   translationNamespace: 'signupFlow' | 'detoxSignupFlow';
   endpoint?: string;
   posterPriority?: boolean;
@@ -41,6 +42,7 @@ export default function ActivitySignupFlow({
   location,
   posterSrc,
   posterAlt,
+  tabLabels,
   translationNamespace,
   endpoint,
   posterPriority = false,
@@ -203,7 +205,7 @@ export default function ActivitySignupFlow({
           </Link>
         </div>
 
-        <ActivitySignupTabs activeTab={activeTab} />
+        <ActivitySignupTabs activeTab={activeTab} labels={tabLabels} />
         {renderIntro ? renderIntro(step) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">

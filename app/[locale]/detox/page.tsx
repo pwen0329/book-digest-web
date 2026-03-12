@@ -1,13 +1,15 @@
 import { locales, setRequestLocale } from '@/lib/i18n';
+import { getLocalizedEventContent, getLocalizedEventsContent } from '@/lib/events-content';
 import { getLocaleAlternates } from '@/lib/seo';
 import type { Metadata } from 'next';
 import DetoxClient from './client';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
+  const event = getLocalizedEventContent(locale, 'DETOX');
   return {
-    title: 'Digital Detox',
-    description: 'Join our digital detox challenge. Put your phone down and reconnect with the world around you.',
+    title: event.title,
+    description: event.description.slice(0, 160),
     alternates: getLocaleAlternates('detox', locale),
   };
 }
@@ -19,5 +21,5 @@ export function generateStaticParams() {
 export default async function DetoxPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <DetoxClient />;
+  return <DetoxClient events={getLocalizedEventsContent(locale)} />;
 }

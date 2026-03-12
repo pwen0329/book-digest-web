@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { Suspense, cache } from 'react';
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { getTranslations } from 'next-intl/server';
 import { getBooksSync, getLocalizedBook, getBookBySlugSync } from '@/lib/books';
@@ -11,13 +11,6 @@ import { getLocaleAlternates } from '@/lib/seo';
 
 // ISR: regenerate book pages hourly without a full rebuild
 export const revalidate = 3600;
-
-// Cache book data query (using index lookup, O(1) complexity)
-const getBookBySlug = cache((slug: string) => {
-  return getBookBySlugSync(slug);
-});
-
-const getAllBooks = cache(() => getBooksSync());
 
 // Dynamically load sidebar (non-critical above-the-fold content)
 const BookArticleSidebar = dynamic(() => import('@/components/BookArticleSidebar'), {
@@ -32,7 +25,7 @@ const BookArticleSidebar = dynamic(() => import('@/components/BookArticleSidebar
 
 // Generate static paths for all books and locales (SSG optimization)
 export async function generateStaticParams() {
-  const books = getAllBooks();
+  const books = getBooksSync();
   return books.flatMap((book) => 
     locales.map((locale) => ({
       locale,
@@ -44,7 +37,7 @@ export async function generateStaticParams() {
 // Generate Metadata (SEO optimization)
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; locale: string }> }) {
   const { slug, locale } = await params;
-  const rawBook = getBookBySlug(slug);
+  const rawBook = getBookBySlugSync(slug);
   
   if (!rawBook) {
     return { title: 'Book Not Found' };
@@ -87,8 +80,8 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
   // Now safe to use getTranslations
   const t = await getTranslations('books');
 
-  const allBooks = getAllBooks();
-  const rawBook = getBookBySlug(slug);
+  const allBooks = getBooksSync();
+  const rawBook = getBookBySlugSync(slug);
   if (!rawBook) return notFound();
   
   const book = getLocalizedBook(rawBook, locale);
