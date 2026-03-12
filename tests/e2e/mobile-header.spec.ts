@@ -21,25 +21,36 @@ test.describe('Mobile header', () => {
       const boxes = await page.evaluate(() => {
         const header = document.querySelector('header');
         const langToggle = document.querySelector('[data-testid="header-lang-toggle-mobile"] [aria-label="Language selector"]');
+        const logo = Array.from(document.querySelectorAll<HTMLImageElement>('header a[aria-label="Home"] img')).find((node) => {
+          const rect = node.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
 
-        if (!header || !langToggle) {
+        if (!header || !langToggle || !logo) {
           return null;
         }
 
         const headerRect = header.getBoundingClientRect();
         const langRect = langToggle.getBoundingClientRect();
+        const logoRect = logo.getBoundingClientRect();
 
         return {
           headerTop: headerRect.top,
           headerBottom: headerRect.bottom,
+          headerRight: headerRect.right,
+          headerCenterX: (headerRect.left + headerRect.right) / 2,
           langBottom: langRect.bottom,
           langTop: langRect.top,
+          langRightGap: headerRect.right - langRect.right,
+          logoCenterOffset: Math.abs((logoRect.left + logoRect.right) / 2 - ((headerRect.left + headerRect.right) / 2)),
         };
       });
 
       expect(boxes).not.toBeNull();
       expect(boxes!.langTop).toBeGreaterThanOrEqual(boxes!.headerTop);
       expect(boxes!.langBottom).toBeLessThanOrEqual(boxes!.headerBottom);
+      expect(boxes!.langRightGap).toBeLessThan(28);
+      expect(boxes!.logoCenterOffset).toBeLessThan(18);
     });
 
     test(`should open the mobile menu and navigate to about for /${locale}`, async ({ page }) => {
