@@ -95,7 +95,9 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
   }, [isHydrated, values, storageKey]);
 
   useEffect(() => () => {
-    submitRequestRef.current?.abort();
+    if (submitRequestRef.current && typeof submitRequestRef.current.abort === 'function') {
+      submitRequestRef.current.abort();
+    }
   }, []);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -270,7 +272,6 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             <label htmlFor="name" className="block text-sm font-medium text-white mb-2">{t('nameLabel')}</label>
             <input
               id="name" name="name" value={values.name} onChange={onChange}
-              readOnly={isInputDisabled}
               disabled={isInputDisabled}
               className={inputClass(!!errors.name)}
               autoComplete="name"
@@ -285,7 +286,6 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             <label htmlFor="age" className="block text-sm font-medium text-white mb-2">{t('ageLabel')}</label>
             <input
               id="age" name="age" inputMode="numeric" pattern="[0-9]*" value={values.age} onChange={onChange}
-              readOnly={isInputDisabled}
               disabled={isInputDisabled}
               className={inputClass(!!errors.age)}
               aria-invalid={errors.age ? true : undefined}
@@ -299,7 +299,6 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             <label htmlFor="profession" className="block text-sm font-medium text-white mb-2">{t('professionLabel')}</label>
             <input
               id="profession" name="profession" value={values.profession} onChange={onChange}
-              readOnly={isInputDisabled}
               disabled={isInputDisabled}
               className={inputClass(!!errors.profession)}
               aria-invalid={errors.profession ? true : undefined}
@@ -313,7 +312,6 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             <label htmlFor="email" className="block text-sm font-medium text-white mb-2">{t('emailLabel')}</label>
             <input
               id="email" name="email" type="email" value={values.email} onChange={onChange}
-              readOnly={isInputDisabled}
               disabled={isInputDisabled}
               className={inputClass(!!errors.email)}
               autoComplete="email"
@@ -329,7 +327,6 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           <label htmlFor="instagram" className="block text-sm font-medium text-white mb-2">{t('instagramLabel')}</label>
           <input
             id="instagram" name="instagram" value={values.instagram} onChange={onChange}
-            readOnly={isInputDisabled}
             disabled={isInputDisabled}
             className={inputClass(false)}
             placeholder="bookdigest_tw"
@@ -356,7 +353,6 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
             <label htmlFor="referralOther" className="block text-sm font-medium text-white mb-2">{t('referralOtherLabel')}</label>
             <input
               id="referralOther" name="referralOther" value={values.referralOther} onChange={onChange}
-              readOnly={isInputDisabled}
               disabled={isInputDisabled}
               className={inputClass(!!errors.referralOther)}
               placeholder={t('referralOtherPlaceholder')}

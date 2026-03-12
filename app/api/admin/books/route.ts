@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { readJsonFile, writeJsonFile } from '@/lib/json-store';
+import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import type { Book } from '@/types/book';
 
 export const dynamic = 'force-dynamic';
@@ -115,10 +116,10 @@ export async function PUT(request: NextRequest) {
   let parsedBody: z.infer<typeof requestSchema>;
 
   try {
-    parsedBody = requestSchema.parse(await request.json());
+    parsedBody = await parseJsonRequest(request, requestSchema, { maxBytes: 2_000_000 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues[0]?.message || 'Invalid payload.' }, { status: 400 });
+    if (error instanceof JsonRequestError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
     return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });

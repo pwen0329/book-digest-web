@@ -5,6 +5,7 @@ import { cryptoRandomId } from '@/lib/crypto-id';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTesting, _setForceFullForTesting } from '@/lib/signup-capacity';
+import { getRetryAfterSeconds } from '@/lib/http-response';
 import { parseApiReferral } from '@/lib/signup';
 
 type Location = 'TW' | 'NL' | 'EN' | 'DETOX';
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     if (!allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
+        { status: 429, headers: { 'Retry-After': getRetryAfterSeconds(retryAfterMs) } }
       );
     }
 

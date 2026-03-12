@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clearAdminSession, createAdminSession, isAdminAuthenticated, isAdminConfigured, validateAdminPassword } from '@/lib/admin-auth';
+import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
+
+const sessionSchema = z.object({
+  password: z.string().min(1),
+});
 
 export async function GET() {
   if (!isAdminConfigured()) {
@@ -16,15 +22,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Admin is not configured.' }, { status: 503 });
   }
 
-  let payload: { password?: string };
+  let payload: z.infer<typeof sessionSchema>;
 
   try {
-    payload = (await request.json()) as { password?: string };
-  } catch {
+    payload = await parseJsonRequest(request, sessionSchema, { maxBytes: 10_000 });
+  } catch (error) {
+    if (error instanceof JsonRequestError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
   }
 
-  if (!payload.password || !validateAdminPassword(payload.password)) {
+  if (!validateAdminPassword(payload.password)) {
     return NextResponse.json({ error: 'Invalid password.' }, { status: 401 });
   }
 

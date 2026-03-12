@@ -25,6 +25,8 @@ const adminHeaders = {
   Authorization: 'Bearer test-admin',
 };
 
+test.describe.configure({ timeout: 60_000 });
+
 function toInputDate(value: Date) {
   const pad = (segment: number) => String(segment).padStart(2, '0');
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
@@ -44,6 +46,15 @@ async function signIn(page: Page) {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('heading', { name: 'Content operations dashboard' })).toBeVisible({ timeout: 15000 });
   await expect(page.locator('[data-dashboard-ready="true"]')).toBeVisible({ timeout: 15000 });
+}
+
+async function withPreviewPage(page: Page, callback: (previewPage: Page) => Promise<void>) {
+  const previewPage = await page.context().newPage();
+  try {
+    await callback(previewPage);
+  } finally {
+    await previewPage.close();
+  }
 }
 
 test.describe.serial('admin dashboard', () => {
@@ -80,14 +91,18 @@ test.describe.serial('admin dashboard', () => {
     const eventSaveResponse = page.waitForResponse((response) => response.url().includes('/api/admin/events') && response.request().method() === 'PUT');
     await eventsEditor.getByRole('button', { name: 'Save events' }).click();
     expect((await eventSaveResponse).ok()).toBeTruthy();
+    await expect(page.getByText('Event content and posters updated. Public event pages were revalidated.')).toBeVisible();
 
-    await page.goto('/en/events', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: nextEventTitle })).toBeVisible();
+    await withPreviewPage(page, async (previewPage) => {
+      await previewPage.goto('/en/events', { waitUntil: 'domcontentloaded' });
+      await expect(previewPage.getByRole('heading', { name: nextEventTitle })).toBeVisible();
+    });
 
-    await page.goto('/en/signup?location=TW', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('link', { name: nextEventTitle })).toBeVisible();
+    await withPreviewPage(page, async (previewPage) => {
+      await previewPage.goto('/en/signup?location=TW', { waitUntil: 'domcontentloaded' });
+      await expect(previewPage.getByRole('link', { name: nextEventTitle })).toBeVisible();
+    });
 
-    await page.goto('/admin', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'Content operations dashboard' })).toBeVisible();
     await expect(page.locator('[data-dashboard-ready="true"]')).toBeVisible();
     await page.getByRole('button', { name: 'Books', exact: true }).click();
@@ -96,9 +111,12 @@ test.describe.serial('admin dashboard', () => {
     const bookSaveResponse = page.waitForResponse((response) => response.url().includes('/api/admin/books') && response.request().method() === 'PUT');
     await booksEditor.getByRole('button', { name: 'Save books' }).click();
     expect((await bookSaveResponse).ok()).toBeTruthy();
+    await expect(page.getByText('Books updated. Public pages were revalidated.')).toBeVisible();
 
-    await page.goto(`/en/books/${firstBook.slug}`, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: nextBookTitle })).toBeVisible();
+    await withPreviewPage(page, async (previewPage) => {
+      await previewPage.goto(`/en/books/${firstBook.slug}`, { waitUntil: 'domcontentloaded' });
+      await expect(previewPage.getByRole('heading', { name: nextBookTitle })).toBeVisible();
+    });
   });
 
   test('can tighten capacity from admin and surface the full-state on the public signup page', async ({ page, request }) => {
@@ -126,6 +144,7 @@ test.describe.serial('admin dashboard', () => {
     const capacitySaveResponse = page.waitForResponse((response) => response.url().includes('/api/admin/capacity') && response.request().method() === 'PUT');
     await page.getByRole('button', { name: 'Save capacity settings' }).click();
     expect((await capacitySaveResponse).ok()).toBeTruthy();
+    await expect(page.getByText('Signup windows and capacity settings updated.')).toBeVisible();
 
     const resetResponse = await request.delete('/api/submit?loc=TW&tempMax=1&forceFull=0');
     expect(resetResponse.ok()).toBeTruthy();

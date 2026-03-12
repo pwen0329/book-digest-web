@@ -22,7 +22,7 @@ function getAdminPassword(): string | null {
 }
 
 function getSessionSecret(): string | null {
-  return process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_API_SECRET || process.env.ADMIN_PASSWORD || null;
+  return process.env.ADMIN_SESSION_SECRET || null;
 }
 
 function getExpectedSessionValue(): string | null {

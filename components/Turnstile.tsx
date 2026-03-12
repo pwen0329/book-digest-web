@@ -20,7 +20,6 @@ declare global {
       reset: (widgetId: string) => void;
       remove: (widgetId: string) => void;
     };
-    onTurnstileLoad?: () => void;
   }
 }
 
@@ -34,10 +33,21 @@ type TurnstileProps = {
 
 const TURNSTILE_SITEKEY = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY || '';
 
+function getTurnstileScriptNonce(): string | null {
+  return document.querySelector('meta[name="csp-nonce"]')?.getAttribute('content') || null;
+}
+
 export default function Turnstile({ onVerify, onExpire, onError, theme = 'dark', size = 'normal' }: TurnstileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollIntervalsRef = useRef<Array<ReturnType<typeof setInterval>>>([]);
+
+  const clearPollIntervals = useCallback(() => {
+    for (const interval of pollIntervalsRef.current) {
+      clearInterval(interval);
+    }
+    pollIntervalsRef.current = [];
+  }, []);
 
   const renderWidget = useCallback(() => {
     if (!containerRef.current || !window.turnstile || widgetIdRef.current) return;
@@ -52,74 +62,64 @@ export default function Turnstile({ onVerify, onExpire, onError, theme = 'dark',
   }, [onVerify, onExpire, onError, theme, size]);
 
   useEffect(() => {
+    const cleanupWidget = () => {
+      clearPollIntervals();
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+    };
+
     if (!TURNSTILE_SITEKEY) {
       console.warn('[turnstile] NEXT_PUBLIC_TURNSTILE_SITEKEY is not configured; bot protection is disabled.');
       return;
     }
 
-    // If Turnstile script is already loaded
     if (window.turnstile) {
       renderWidget();
-      return () => {
-        if (widgetIdRef.current && window.turnstile) {
-          window.turnstile.remove(widgetIdRef.current);
-          widgetIdRef.current = null;
-        }
-      };
+      return cleanupWidget;
     }
 
-    // If script tag already exists, wait for load
-    if (document.querySelector('script[src*="challenges.cloudflare.com"]')) {
-      // Script already injected, just wait for it to load
-      intervalRef.current = setInterval(() => {
+    const existingScript = document.querySelector<HTMLScriptElement>('script[data-turnstile-script="true"]');
+    if (existingScript) {
+      const onLoad = () => {
+        renderWidget();
+      };
+
+      existingScript.addEventListener('load', onLoad, { once: true });
+
+      const pollInterval = setInterval(() => {
         if (window.turnstile) {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
+          clearPollIntervals();
           renderWidget();
         }
       }, 100);
+
+      pollIntervalsRef.current.push(pollInterval);
+
       return () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-        if (widgetIdRef.current && window.turnstile) {
-          window.turnstile.remove(widgetIdRef.current);
-          widgetIdRef.current = null;
-        }
-        if (window.onTurnstileLoad === renderWidget) {
-          delete window.onTurnstileLoad;
-        }
+        existingScript.removeEventListener('load', onLoad);
+        cleanupWidget();
       };
     }
 
-    window.onTurnstileLoad = renderWidget;
-
     if (!turnstileScriptRequested) {
       const script = document.createElement('script');
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
       script.async = true;
       script.defer = true;
+      script.dataset.turnstileScript = 'true';
+      const nonce = getTurnstileScriptNonce();
+      if (nonce) {
+        script.setAttribute('nonce', nonce);
+      }
+      script.addEventListener('load', renderWidget, { once: true });
       document.head.appendChild(script);
       turnstileScriptRequested = true;
     }
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
-        widgetIdRef.current = null;
-      }
-      if (window.onTurnstileLoad === renderWidget) {
-        delete window.onTurnstileLoad;
-      }
-    };
-  }, [renderWidget]);
+    return cleanupWidget;
+  }, [clearPollIntervals, renderWidget]);
 
   // Don't render if no sitekey configured (graceful fallback)
   if (!TURNSTILE_SITEKEY) return null;

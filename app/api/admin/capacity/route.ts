@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { getSignupCapacityConfig, type CapacityConfigFile, type SignupLocation } from '@/lib/signup-capacity-config';
 import { writeJsonFile } from '@/lib/json-store';
+import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,10 +60,10 @@ export async function PUT(request: NextRequest) {
   let payload: z.infer<typeof requestSchema>;
 
   try {
-    payload = requestSchema.parse(await request.json());
+    payload = await parseJsonRequest(request, requestSchema, { maxBytes: 20_000 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues[0]?.message || 'Invalid payload.' }, { status: 400 });
+    if (error instanceof JsonRequestError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
     return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listRegistrations } from '@/lib/notion';
 import { rateLimit } from '@/lib/rate-limit';
+import { getRetryAfterSeconds } from '@/lib/http-response';
 
 // Force dynamic rendering (API routes are not suitable for static generation)
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
     if (!allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
+        { status: 429, headers: { 'Retry-After': getRetryAfterSeconds(retryAfterMs) } }
       );
     }
 
