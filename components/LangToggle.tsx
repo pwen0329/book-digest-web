@@ -1,7 +1,7 @@
 'use client';
 
 import type { HTMLAttributes } from 'react';
-import { memo, useEffect, useState } from 'react';
+import { memo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { buildLocalizedPath } from '@/lib/locale-switch';
@@ -15,14 +15,9 @@ export default memo(function LangToggle({ className = '', buttonClassName = '', 
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    setIsReady(true);
-  }, []);
 
   const switchLocale = (newLocale: 'en' | 'zh') => {
-    if (!isReady || newLocale === locale) return;
+    if (newLocale === locale) return;
 
     const search = typeof window === 'undefined' ? '' : window.location.search;
     const hash = typeof window === 'undefined' ? '' : window.location.hash;
@@ -36,16 +31,17 @@ export default memo(function LangToggle({ className = '', buttonClassName = '', 
       {...props}
     >
       <div
-        className={`inline-flex rounded-full border border-white/20 p-0.5 bg-brand-navy/90 backdrop-blur text-[10px] md:text-xs shadow-lg ${buttonClassName}`.trim()}
+        className={`inline-flex rounded-full border border-white/20 p-0.5 bg-brand-navy/90 backdrop-blur shadow-lg ${buttonClassName}`.trim()}
         role="group"
         aria-label="Language selector"
-        data-ready={isReady ? 'true' : 'false'}
+        data-ready="true"
       >
         <button
           type="button"
+          aria-label="Switch to English"
           aria-pressed={locale === 'en'}
           onClick={() => switchLocale('en')}
-          className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full font-medium font-outfit uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-pink focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy ${
+          className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full font-medium font-outfit uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
             locale === 'en'
               ? 'bg-brand-pink text-brand-navy'
               : 'text-white hover:bg-white/10'
@@ -55,9 +51,10 @@ export default memo(function LangToggle({ className = '', buttonClassName = '', 
         </button>
         <button
           type="button"
+          aria-label="Switch to Chinese"
           aria-pressed={locale === 'zh'}
           onClick={() => switchLocale('zh')}
-          className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full font-medium font-outfit uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-pink focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy ${
+          className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full font-medium font-outfit uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
             locale === 'zh'
               ? 'bg-brand-pink text-brand-navy'
               : 'text-white hover:bg-white/10'

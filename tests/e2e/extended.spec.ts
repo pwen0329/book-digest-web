@@ -12,7 +12,7 @@ async function waitForSignupFormReady(page: Page) {
 }
 
 function getLanguageToggle(page: Page) {
-  return page.getByRole('group', { name: 'Language selector' });
+  return page.getByTestId('floating-lang-toggle').getByRole('group', { name: 'Language selector' });
 }
 
 async function waitForLanguageToggleReady(page: Page) {
@@ -205,14 +205,14 @@ test.describe('Language switching', () => {
   test('should switch from English to Chinese on the home page', async ({ page }) => {
     await goto(page, '/en');
     await waitForLanguageToggleReady(page);
-    await getLanguageToggle(page).getByRole('button', { name: '中文' }).click();
+    await getLanguageToggle(page).getByRole('button', { name: 'Switch to Chinese' }).click();
     await expect(page).toHaveURL(/\/zh$/);
   });
 
   test('should switch from Chinese to English on the home page', async ({ page }) => {
     await goto(page, '/zh');
     await waitForLanguageToggleReady(page);
-    await getLanguageToggle(page).getByRole('button', { name: 'EN' }).click();
+    await getLanguageToggle(page).getByRole('button', { name: 'Switch to English' }).click();
     await expect(page).toHaveURL(/\/en$/);
   });
 
@@ -223,7 +223,7 @@ test.describe('Language switching', () => {
     await page.fill('#name', 'Locale Traveler');
     await page.fill('#email', 'traveler@example.com');
 
-    await getLanguageToggle(page).getByRole('button', { name: '中文' }).click();
+    await getLanguageToggle(page).getByRole('button', { name: 'Switch to Chinese' }).click();
 
     await expect(page).toHaveURL(/\/zh\/signup\?location=TW/);
     await waitForSignupFormReady(page);
@@ -237,7 +237,7 @@ test.describe('Language switching', () => {
     await waitForLanguageToggleReady(page);
     await page.fill('#name', 'Reader Abroad');
 
-    await getLanguageToggle(page).getByRole('button', { name: '中文' }).click();
+    await getLanguageToggle(page).getByRole('button', { name: 'Switch to Chinese' }).click();
 
     await expect(page).toHaveURL(/\/zh\/engclub$/);
     await waitForSignupFormReady(page);
