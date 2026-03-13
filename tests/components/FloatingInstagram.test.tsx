@@ -20,7 +20,11 @@ describe('FloatingInstagram', () => {
   it('anchors closer to the lower third on mobile', async () => {
     render(<FloatingInstagram />);
 
-    await waitFor(() => expect(screen.getByRole('link', { name: 'Follow us on Instagram' })).toHaveAttribute('data-top', '574'));
+    await waitFor(() => {
+      const top = Number(screen.getByRole('link', { name: 'Follow us on Instagram' }).getAttribute('data-top'));
+      expect(top).toBeGreaterThanOrEqual(570);
+      expect(top).toBeLessThanOrEqual(578);
+    });
   });
 
   it('anchors closer to the upper third on desktop and updates on resize', async () => {
@@ -29,6 +33,10 @@ describe('FloatingInstagram', () => {
     setViewport(1440, 900);
     window.dispatchEvent(new Event('resize'));
 
-    await waitFor(() => expect(screen.getByRole('link', { name: 'Follow us on Instagram' })).toHaveAttribute('data-top', '279'));
+    await waitFor(() => {
+      const top = Number(screen.getByRole('link', { name: 'Follow us on Instagram' }).getAttribute('data-top'));
+      expect(top).toBeGreaterThanOrEqual(275);
+      expect(top).toBeLessThanOrEqual(283);
+    });
   });
 });

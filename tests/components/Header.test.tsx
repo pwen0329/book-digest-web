@@ -46,7 +46,7 @@ describe('Header', () => {
     expect(mobileHomeLink).toBeInTheDocument();
 
     const desktopNav = within(header).getByRole('navigation', { name: 'Primary' });
-    expect(desktopNav.className).not.toContain('pr-28');
-    expect(desktopNav.className).not.toContain('pr-32');
+    expect(desktopNav.className).toContain('pr-28');
+    expect(desktopNav.className).toContain('lg:pr-32');
   });
 });

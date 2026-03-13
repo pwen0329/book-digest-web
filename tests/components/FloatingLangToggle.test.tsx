@@ -33,21 +33,18 @@ describe('FloatingLangToggle', () => {
   it('pins the toggle outside the header shell on wide desktop viewports', async () => {
     render(<FloatingLangToggle />);
 
-    await waitFor(() => expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-wide'));
-    const left = Number(screen.getByTestId('floating-lang-toggle').getAttribute('data-left'));
-    expect(left).toBeGreaterThan(1320);
-    expect(left).toBeLessThan(1340);
+    await waitFor(() => expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-fixed'));
+    expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-right', '12');
+    expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-top', '12');
   });
 
-  it('moves the toggle below the header on compact desktop widths', async () => {
+  it('keeps the toggle in the same top-right lane on narrower desktop widths', async () => {
     setViewport(1024);
     render(<FloatingLangToggle />);
 
-    await waitFor(() => expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-compact'));
+    await waitFor(() => expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-fixed'));
     expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-right', '12');
-    const top = Number(screen.getByTestId('floating-lang-toggle').getAttribute('data-top'));
-    expect(top).toBeGreaterThanOrEqual(136);
-    expect(top).toBeLessThanOrEqual(144);
+    expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-top', '12');
   });
 
   it('pins the toggle to the top-right on mobile widths', async () => {

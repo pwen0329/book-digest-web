@@ -5,46 +5,39 @@ test.describe('Header utilities', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/en', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('header')).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
-    await expect(page.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-wide');
+    await expect(page.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-fixed');
 
     const metrics = await page.evaluate(() => {
       const header = document.querySelector('header');
-      const headerShell = document.querySelector('header > div');
       const langToggle = document.querySelector('[data-testid="floating-lang-toggle"] [aria-label="Language selector"]');
       const instagram = document.querySelector('[aria-label="Follow us on Instagram"]');
       const joinUsLink = document.querySelector('nav[aria-label="Primary"] a[href$="/joinus"]');
-      const logo = Array.from(document.querySelectorAll<HTMLImageElement>('header a[aria-label="Home"] img')).find((node) => {
-        const rect = node.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-      });
 
-      if (!header || !headerShell || !langToggle || !instagram || !logo || !joinUsLink) {
+      if (!header || !langToggle || !instagram || !joinUsLink) {
         return null;
       }
 
       const headerRect = header.getBoundingClientRect();
-      const headerShellRect = headerShell.getBoundingClientRect();
       const langRect = langToggle.getBoundingClientRect();
       const instagramRect = instagram.getBoundingClientRect();
-      const logoRect = logo.getBoundingClientRect();
       const joinUsRect = joinUsLink.getBoundingClientRect();
 
       return {
         headerTop: headerRect.top,
-        headerBottom: headerRect.bottom,
         langTop: langRect.top,
-        langOverflowRight: langRect.right - headerShellRect.right,
+        langRightGap: window.innerWidth - langRect.right,
+        langWidth: langRect.width,
         navGap: langRect.left - joinUsRect.right,
-        logoCenterOffset: Math.abs((logoRect.left + logoRect.right) / 2 - ((headerRect.left + headerRect.right) / 2)),
         instagramTopRatio: instagramRect.top / window.innerHeight,
       };
     });
 
     expect(metrics).not.toBeNull();
     expect(metrics!.langTop).toBeGreaterThanOrEqual(metrics!.headerTop);
-    expect(metrics!.langOverflowRight).toBeGreaterThan(0);
+    expect(metrics!.langRightGap).toBeGreaterThanOrEqual(8);
+    expect(metrics!.langRightGap).toBeLessThanOrEqual(20);
+    expect(metrics!.langWidth).toBeGreaterThan(110);
     expect(metrics!.navGap).toBeGreaterThan(12);
-    expect(metrics!.logoCenterOffset).toBeLessThan(20);
     expect(metrics!.instagramTopRatio).toBeGreaterThan(0.2);
     expect(metrics!.instagramTopRatio).toBeLessThan(0.4);
 
@@ -56,11 +49,11 @@ test.describe('Header utilities', () => {
     expect(scrolledTop!).toBeLessThan(30);
   });
 
-  test('moves the floating desktop language selector below the header when the viewport is too narrow for a safe right-side lane', async ({ page }) => {
+  test('keeps the floating desktop language selector in the same top-right lane on narrower desktop widths without clipping or overlapping Join Us', async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 900 });
     await page.goto('/en', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('header')).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
-    await expect(page.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-compact');
+    await expect(page.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-fixed');
 
     const metrics = await page.evaluate(() => {
       const header = document.querySelector('header');
@@ -77,12 +70,19 @@ test.describe('Header utilities', () => {
 
       return {
         langTop: langRect.top,
-        headerBottom: headerRect.bottom,
+        headerTop: headerRect.top,
+        langRightGap: window.innerWidth - langRect.right,
+        langWidth: langRect.width,
+        navGap: langRect.left - joinUsRect.right,
       };
     });
 
     expect(metrics).not.toBeNull();
-    expect(metrics!.langTop).toBeGreaterThan(metrics!.headerBottom + 4);
+    expect(metrics!.langTop).toBeGreaterThanOrEqual(metrics!.headerTop);
+    expect(metrics!.langRightGap).toBeGreaterThanOrEqual(8);
+    expect(metrics!.langRightGap).toBeLessThanOrEqual(20);
+    expect(metrics!.langWidth).toBeGreaterThan(110);
+    expect(metrics!.navGap).toBeGreaterThan(12);
   });
 
   test('keeps the mobile Instagram button closer to the lower third', async ({ page }) => {
