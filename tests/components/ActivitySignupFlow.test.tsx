@@ -256,6 +256,7 @@ describe('ActivitySignupFlow', () => {
     const submitBody = JSON.parse(fetchMock.mock.calls[1][1]?.body as string) as Record<string, unknown>;
     expect(submitBody).toMatchObject({
       location: 'DETOX',
+      locale: 'en',
       name: 'Detox Adventurer',
       age: 28,
       profession: 'Designer',

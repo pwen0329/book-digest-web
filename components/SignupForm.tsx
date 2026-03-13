@@ -158,6 +158,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
           signal: controller.signal,
           body: JSON.stringify({
             location,
+            locale,
             name: values.name,
             age: Number(values.age),
             profession: values.profession,
@@ -176,6 +177,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
       }
 
       setSuccess('ok');
+      setTurnstileToken(null);
       setValues({ ...EMPTY_SIGNUP_FORM_VALUES });
       try {
         sessionStorage.removeItem(storageKey);

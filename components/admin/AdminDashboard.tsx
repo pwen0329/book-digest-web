@@ -3,15 +3,17 @@
 import { useEffect, useState, useTransition } from 'react';
 import type { Book } from '@/types/book';
 import type { EventContentId, EventContentMap } from '@/types/event-content';
+import type { RegistrationEmailLocale, RegistrationSuccessEmailSettings } from '@/lib/registration-success-email-config';
 import type { CapacityConfigFile, SignupLocation } from '@/lib/signup-capacity-config';
 
 type AdminDashboardProps = {
   initialBooks: Book[];
   initialEvents: EventContentMap;
   initialCapacity: CapacityConfigFile;
+  initialRegistrationEmails: RegistrationSuccessEmailSettings;
 };
 
-type DashboardTab = 'books' | 'events' | 'capacity';
+type DashboardTab = 'books' | 'events' | 'capacity' | 'emails';
 
 const EVENT_IDS: EventContentId[] = ['TW', 'EN', 'NL', 'DETOX'];
 const CAPACITY_IDS: SignupLocation[] = ['TW', 'EN', 'NL', 'DETOX'];
@@ -74,12 +76,13 @@ async function uploadAsset(scope: 'books' | 'events', file: File): Promise<strin
   return payload.src as string;
 }
 
-export default function AdminDashboard({ initialBooks, initialEvents, initialCapacity }: AdminDashboardProps) {
+export default function AdminDashboard({ initialBooks, initialEvents, initialCapacity, initialRegistrationEmails }: AdminDashboardProps) {
   const [hydrated, setHydrated] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('books');
   const [books, setBooks] = useState<Book[]>(initialBooks);
   const [events, setEvents] = useState<EventContentMap>(initialEvents);
   const [capacity, setCapacity] = useState<CapacityConfigFile>(initialCapacity);
+  const [registrationEmails, setRegistrationEmails] = useState<RegistrationSuccessEmailSettings>(initialRegistrationEmails);
   const [selectedBookSlug, setSelectedBookSlug] = useState(initialBooks[0]?.slug || '');
   const [selectedEventId, setSelectedEventId] = useState<EventContentId>('TW');
   const [message, setMessage] = useState<string | null>(null);
@@ -124,6 +127,19 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       [location]: {
         ...currentCapacity[location],
         [field]: value,
+      },
+    }));
+  }
+
+  function updateRegistrationEmailField(locale: RegistrationEmailLocale, field: 'subject' | 'body', value: string) {
+    setRegistrationEmails((currentSettings) => ({
+      ...currentSettings,
+      templates: {
+        ...currentSettings.templates,
+        [locale]: {
+          ...currentSettings.templates[locale],
+          [field]: value,
+        },
       },
     }));
   }
@@ -196,6 +212,24 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     setMessage('Signup windows and capacity settings updated.');
   }
 
+  async function saveRegistrationEmails() {
+    resetFlash();
+
+    const response = await fetch('/api/admin/email', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings: registrationEmails }),
+    });
+
+    const payload = await response.json().catch(() => ({ error: 'Unable to save registration email settings.' }));
+    if (!response.ok) {
+      throw new Error(payload.error || 'Unable to save registration email settings.');
+    }
+
+    setRegistrationEmails(payload.settings as RegistrationSuccessEmailSettings);
+    setMessage('Registration success email settings updated.');
+  }
+
   async function logout() {
     setLoggingOut(true);
 
@@ -231,7 +265,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {(['books', 'events', 'capacity'] as DashboardTab[]).map((tab) => (
+              {(['books', 'events', 'capacity', 'emails'] as DashboardTab[]).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -240,7 +274,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                     activeTab === tab ? 'bg-brand-pink text-brand-navy' : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
                   }`}
                 >
-                  {tab === 'books' ? 'Books' : tab === 'events' ? 'Events' : 'Capacity'}
+                  {tab === 'books' ? 'Books' : tab === 'events' ? 'Events' : tab === 'capacity' ? 'Capacity' : 'Emails'}
                 </button>
               ))}
               <button
@@ -605,6 +639,64 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
               <button type="button" onClick={() => void handleAction(saveCapacity)} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
                 {isPending ? 'Saving…' : 'Save capacity settings'}
               </button>
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === 'emails' ? (
+          <div aria-label="Registration email editor" className="rounded-[28px] border border-white/10 bg-white/10 p-6">
+            <div className="rounded-[24px] border border-white/10 bg-black/10 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold font-outfit">Registration success emails</h2>
+                  <p className="mt-2 max-w-3xl text-sm text-white/70">
+                    When enabled, successful registrations will trigger a localized confirmation email through Resend or the configured local outbox transport.
+                  </p>
+                </div>
+                <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={registrationEmails.enabled}
+                    onChange={(event) => setRegistrationEmails((currentSettings) => ({ ...currentSettings, enabled: event.target.checked }))}
+                  />
+                  <span className="text-sm text-white/85">Send registration success emails automatically</span>
+                </label>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-white/10 bg-brand-navy/60 p-4 text-sm text-white/70">
+                Supported tokens: <span className="font-mono text-white">{'{{name}}'}</span>, <span className="font-mono text-white">{'{{email}}'}</span>, <span className="font-mono text-white">{'{{location}}'}</span>, <span className="font-mono text-white">{'{{eventTitle}}'}</span>, <span className="font-mono text-white">{'{{siteUrl}}'}</span>
+              </div>
+
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                {(['zh', 'en'] as RegistrationEmailLocale[]).map((locale) => (
+                  <div key={locale} className="rounded-2xl border border-white/10 bg-black/10 p-5">
+                    <h3 className="text-lg font-semibold font-outfit">{locale === 'zh' ? 'Template (ZH)' : 'Template (EN)'}</h3>
+                    <label className="mt-4 block">
+                      <span className="mb-2 block text-sm text-white/70">Subject</span>
+                      <input
+                        value={registrationEmails.templates[locale].subject}
+                        onChange={(event) => updateRegistrationEmailField(locale, 'subject', event.target.value)}
+                        className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
+                      />
+                    </label>
+                    <label className="mt-4 block">
+                      <span className="mb-2 block text-sm text-white/70">Body</span>
+                      <textarea
+                        rows={12}
+                        value={registrationEmails.templates[locale].body}
+                        onChange={(event) => updateRegistrationEmailField(locale, 'body', event.target.value)}
+                        className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8">
+                <button type="button" onClick={() => void handleAction(saveRegistrationEmails)} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
+                  {isPending ? 'Saving…' : 'Save email settings'}
+                </button>
+              </div>
             </div>
           </div>
         ) : null}

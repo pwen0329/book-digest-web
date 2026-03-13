@@ -21,6 +21,23 @@ type CapacityConfigFile = {
   DETOX: { enabled: boolean; forceFull: boolean; startAt: string; endAt: string; max: number };
 };
 
+type RegistrationSuccessEmailSettings = {
+  enabled: boolean;
+  templates: {
+    zh: { subject: string; body: string };
+    en: { subject: string; body: string };
+  };
+};
+
+type EmailOutboxRecord = {
+  to: string;
+  subject: string;
+  text: string;
+  locale: 'zh' | 'en';
+  location: 'TW' | 'NL' | 'EN' | 'DETOX';
+  transport: 'file' | 'resend';
+};
+
 const adminHeaders = {
   Authorization: 'Bearer test-admin',
 };
@@ -61,17 +78,21 @@ test.describe.serial('admin dashboard', () => {
   let originalBooks: BookRecord[];
   let originalEvents: EventContentMap;
   let originalCapacity: CapacityConfigFile;
+  let originalEmailSettings: RegistrationSuccessEmailSettings;
 
   test.beforeEach(async ({ request }) => {
     originalBooks = await readAdminState<BookRecord[]>(request, '/api/admin/books', 'books');
     originalEvents = await readAdminState<EventContentMap>(request, '/api/admin/events', 'events');
     originalCapacity = await readAdminState<CapacityConfigFile>(request, '/api/admin/capacity', 'capacity');
+    originalEmailSettings = await readAdminState<RegistrationSuccessEmailSettings>(request, '/api/admin/email', 'settings');
   });
 
   test.afterEach(async ({ request }) => {
     await request.put('/api/admin/books', { headers: adminHeaders, data: { books: originalBooks } });
     await request.put('/api/admin/events', { headers: adminHeaders, data: { events: originalEvents } });
     await request.put('/api/admin/capacity', { headers: adminHeaders, data: { capacity: originalCapacity } });
+    await request.put('/api/admin/email', { headers: adminHeaders, data: { settings: originalEmailSettings } });
+    await request.delete('/api/admin/email?outbox=1', { headers: adminHeaders });
 
     for (const location of ['TW', 'NL', 'EN', 'DETOX']) {
       await request.delete(`/api/submit?loc=${location}&forceFull=0`);
@@ -163,5 +184,74 @@ test.describe.serial('admin dashboard', () => {
 
     await page.goto('/en/signup?location=TW', { waitUntil: 'domcontentloaded' });
     await expect(page.getByText('Registration Full')).toBeVisible({ timeout: 15000 });
+  });
+
+  test('can configure registration success emails from admin and send a localized confirmation email', async ({ page, request }) => {
+    const now = Date.now();
+    const startAt = new Date(now - 60 * 60 * 1000);
+    const endAt = new Date(now + 24 * 60 * 60 * 1000);
+    const subject = `管理後台寄信測試 ${now}`;
+    const body = `嗨 {{name}}，這是 {{eventTitle}} 的測試郵件。\n站點：{{siteUrl}}`;
+
+    await request.delete('/api/admin/email?outbox=1', { headers: adminHeaders });
+
+    const nextCapacity = {
+      ...originalCapacity,
+      TW: {
+        ...originalCapacity.TW,
+        enabled: true,
+        forceFull: false,
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+        max: 5,
+      },
+    };
+    const capacityResponse = await request.put('/api/admin/capacity', { headers: adminHeaders, data: { capacity: nextCapacity } });
+    expect(capacityResponse.ok()).toBeTruthy();
+    const resetResponse = await request.delete('/api/submit?loc=TW&tempMax=5&forceFull=0');
+    expect(resetResponse.ok()).toBeTruthy();
+
+    await signIn(page);
+    await page.getByRole('button', { name: 'Emails', exact: true }).click();
+
+    const emailEditor = page.getByLabel('Registration email editor');
+    const enabledToggle = emailEditor.getByLabel('Send registration success emails automatically');
+    if (!(await enabledToggle.isChecked())) {
+      await enabledToggle.check();
+    }
+
+    const zhPanel = emailEditor.getByRole('heading', { name: 'Template (ZH)' }).locator('..');
+    await zhPanel.getByLabel('Subject').fill(subject);
+    await zhPanel.getByLabel('Body').fill(body);
+
+    const saveResponse = page.waitForResponse((response) => response.url().includes('/api/admin/email') && response.request().method() === 'PUT');
+    await emailEditor.getByRole('button', { name: 'Save email settings' }).click();
+    expect((await saveResponse).ok()).toBeTruthy();
+    await expect(page.getByText('Registration success email settings updated.')).toBeVisible();
+
+    const submitResponse = await request.post('/api/submit?loc=TW', {
+      data: {
+        locale: 'zh',
+        name: '管理員測試用戶',
+        age: 30,
+        profession: 'QA',
+        email: `admin-email-${now}@example.com`,
+        referral: 'Instagram',
+      },
+    });
+    expect(submitResponse.status()).toBe(201);
+    const submitPayload = await submitResponse.json();
+    expect(submitPayload.email).toMatchObject({ status: 'sent', transport: 'file' });
+
+    const outbox = await readAdminState<EmailOutboxRecord[]>(request, '/api/admin/email?includeOutbox=1', 'outbox');
+    expect(outbox[0]).toMatchObject({
+      to: `admin-email-${now}@example.com`,
+      locale: 'zh',
+      location: 'TW',
+      transport: 'file',
+    });
+    expect(outbox[0].subject).toContain(subject);
+    expect(outbox[0].text).toContain('管理員測試用戶');
+    expect(outbox[0].text).toContain('台灣讀書會');
   });
 });

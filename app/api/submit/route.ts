@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { cryptoRandomId } from '@/lib/crypto-id';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
+import { sendRegistrationSuccessEmail } from '@/lib/registration-success-email';
 import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTesting, _setForceFullForTesting } from '@/lib/signup-capacity';
 import { getRetryAfterSeconds } from '@/lib/http-response';
 import { parseApiReferral } from '@/lib/signup';
@@ -57,6 +58,7 @@ export async function DELETE(req: NextRequest) {
 export async function POST(req: NextRequest) {
   let reservedLoc: Location | null = null;
   let tallySucceeded = false;
+  let registrationStored = false;
   try {
     // Rate limiting
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
@@ -82,6 +84,7 @@ export async function POST(req: NextRequest) {
     const visitorId = req.headers.get('x-visitor-id') || null;
     const referral = parseApiReferral(body.referral);
     const turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : '';
+    const locale = body.locale === 'zh' ? 'zh' : 'en';
 
     // Honeypot — return silent success if filled by bots
     if (body.website) {
@@ -233,25 +236,89 @@ export async function POST(req: NextRequest) {
 
     if (saveAlsoToNotion && dbId && token) {
       const result = await saveRegistrationToNotion(dbId, payload);
-      return NextResponse.json({ ok: true, id: (result as { id: string }).id }, { status: 201 });
+      registrationStored = true;
+
+      let emailResult: Awaited<ReturnType<typeof sendRegistrationSuccessEmail>> = { status: 'skipped', reason: 'Email transport not attempted.' };
+      try {
+        emailResult = await sendRegistrationSuccessEmail({
+          location: loc,
+          locale,
+          name: payload.name,
+          email: payload.email,
+        });
+      } catch (emailError) {
+        console.error('[api/submit] Registration success email failed', {
+          error: emailError,
+          message: emailError instanceof Error ? emailError.message : String(emailError),
+          loc,
+          email: payload.email,
+          locale,
+        });
+        emailResult = { status: 'skipped', reason: 'Registration succeeded but email delivery failed.' };
+      }
+
+      return NextResponse.json({ ok: true, id: (result as { id: string }).id, email: emailResult }, { status: 201 });
     }
 
     // 3) If neither upstream nor Notion persistence is configured, simulate success
     if (!tallyEndpoint) {
       await new Promise((r) => setTimeout(r, 300));
-      return NextResponse.json({ ok: true, simulated: true }, { status: 201 });
+      registrationStored = true;
+
+      let emailResult: Awaited<ReturnType<typeof sendRegistrationSuccessEmail>> = { status: 'skipped', reason: 'Email transport not attempted.' };
+      try {
+        emailResult = await sendRegistrationSuccessEmail({
+          location: loc,
+          locale,
+          name: payload.name,
+          email: payload.email,
+        });
+      } catch (emailError) {
+        console.error('[api/submit] Registration success email failed', {
+          error: emailError,
+          message: emailError instanceof Error ? emailError.message : String(emailError),
+          loc,
+          email: payload.email,
+          locale,
+        });
+        emailResult = { status: 'skipped', reason: 'Registration succeeded but email delivery failed.' };
+      }
+
+      return NextResponse.json({ ok: true, simulated: true, email: emailResult }, { status: 201 });
     }
 
     // If Tally forward succeeded (and we didn't save to Notion), return success
-    return NextResponse.json({ ok: true, forwarded: true }, { status: 201 });
+    registrationStored = true;
+
+    let emailResult: Awaited<ReturnType<typeof sendRegistrationSuccessEmail>> = { status: 'skipped', reason: 'Email transport not attempted.' };
+    try {
+      emailResult = await sendRegistrationSuccessEmail({
+        location: loc,
+        locale,
+        name: payload.name,
+        email: payload.email,
+      });
+    } catch (emailError) {
+      console.error('[api/submit] Registration success email failed', {
+        error: emailError,
+        message: emailError instanceof Error ? emailError.message : String(emailError),
+        loc,
+        email: payload.email,
+        locale,
+      });
+      emailResult = { status: 'skipped', reason: 'Registration succeeded but email delivery failed.' };
+    }
+
+    return NextResponse.json({ ok: true, forwarded: true, email: emailResult }, { status: 201 });
   } catch (err) {
-    if (reservedLoc && !tallySucceeded) {
+    if (reservedLoc && !registrationStored && !tallySucceeded) {
       await releaseCapacity(reservedLoc);
     }
     console.error('[api/submit] Submit error', {
       error: err,
       reservedLoc,
       tallySucceeded,
+      registrationStored,
       url: req.url,
     });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

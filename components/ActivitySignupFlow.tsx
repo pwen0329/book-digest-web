@@ -155,6 +155,7 @@ export default function ActivitySignupFlow({
         signal: controller.signal,
         body: JSON.stringify({
           location,
+          locale,
           name: formValues.name,
           age: Number(formValues.age),
           profession: formValues.profession,
@@ -179,6 +180,7 @@ export default function ActivitySignupFlow({
 
       if (!resp.ok) throw new Error('Request failed');
       submitRequestRef.current = null;
+      setTurnstileToken(null);
       setStep(3);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
