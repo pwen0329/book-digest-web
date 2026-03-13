@@ -13,6 +13,7 @@ import { locales, type Locale, setRequestLocale } from '@/lib/i18n';
 
 // Lazy-load non-critical floating UI (not needed for first paint)
 const FloatingInstagram = dynamic(() => import('@/components/FloatingInstagram'), { ssr: false });
+const FloatingLangToggle = dynamic(() => import('@/components/FloatingLangToggle'), { ssr: false });
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -76,6 +77,7 @@ export default async function LocaleLayout({ children, params }: Props) {
           </a>
           <div className="min-h-screen flex flex-col">
             <FloatingInstagram />
+            <FloatingLangToggle />
             <Header />
             <main id="main-content" className="flex-1">{children}</main>
             <Footer locale={locale as Locale} messages={messages.footer} />

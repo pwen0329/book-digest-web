@@ -15,12 +15,13 @@ test.describe('Mobile header', () => {
   });
 
   for (const locale of locales) {
-    test(`should keep the language selector inside the mobile header for /${locale}`, async ({ page }) => {
+    test(`should keep the floating language selector pinned near the mobile header without shifting the centered logo for /${locale}`, async ({ page }) => {
       await goto(page, `/${locale}`);
+      await expect(page.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'mobile');
 
       const boxes = await page.evaluate(() => {
         const header = document.querySelector('header');
-        const langToggle = document.querySelector('[data-testid="header-lang-toggle-mobile"] [aria-label="Language selector"]');
+        const langToggle = document.querySelector('[data-testid="floating-lang-toggle"] [aria-label="Language selector"]');
         const logo = Array.from(document.querySelectorAll<HTMLImageElement>('header a[aria-label="Home"] img')).find((node) => {
           const rect = node.getBoundingClientRect();
           return rect.width > 0 && rect.height > 0;
@@ -36,10 +37,7 @@ test.describe('Mobile header', () => {
 
         return {
           headerTop: headerRect.top,
-          headerBottom: headerRect.bottom,
           headerRight: headerRect.right,
-          headerCenterX: (headerRect.left + headerRect.right) / 2,
-          langBottom: langRect.bottom,
           langTop: langRect.top,
           langRightGap: headerRect.right - langRect.right,
           logoCenterOffset: Math.abs((logoRect.left + logoRect.right) / 2 - ((headerRect.left + headerRect.right) / 2)),
@@ -48,9 +46,11 @@ test.describe('Mobile header', () => {
 
       expect(boxes).not.toBeNull();
       expect(boxes!.langTop).toBeGreaterThanOrEqual(boxes!.headerTop);
-      expect(boxes!.langBottom).toBeLessThanOrEqual(boxes!.headerBottom);
       expect(boxes!.langRightGap).toBeLessThan(28);
       expect(boxes!.logoCenterOffset).toBeLessThan(18);
+
+      await page.evaluate(() => window.scrollTo({ top: 800, behavior: 'instant' }));
+      await expect(page.getByTestId('floating-lang-toggle')).toBeVisible();
     });
 
     test(`should open the mobile menu and navigate to about for /${locale}`, async ({ page }) => {

@@ -4,7 +4,6 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useCallback, useEffect, useRef, memo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import LangToggle from '@/components/LangToggle';
 
 // Use memo to optimize navigation link component
 const NavLink = memo(function NavLink({ 
@@ -129,14 +128,6 @@ export default function Header() {
   return (
     <header data-ready={isReady ? 'true' : 'false'} className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-60 border-b border-white/10 py-3 md:py-4">
       <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
-        <div className="pointer-events-none absolute inset-y-0 -right-5 hidden md:flex items-stretch justify-end lg:-right-20 xl:-right-24">
-          <LangToggle
-            data-testid="header-lang-toggle-desktop"
-            className="pointer-events-auto h-full justify-end"
-            buttonClassName="mt-2.5 text-sm [&>button]:px-3.5 [&>button]:py-2"
-          />
-        </div>
-
         {/* Desktop/tablet: grid layout with equal width nav items */}
         <nav aria-label="Primary" className="hidden md:grid grid-cols-5 items-center h-full">
           <NavLink href={`/${locale}/books`} isActive={isActive('/books')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('books')}</NavLink>
@@ -148,7 +139,7 @@ export default function Header() {
           <NavLink href={`/${locale}/joinus`} isActive={isActive('/joinus')} prefetch={false} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('joinUs')}</NavLink>
         </nav>
 
-        {/* Mobile: hamburger button on left, logo centered, toggle overlaid on the right */}
+        {/* Mobile: hamburger button on left, logo centered */}
         <div className="md:hidden relative h-full">
           <div className="flex h-full items-center">
             <button
@@ -175,14 +166,6 @@ export default function Header() {
             <Link href={`/${locale}`} className="pointer-events-auto inline-flex items-center" aria-label="Home" data-testid="header-home-link-mobile">
               <Image src="/images/logo/logo-t.gif" alt="Book Digest logo" width={70} height={56} className="h-14 w-auto" unoptimized priority />
             </Link>
-          </div>
-
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-stretch justify-end">
-            <LangToggle
-              data-testid="header-lang-toggle-mobile"
-              className="pointer-events-auto h-full justify-end"
-              buttonClassName="mt-1.5 text-[9px] shadow-none [&>button]:px-2.5 [&>button]:py-1.5"
-            />
           </div>
         </div>
       </div>

@@ -36,25 +36,14 @@ vi.mock('@/components/LangToggle', () => ({
 }));
 
 describe('Header', () => {
-  it('keeps both desktop and mobile language selectors in full-height overlay anchors without reserving nav width', () => {
+  it('keeps the centered mobile home link and desktop nav width stable without embedding the language toggle in the header', () => {
     render(<Header />);
 
     const header = screen.getByRole('banner');
-    const desktopToggle = within(header).getByTestId('header-lang-toggle-desktop');
-    const mobileToggle = within(header).getByTestId('header-lang-toggle-mobile');
-    const desktopOverlay = desktopToggle.parentElement;
     const mobileHomeLink = within(header).getByTestId('header-home-link-mobile');
 
-    expect(desktopToggle).toHaveClass('h-full');
-    expect(mobileToggle).toHaveClass('h-full');
-    expect(desktopToggle).not.toHaveClass('items-start');
-    expect(mobileToggle).not.toHaveClass('items-start');
-    expect(within(header).getAllByLabelText('Language selector')).toHaveLength(2);
+    expect(within(header).queryByLabelText('Language selector')).not.toBeInTheDocument();
     expect(mobileHomeLink).toBeInTheDocument();
-    expect(desktopOverlay).not.toBeNull();
-    expect(desktopOverlay!.className).toContain('-right-5');
-    expect(desktopOverlay!.className).toContain('lg:-right-20');
-    expect(desktopOverlay!.className).toContain('xl:-right-24');
 
     const desktopNav = within(header).getByRole('navigation', { name: 'Primary' });
     expect(desktopNav.className).not.toContain('pr-28');
