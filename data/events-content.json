@@ -20,7 +20,12 @@
       "zh": "台北，台灣",
       "en": "Taipei, Taiwan"
     },
-    "addressCountry": "TW"
+    "addressCountry": "TW",
+    "comingSoon": false,
+    "comingSoonBody": {
+      "zh": "coming",
+      "en": "hi "
+    }
   },
   "NL": {
     "posterSrc": "/images/elements/AD-15.webp",
