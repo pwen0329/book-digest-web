@@ -21,7 +21,9 @@ npm install
 npm run dev
 ```
 
-If local dev fails because `.next/` contains old files with the wrong owner or permissions, start with a fresh output directory:
+Local development now defaults to a writable `.next-local-dev` build directory. You only need to set `NEXT_DIST_DIR` manually when you want a different custom output folder.
+
+If local dev still fails because an old `.next/` directory contains files with the wrong owner or permissions, start with a fresh output directory explicitly:
 
 ```bash
 export NEXT_DIST_DIR=.next-local-dev
@@ -46,6 +48,10 @@ Core variables:
 
 - `ADMIN_PASSWORD`: admin dashboard password
 - `ADMIN_SESSION_SECRET`: admin session signing secret
+- `SUPABASE_URL`: persistent admin document and upload backend base URL
+- `SUPABASE_SERVICE_ROLE_KEY`: server-side key used for admin document writes and storage uploads
+- `SUPABASE_ADMIN_DOCUMENTS_TABLE`: optional admin documents table name, defaults to `admin_documents`
+- `SUPABASE_STORAGE_BUCKET`: optional asset bucket name, defaults to `admin-assets`
 - `TALLY_ENDPOINT_TW|NL|EN|DETOX`: optional upstream submission webhooks
 - `SUBMIT_SAVE_TO_NOTION=1`: additionally persist submissions to Notion
 - `NOTION_TOKEN`, `NOTION_DB_ID`: Notion persistence credentials
@@ -73,6 +79,8 @@ ADMIN_PASSWORD=change-this-to-a-long-random-password
 ADMIN_SESSION_SECRET=replace-this-with-a-different-long-random-secret
 ```
 
+When setting these in Vercel, paste the raw values only. Do not include surrounding quotes.
+
 After changing either value, restart the Next.js server. Existing `npm run dev` processes do not reload admin env values automatically.
 
 You can generate a strong secret with Node:
@@ -94,6 +102,8 @@ How it works:
 - `ADMIN_PASSWORD` is the password you type on `/admin`
 - `ADMIN_SESSION_SECRET` is used by the server to sign and verify the admin session cookie
 - if either value is missing, the admin page stays in the "not configured" state
+- `NEXT_DIST_DIR` only changes where Next.js writes its build output; it does not control admin auth and it is not the reason login succeeds or fails
+- `npm run dev` and `next start` now both work for localhost admin login because secure cookies are only forced for real HTTPS production requests
 
 ## Project Map
 
@@ -136,12 +146,57 @@ Current dashboard areas:
 - `Capacity`: control registration windows and max capacity
 - `Emails`: turn confirmation emails on or off and edit localized subject/body templates
 
+Books tab notes:
+
+- use `Add book` to create a draft entry
+- set a unique slug before saving if you want a custom public URL
+
+Capacity tab notes:
+
+- the live count shown in the editor comes from the same signup capacity store used by the public form
+- when Upstash Redis is configured, that count is read from Redis
+- otherwise it falls back to the local in-memory counter
+- it is not currently calculated from a registrations database table
+
 For the `Emails` tab:
 
 - enable the toggle to send confirmation emails after successful registration
 - edit the localized subject and body templates
 - configure either `RESEND_API_KEY` + `REGISTRATION_EMAIL_FROM` for real delivery, or `EMAIL_OUTBOX_FILE` for local/test delivery
 - save the email settings before testing a new signup
+
+### File-backed vs persistent admin
+
+File-backed admin means the dashboard reads and writes repository files such as `data/books.json` and `data/events-content.json`.
+
+Persistent admin hosting means the dashboard reads and writes durable runtime storage, so edits survive across deploys and across server instances.
+
+Functional differences:
+
+- file-backed works well on local development and writable self-hosted Node servers
+- file-backed is a poor fit for Vercel runtime editing, because runtime file writes are not durable application storage
+- persistent admin works on Vercel, because both `/admin` and the public site read the same remote source of truth
+- with persistent admin, uploaded poster and cover assets also need persistent object storage instead of local disk
+
+This project now supports a Supabase-backed persistent admin path:
+
+- admin documents are stored in a Supabase table
+- admin uploads are stored in a Supabase Storage bucket
+- if Supabase env vars are missing, the app falls back to the existing local JSON/file behavior
+
+Recommended production setup:
+
+- Vercel for the public site and `/admin`
+- Supabase for persistent admin documents and uploaded assets
+- Upstash Redis for capacity counters when you need shared multi-instance accuracy
+
+Supabase bootstrap:
+
+1. Create a table and bucket using [docs/supabase-admin.sql](/data/yy/book-digest-web/docs/supabase-admin.sql).
+2. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ADMIN_DOCUMENTS_TABLE`, and `SUPABASE_STORAGE_BUCKET` in Vercel.
+3. Redeploy.
+
+Once Supabase is configured, `/admin` edits persist on Vercel and public pages read the same persistent data source.
 
 Supported email template tokens:
 
@@ -153,7 +208,8 @@ Supported email template tokens:
 
 ## Development notes
 
-- The admin dashboard writes directly to JSON files in `data/`.
+- Without Supabase env vars, the admin dashboard writes to local JSON files in `data/`.
+- With Supabase env vars configured, `/admin` reads and writes persistent remote documents and uploads assets to Supabase Storage.
 - `next build` can fail if the workspace `.next/` directory is root-owned. In that case, validate with a fresh directory:
 
 ```bash
