@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { getTranslations, getLocale } from 'next-intl/server';
-import { getRecentBooksSync, getLocalizedTitle, getLocalizedAuthor, getLocalizedBook } from '@/lib/books';
+import { getRecentBooks, getLocalizedTitle, getLocalizedAuthor, getLocalizedBook } from '@/lib/books';
 import { BLUR_BOOK_COVER } from '@/lib/constants';
 
 export default async function BookWall() {
@@ -9,7 +9,7 @@ export default async function BookWall() {
   const locale = await getLocale();
   
   // Show latest books only: desktop 6 columns × 4 rows = 24 books
-  const allBooks = getRecentBooksSync(24).map(b => ({
+  const allBooks = (await getRecentBooks(24)).map(b => ({
     ...b,
     ...getLocalizedBook(b, locale),
   }));
