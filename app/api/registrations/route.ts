@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listRegistrations } from '@/lib/notion';
+import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { getRetryAfterSeconds } from '@/lib/http-response';
+import { listStoredRegistrations } from '@/lib/registration-store';
 
 // Force dynamic rendering (API routes are not suitable for static generation)
 export const dynamic = 'force-dynamic';
@@ -9,9 +10,7 @@ export const dynamic = 'force-dynamic';
 // GET /api/registrations?limit=10
 export async function GET(req: NextRequest) {
   try {
-    // Admin-only: require secret token in Authorization header
-    const secret = process.env.ADMIN_API_SECRET;
-    if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
+    if (!(await isAuthorizedAdminRequest(req))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -38,12 +37,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const dbId = process.env.NOTION_DB_ID;
-    const token = process.env.NOTION_TOKEN;
-    if (!dbId || !token) {
-      return NextResponse.json({ items: [], simulated: true }, { status: 200 });
-    }
-    const items = await listRegistrations(dbId, limit);
+    const locationParam = req.nextUrl.searchParams.get('location');
+    const location = locationParam === 'TW' || locationParam === 'NL' || locationParam === 'EN' || locationParam === 'DETOX'
+      ? locationParam
+      : undefined;
+
+    const items = await listStoredRegistrations(limit, location);
     return NextResponse.json({ items }, { status: 200 });
   } catch (err) {
     console.error('List registrations error', err);

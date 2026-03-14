@@ -8,6 +8,7 @@ import { sendRegistrationSuccessEmail } from '@/lib/registration-success-email';
 import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTesting, _setForceFullForTesting } from '@/lib/signup-capacity';
 import { getRetryAfterSeconds } from '@/lib/http-response';
 import { parseApiReferral } from '@/lib/signup';
+import { createRegistrationReservation, updateRegistrationReservation } from '@/lib/registration-store';
 
 type Location = 'TW' | 'NL' | 'EN' | 'DETOX';
 
@@ -57,6 +58,7 @@ export async function DELETE(req: NextRequest) {
 // POST /api/submit?loc=TW|NL|EN|DETOX
 export async function POST(req: NextRequest) {
   let reservedLoc: Location | null = null;
+  let reservationRecordId: string | null = null;
   let tallySucceeded = false;
   let registrationStored = false;
   try {
@@ -167,7 +169,32 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       );
     }
+
+    const reservationRecord = await createRegistrationReservation({
+      location: loc,
+      locale,
+      name: payload.name,
+      age: payload.age,
+      profession: payload.profession,
+      email: payload.email,
+      instagram: payload.instagram,
+      referral: payload.referral,
+      referralOther: payload.referralOther,
+      bankAccount: payload.bankAccount,
+      visitorId: payload.visitorId,
+      timestamp: payload.timestamp || new Date().toISOString(),
+      status: 'pending',
+      source: 'pending',
+    });
+
+    const postReservationStatus = await getCapacityStatus(loc);
+    if (postReservationStatus.enabled && postReservationStatus.full && postReservationStatus.count > (postReservationStatus.max || 0)) {
+      await updateRegistrationReservation(reservationRecord.id, { status: 'cancelled' });
+      return NextResponse.json({ error: 'Registration full', reason: 'full' }, { status: 409 });
+    }
+
     reservedLoc = loc;
+    reservationRecordId = reservationRecord.id;
     // Use per-location endpoint if provided.
     const tallyTW = process.env.TALLY_ENDPOINT_TW;
     const tallyNL = process.env.TALLY_ENDPOINT_NL;
@@ -237,6 +264,11 @@ export async function POST(req: NextRequest) {
     if (saveAlsoToNotion && dbId && token) {
       const result = await saveRegistrationToNotion(dbId, payload);
       registrationStored = true;
+      await updateRegistrationReservation(reservationRecord.id, {
+        status: 'confirmed',
+        source: 'notion',
+        externalId: (result as { id?: string }).id,
+      });
 
       let emailResult: Awaited<ReturnType<typeof sendRegistrationSuccessEmail>> = { status: 'skipped', reason: 'Email transport not attempted.' };
       try {
@@ -264,6 +296,7 @@ export async function POST(req: NextRequest) {
     if (!tallyEndpoint) {
       await new Promise((r) => setTimeout(r, 300));
       registrationStored = true;
+      await updateRegistrationReservation(reservationRecord.id, { status: 'confirmed', source: 'simulated' });
 
       let emailResult: Awaited<ReturnType<typeof sendRegistrationSuccessEmail>> = { status: 'skipped', reason: 'Email transport not attempted.' };
       try {
@@ -289,6 +322,7 @@ export async function POST(req: NextRequest) {
 
     // If Tally forward succeeded (and we didn't save to Notion), return success
     registrationStored = true;
+    await updateRegistrationReservation(reservationRecord.id, { status: 'confirmed', source: 'tally' });
 
     let emailResult: Awaited<ReturnType<typeof sendRegistrationSuccessEmail>> = { status: 'skipped', reason: 'Email transport not attempted.' };
     try {
@@ -311,6 +345,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, forwarded: true, email: emailResult }, { status: 201 });
   } catch (err) {
+    if (reservationRecordId) {
+      await updateRegistrationReservation(reservationRecordId, { status: 'cancelled' }).catch(() => undefined);
+    }
     if (reservedLoc && !registrationStored && !tallySucceeded) {
       await releaseCapacity(reservedLoc);
     }

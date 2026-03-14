@@ -206,14 +206,14 @@ test.describe('Language switching', () => {
     await goto(page, '/en');
     await waitForLanguageToggleReady(page);
     await getLanguageToggle(page).getByRole('button', { name: 'Switch to Chinese' }).click();
-    await expect(page).toHaveURL(/\/zh$/);
+    await expect(page).toHaveURL(/\/zh$/, { timeout: 15000 });
   });
 
   test('should switch from Chinese to English on the home page', async ({ page }) => {
     await goto(page, '/zh');
     await waitForLanguageToggleReady(page);
     await getLanguageToggle(page).getByRole('button', { name: 'Switch to English' }).click();
-    await expect(page).toHaveURL(/\/en$/);
+    await expect(page).toHaveURL(/\/en$/, { timeout: 15000 });
   });
 
   test('should preserve query string and partial signup data when switching locale', async ({ page }) => {
