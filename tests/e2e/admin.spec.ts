@@ -169,6 +169,73 @@ test.describe.serial('admin dashboard', () => {
     });
   });
 
+  test('supports load more and drag-reordering books, and syncs the order to public pages', async ({ page }) => {
+    test.skip(originalBooks.length < 11, 'Requires more than 10 books to verify load more behavior.');
+
+    const originalFirst = originalBooks[0];
+    const originalSecond = originalBooks[1];
+    const reorderedFirstTitle = originalSecond.titleEn || originalSecond.title;
+
+    await signIn(page);
+    await page.getByRole('button', { name: 'Books', exact: true }).click();
+
+    const booksEditor = page.getByLabel('Books editor');
+    const bookButtons = booksEditor.locator('aside .space-y-2 > button');
+    await expect(bookButtons).toHaveCount(10);
+    await booksEditor.getByRole('button', { name: 'Load more books' }).click();
+    await expect(bookButtons).toHaveCount(Math.min(20, originalBooks.length));
+
+    await bookButtons.nth(1).dragTo(bookButtons.nth(0));
+    await expect(page.getByText('Book order updated locally. Save books to publish the new order.')).toBeVisible();
+
+    const saveResponse = page.waitForResponse((response) => response.url().includes('/api/admin/books') && response.request().method() === 'PUT');
+    await booksEditor.getByRole('button', { name: 'Save books' }).click();
+    expect((await saveResponse).ok()).toBeTruthy();
+
+    await withPreviewPage(page, async (previewPage) => {
+      await previewPage.goto('/en/books', { waitUntil: 'domcontentloaded' });
+      await expect(previewPage.locator('ul > li').first()).toContainText(reorderedFirstTitle);
+    });
+
+    await withPreviewPage(page, async (previewPage) => {
+      await previewPage.goto('/en', { waitUntil: 'domcontentloaded' });
+      await expect(previewPage.locator('section[aria-labelledby="books-wall-heading"] li a').first()).toHaveAttribute('href', `/en/books/${originalSecond.slug}`);
+    });
+
+    expect(originalFirst.slug).not.toBe(originalSecond.slug);
+  });
+
+  test('can upload an optimized cover from admin and publish it directly to the public book page', async ({ page }) => {
+    const uploadedBook = originalBooks[0];
+    const pngBuffer = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR42mNk+A8AAwMBASs7fS0AAAAASUVORK5CYII=',
+      'base64'
+    );
+
+    await signIn(page);
+    await page.getByRole('button', { name: 'Books', exact: true }).click();
+
+    const booksEditor = page.getByLabel('Books editor');
+    const fileInputs = booksEditor.locator('input[type="file"]');
+    const uploadResponse = page.waitForResponse((response) => response.url().includes('/api/admin/upload') && response.request().method() === 'POST');
+    const publishResponse = page.waitForResponse((response) => response.url().includes('/api/admin/books') && response.request().method() === 'PUT');
+    await fileInputs.first().setInputFiles({
+      name: 'cover.png',
+      mimeType: 'image/png',
+      buffer: pngBuffer,
+    });
+
+    expect((await uploadResponse).ok()).toBeTruthy();
+    expect((await publishResponse).ok()).toBeTruthy();
+
+    await withPreviewPage(page, async (previewPage) => {
+      await previewPage.goto(`/en/books/${uploadedBook.slug}`, { waitUntil: 'domcontentloaded' });
+      const coverImage = previewPage.getByAltText(new RegExp(`${uploadedBook.titleEn || uploadedBook.title} - Cover 1`));
+      await expect(coverImage).toBeVisible();
+      await expect(coverImage).toHaveAttribute('src', /webp/);
+    });
+  });
+
   test('can tighten capacity from admin and surface the full-state on the public signup page', async ({ page, request }) => {
     const now = Date.now();
     const startAt = new Date(now - 60 * 60 * 1000);

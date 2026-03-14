@@ -1,10 +1,24 @@
 import 'server-only';
 
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { readJsonFile, writeJsonFile } from '@/lib/json-store';
 
 export type AdminDocumentKey = 'books' | 'events' | 'capacity' | 'registration-success-email';
 
+export type AdminDocumentRecord<T> = {
+  value: T;
+  updatedAt: string | null;
+};
+
+export class AdminDocumentConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AdminDocumentConflictError';
+  }
+}
+
 const SUPABASE_ADMIN_TABLE = process.env.SUPABASE_ADMIN_DOCUMENTS_TABLE || 'admin_documents';
+const ADMIN_DOCUMENTS_CACHE_TAG = 'admin-documents';
 
 function getSupabaseUrl(): string | null {
   return process.env.SUPABASE_URL || null;
@@ -24,7 +38,7 @@ function getDocumentUrl(key: AdminDocumentKey): string {
     throw new Error('SUPABASE_URL is not configured.');
   }
 
-  return `${url}/rest/v1/${SUPABASE_ADMIN_TABLE}?select=value&key=eq.${encodeURIComponent(key)}`;
+  return `${url}/rest/v1/${SUPABASE_ADMIN_TABLE}?select=value,updated_at&key=eq.${encodeURIComponent(key)}`;
 }
 
 function getTableUrl(): string {
@@ -50,7 +64,7 @@ function getSupabaseHeaders(extraHeaders?: Record<string, string>): HeadersInit 
   };
 }
 
-async function readFromSupabase<T>(key: AdminDocumentKey): Promise<T | null> {
+async function readFromSupabase<T>(key: AdminDocumentKey): Promise<AdminDocumentRecord<T> | null> {
   const response = await fetch(getDocumentUrl(key), {
     method: 'GET',
     headers: getSupabaseHeaders(),
@@ -62,11 +76,19 @@ async function readFromSupabase<T>(key: AdminDocumentKey): Promise<T | null> {
     throw new Error(`Supabase document read failed for ${key}: ${response.status} ${reason}`);
   }
 
-  const rows = await response.json() as Array<{ value: T }>;
-  return rows[0]?.value ?? null;
+  const rows = await response.json() as Array<{ value: T; updated_at?: string | null }>;
+  const row = rows[0];
+  return row ? { value: row.value, updatedAt: row.updated_at || null } : null;
 }
 
-async function writeToSupabase<T>(key: AdminDocumentKey, value: T): Promise<T> {
+async function writeToSupabase<T>(key: AdminDocumentKey, value: T, expectedUpdatedAt?: string | null): Promise<AdminDocumentRecord<T>> {
+  if (expectedUpdatedAt !== undefined) {
+    const current = await readFromSupabase<T>(key);
+    if ((current?.updatedAt || null) !== (expectedUpdatedAt || null)) {
+      throw new AdminDocumentConflictError(`The ${key} document changed on the server. Refresh before saving again.`);
+    }
+  }
+
   const response = await fetch(getTableUrl(), {
     method: 'POST',
     headers: getSupabaseHeaders({ Prefer: 'resolution=merge-duplicates,return=representation' }),
@@ -79,8 +101,11 @@ async function writeToSupabase<T>(key: AdminDocumentKey, value: T): Promise<T> {
     throw new Error(`Supabase document write failed for ${key}: ${response.status} ${reason}`);
   }
 
-  const rows = await response.json() as Array<{ value: T }>;
-  return rows[0]?.value ?? value;
+  const rows = await response.json() as Array<{ value: T; updated_at?: string | null }>;
+  return {
+    value: rows[0]?.value ?? value,
+    updatedAt: rows[0]?.updated_at || new Date().toISOString(),
+  };
 }
 
 type LoaderOptions<T> = {
@@ -89,7 +114,7 @@ type LoaderOptions<T> = {
   fallbackValue?: T;
 };
 
-async function loadDocumentUncached<T>({ key, fallbackFile, fallbackValue }: LoaderOptions<T>): Promise<T> {
+async function loadDocumentUncached<T>({ key, fallbackFile, fallbackValue }: LoaderOptions<T>): Promise<AdminDocumentRecord<T>> {
   if (isPersistentAdminStoreConfigured()) {
     const remoteValue = await readFromSupabase<T>(key);
     if (remoteValue !== null) {
@@ -97,26 +122,52 @@ async function loadDocumentUncached<T>({ key, fallbackFile, fallbackValue }: Loa
     }
 
     const fileValue = readJsonFile<T>(fallbackFile);
-    await writeToSupabase(key, fileValue);
-    return fileValue;
+    return writeToSupabase(key, fileValue);
   }
 
   if (fallbackValue !== undefined) {
-    return fallbackValue;
+    return { value: fallbackValue, updatedAt: null };
   }
 
-  return readJsonFile<T>(fallbackFile);
+  return { value: readJsonFile<T>(fallbackFile), updatedAt: null };
 }
 
 export async function loadAdminDocument<T>(options: LoaderOptions<T>): Promise<T> {
-  return loadDocumentUncached(options);
+  return (await loadAdminDocumentRecord(options)).value;
 }
 
-export async function saveAdminDocument<T>({ key, fallbackFile }: LoaderOptions<T>, value: T): Promise<T> {
-  if (isPersistentAdminStoreConfigured()) {
-    return writeToSupabase(key, value);
+export async function loadAdminDocumentRecord<T>(options: LoaderOptions<T>): Promise<AdminDocumentRecord<T>> {
+  if (options.fallbackValue !== undefined || process.env.VITEST === 'true' || process.env.NODE_ENV === 'test') {
+    return loadDocumentUncached(options);
   }
 
-  writeJsonFile(fallbackFile, value);
-  return value;
+  const cachedLoader = unstable_cache(
+    async (key: AdminDocumentKey, fallbackFile: string) => loadDocumentUncached<T>({ key, fallbackFile }),
+    [ADMIN_DOCUMENTS_CACHE_TAG],
+    { tags: [ADMIN_DOCUMENTS_CACHE_TAG], revalidate: 3600 }
+  );
+
+  return cachedLoader(options.key, options.fallbackFile);
+}
+
+export async function saveAdminDocument<T>({ key, fallbackFile }: LoaderOptions<T>, value: T, expectedUpdatedAt?: string | null): Promise<T> {
+  return (await saveAdminDocumentRecord({ key, fallbackFile }, value, expectedUpdatedAt)).value;
+}
+
+export async function saveAdminDocumentRecord<T>({ key, fallbackFile }: LoaderOptions<T>, value: T, expectedUpdatedAt?: string | null): Promise<AdminDocumentRecord<T>> {
+  let savedRecord: AdminDocumentRecord<T>;
+
+  if (isPersistentAdminStoreConfigured()) {
+    savedRecord = await writeToSupabase(key, value, expectedUpdatedAt);
+  } else {
+    if (expectedUpdatedAt !== undefined && expectedUpdatedAt !== null) {
+      throw new AdminDocumentConflictError(`The ${key} document changed on the server. Refresh before saving again.`);
+    }
+
+    writeJsonFile(fallbackFile, value);
+    savedRecord = { value, updatedAt: new Date().toISOString() };
+  }
+
+  revalidateTag(ADMIN_DOCUMENTS_CACHE_TAG);
+  return savedRecord;
 }

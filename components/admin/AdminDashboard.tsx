@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import type { Book } from '@/types/book';
 import type { EventContentId, EventContentMap } from '@/types/event-content';
 import type { RegistrationEmailLocale, RegistrationSuccessEmailSettings } from '@/lib/registration-success-email-config';
@@ -11,6 +11,12 @@ type AdminDashboardProps = {
   initialEvents: EventContentMap;
   initialCapacity: CapacityConfigFile;
   initialRegistrationEmails: RegistrationSuccessEmailSettings;
+  initialDocumentVersions: {
+    books: string | null;
+    events: string | null;
+    capacity: string | null;
+    emails: string | null;
+  };
 };
 
 type DashboardTab = 'books' | 'events' | 'capacity' | 'emails';
@@ -68,7 +74,14 @@ function toIsoString(value: string): string {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 }
 
-async function uploadAsset(scope: 'books' | 'events', file: File): Promise<string> {
+type UploadedAsset = {
+  src: string;
+  width?: number;
+  height?: number;
+  format?: string;
+};
+
+async function uploadAsset(scope: 'books' | 'events', file: File): Promise<UploadedAsset> {
   const formData = new FormData();
   formData.set('file', file);
 
@@ -82,7 +95,7 @@ async function uploadAsset(scope: 'books' | 'events', file: File): Promise<strin
     throw new Error(payload.error || 'Upload failed.');
   }
 
-  return payload.src as string;
+  return payload as UploadedAsset;
 }
 
 function createDraftBook(existingBooks: Book[]): Book {
@@ -111,16 +124,20 @@ function createDraftBook(existingBooks: Book[]): Book {
   };
 }
 
-export default function AdminDashboard({ initialBooks, initialEvents, initialCapacity, initialRegistrationEmails }: AdminDashboardProps) {
+export default function AdminDashboard({ initialBooks, initialEvents, initialCapacity, initialRegistrationEmails, initialDocumentVersions }: AdminDashboardProps) {
   const [hydrated, setHydrated] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('books');
   const [books, setBooks] = useState<Book[]>(initialBooks);
   const [events, setEvents] = useState<EventContentMap>(initialEvents);
   const [capacity, setCapacity] = useState<CapacityConfigFile>(initialCapacity);
   const [registrationEmails, setRegistrationEmails] = useState<RegistrationSuccessEmailSettings>(initialRegistrationEmails);
+  const [documentVersions, setDocumentVersions] = useState(initialDocumentVersions);
   const [capacityStatus, setCapacityStatus] = useState<Partial<Record<SignupLocation, CapacityLiveStatus>>>({});
   const [capacityStatusLoading, setCapacityStatusLoading] = useState(false);
   const [selectedBookSlug, setSelectedBookSlug] = useState(initialBooks[0]?.slug || '');
+  const [visibleBookCount, setVisibleBookCount] = useState(10);
+  const [draggedBookSlug, setDraggedBookSlug] = useState<string | null>(null);
+  const [uploadingAssetKey, setUploadingAssetKey] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<EventContentId>('TW');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -180,6 +197,13 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
   const selectedBookIndex = books.findIndex((book) => book.slug === selectedBookSlug);
   const selectedBook = selectedBookIndex >= 0 ? books[selectedBookIndex] : books[0];
+  const visibleBooks = useMemo(() => books.slice(0, visibleBookCount), [books, visibleBookCount]);
+
+  useEffect(() => {
+    if (selectedBookIndex >= visibleBookCount && selectedBookIndex !== -1) {
+      setVisibleBookCount(selectedBookIndex + 1);
+    }
+  }, [selectedBookIndex, visibleBookCount]);
 
   function updateSelectedBook(patch: Partial<Book>) {
     if (!selectedBook) {
@@ -193,6 +217,20 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
       return { ...book, ...patch };
     }));
+  }
+
+  function buildBooksWithSelectedPatch(patch: Partial<Book>): Book[] {
+    if (!selectedBook) {
+      return books;
+    }
+
+    return books.map((book, index) => {
+      if (index !== selectedBookIndex) {
+        return book;
+      }
+
+      return { ...book, ...patch };
+    });
   }
 
   function updateEventField(field: keyof EventContentMap[EventContentId], value: EventContentMap[EventContentId][keyof EventContentMap[EventContentId]]) {
@@ -233,10 +271,26 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     setError(null);
   }
 
-  async function saveBooks() {
+  function moveBook(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= books.length || toIndex >= books.length) {
+      return;
+    }
+
+    setBooks((currentBooks) => {
+      const nextBooks = [...currentBooks];
+      const [movedBook] = nextBooks.splice(fromIndex, 1);
+      nextBooks.splice(toIndex, 0, movedBook);
+      return nextBooks;
+    });
+    setMessage('Book order updated locally. Save books to publish the new order.');
+    setError(null);
+  }
+
+  async function saveBooks(nextBooksOverride?: Book[], successMessage = 'Books updated. Public pages were revalidated.') {
     resetFlash();
 
-    const payloadBooks = books.map((book) => ({
+    const sourceBooks = nextBooksOverride || books;
+    const payloadBooks = sourceBooks.map((book) => ({
       ...book,
       coverUrls: book.coverUrls?.filter(Boolean),
       coverUrlsEn: book.coverUrlsEn?.filter(Boolean),
@@ -248,7 +302,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     const response = await fetch('/api/admin/books', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ books: payloadBooks }),
+      body: JSON.stringify({ books: payloadBooks, expectedUpdatedAt: documentVersions.books }),
     });
 
     const payload = await response.json().catch(() => ({ error: 'Unable to save books.' }));
@@ -257,16 +311,17 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     }
 
     setBooks(payload.books as Book[]);
-    setMessage('Books updated. Public pages were revalidated.');
+    setDocumentVersions((currentVersions) => ({ ...currentVersions, books: (payload.updatedAt as string | null | undefined) ?? currentVersions.books }));
+    setMessage(successMessage);
   }
 
-  async function saveEvents() {
+  async function saveEvents(nextEventsOverride?: EventContentMap, successMessage = 'Event content and posters updated. Public event pages were revalidated.') {
     resetFlash();
 
     const response = await fetch('/api/admin/events', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ events }),
+      body: JSON.stringify({ events: nextEventsOverride || events, expectedUpdatedAt: documentVersions.events }),
     });
 
     const payload = await response.json().catch(() => ({ error: 'Unable to save events.' }));
@@ -275,7 +330,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     }
 
     setEvents(payload.events as EventContentMap);
-    setMessage('Event content and posters updated. Public event pages were revalidated.');
+    setDocumentVersions((currentVersions) => ({ ...currentVersions, events: (payload.updatedAt as string | null | undefined) ?? currentVersions.events }));
+    setMessage(successMessage);
   }
 
   async function saveCapacity() {
@@ -284,7 +340,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     const response = await fetch('/api/admin/capacity', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ capacity }),
+      body: JSON.stringify({ capacity, expectedUpdatedAt: documentVersions.capacity }),
     });
 
     const payload = await response.json().catch(() => ({ error: 'Unable to save capacity settings.' }));
@@ -293,6 +349,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     }
 
     setCapacity(payload.capacity as CapacityConfigFile);
+    setDocumentVersions((currentVersions) => ({ ...currentVersions, capacity: (payload.updatedAt as string | null | undefined) ?? currentVersions.capacity }));
     setMessage('Signup windows and capacity settings updated.');
 
     const refreshedStatus = await Promise.all(CAPACITY_IDS.map(async (location) => {
@@ -316,7 +373,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     const response = await fetch('/api/admin/email', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ settings: registrationEmails }),
+      body: JSON.stringify({ settings: registrationEmails, expectedUpdatedAt: documentVersions.emails }),
     });
 
     const payload = await response.json().catch(() => ({ error: 'Unable to save registration email settings.' }));
@@ -325,6 +382,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     }
 
     setRegistrationEmails(payload.settings as RegistrationSuccessEmailSettings);
+    setDocumentVersions((currentVersions) => ({ ...currentVersions, emails: (payload.updatedAt as string | null | undefined) ?? currentVersions.emails }));
     setMessage('Registration success email settings updated.');
   }
 
@@ -351,8 +409,9 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
   function addBook() {
     const draft = createDraftBook(books);
-    setBooks((currentBooks) => [...currentBooks, draft]);
+    setBooks((currentBooks) => [draft, ...currentBooks]);
     setSelectedBookSlug(draft.slug);
+    setVisibleBookCount((currentCount) => Math.max(10, currentCount + 1));
     setActiveTab('books');
     setMessage('Draft book added. Fill in the fields and save books to publish it.');
     setError(null);
@@ -412,21 +471,52 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                   Add book
                 </button>
               </div>
+              <p className="mb-3 text-xs text-white/60">Newest books stay at the top. Drag to reorder. This order also controls the homepage and books listing pages.</p>
               <div className="space-y-2">
-                {books.map((book) => (
+                {visibleBooks.map((book) => {
+                  const absoluteIndex = books.findIndex((candidate) => candidate.slug === book.slug);
+                  return (
                   <button
                     key={book.slug}
                     type="button"
+                    draggable
                     onClick={() => setSelectedBookSlug(book.slug)}
+                    onDragStart={() => setDraggedBookSlug(book.slug)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (!draggedBookSlug) {
+                        return;
+                      }
+
+                      const fromIndex = books.findIndex((candidate) => candidate.slug === draggedBookSlug);
+                      moveBook(fromIndex, absoluteIndex);
+                      setDraggedBookSlug(null);
+                    }}
+                    onDragEnd={() => setDraggedBookSlug(null)}
                     className={`w-full rounded-2xl px-4 py-3 text-left transition ${
                       selectedBookSlug === book.slug ? 'bg-brand-pink text-brand-navy' : 'bg-black/10 text-white/85 hover:bg-white/10'
                     }`}
                   >
-                    <div className="font-medium">{book.title}</div>
-                    <div className="text-xs opacity-70">/{book.slug}</div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium">{book.title}</div>
+                        <div className="text-xs opacity-70">/{book.slug}</div>
+                      </div>
+                      <span className="text-xs opacity-60">#{absoluteIndex + 1}</span>
+                    </div>
                   </button>
-                ))}
+                );})}
               </div>
+              {books.length > visibleBookCount ? (
+                <button
+                  type="button"
+                  onClick={() => setVisibleBookCount((currentCount) => currentCount + 10)}
+                  className="mt-3 w-full rounded-2xl border border-white/15 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10 hover:text-white"
+                >
+                  Load more books
+                </button>
+              ) : null}
             </aside>
 
             <div className="rounded-[28px] border border-white/10 bg-white/10 p-6">
@@ -470,7 +560,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <h3 className="font-semibold">Chinese cover</h3>
                     <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/10">
-                      Upload
+                      {uploadingAssetKey === 'book-cover-zh' ? 'Processing…' : 'Upload'}
                       <input
                         type="file"
                         accept="image/*"
@@ -479,9 +569,15 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                           const file = event.target.files?.[0];
                           if (!file) return;
                           void handleAction(async () => {
-                            const src = await uploadAsset('books', file);
-                            updateSelectedBook({ coverUrl: src });
-                            setMessage('Cover uploaded. Save books to publish it.');
+                            setUploadingAssetKey('book-cover-zh');
+                            try {
+                              const asset = await uploadAsset('books', file);
+                              const nextBooks = buildBooksWithSelectedPatch({ coverUrl: asset.src });
+                              setBooks(nextBooks);
+                              await saveBooks(nextBooks, `Cover uploaded, optimized to ${asset.format || 'webp'}, and published.`);
+                            } finally {
+                              setUploadingAssetKey(null);
+                            }
                           });
                         }}
                       />
@@ -493,7 +589,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <h3 className="font-semibold">English cover</h3>
                     <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/10">
-                      Upload
+                      {uploadingAssetKey === 'book-cover-en' ? 'Processing…' : 'Upload'}
                       <input
                         type="file"
                         accept="image/*"
@@ -502,9 +598,15 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                           const file = event.target.files?.[0];
                           if (!file) return;
                           void handleAction(async () => {
-                            const src = await uploadAsset('books', file);
-                            updateSelectedBook({ coverUrlEn: src });
-                            setMessage('Cover uploaded. Save books to publish it.');
+                            setUploadingAssetKey('book-cover-en');
+                            try {
+                              const asset = await uploadAsset('books', file);
+                              const nextBooks = buildBooksWithSelectedPatch({ coverUrlEn: asset.src });
+                              setBooks(nextBooks);
+                              await saveBooks(nextBooks, `Cover uploaded, optimized to ${asset.format || 'webp'}, and published.`);
+                            } finally {
+                              setUploadingAssetKey(null);
+                            }
                           });
                         }}
                       />
@@ -605,7 +707,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h3 className="font-semibold">Poster asset</h3>
                   <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/10">
-                    Upload poster
+                    {uploadingAssetKey === 'event-poster' ? 'Processing…' : 'Upload poster'}
                     <input
                       type="file"
                       accept="image/*"
@@ -614,9 +716,21 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                         const file = event.target.files?.[0];
                         if (!file) return;
                         void handleAction(async () => {
-                          const src = await uploadAsset('events', file);
-                          updateEventField('posterSrc', src);
-                          setMessage('Poster uploaded. Save events to publish it.');
+                          setUploadingAssetKey('event-poster');
+                          try {
+                            const asset = await uploadAsset('events', file);
+                            const nextEvents = {
+                              ...events,
+                              [selectedEventId]: {
+                                ...selectedEvent,
+                                posterSrc: asset.src,
+                              },
+                            };
+                            setEvents(nextEvents);
+                            await saveEvents(nextEvents, `Poster uploaded, optimized to ${asset.format || 'webp'}, and published.`);
+                          } finally {
+                            setUploadingAssetKey(null);
+                          }
                         });
                       }}
                     />

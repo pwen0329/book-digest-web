@@ -7,6 +7,7 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 const sentryEnabled = process.env.NODE_ENV === 'production' && Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_AUTH_TOKEN);
+const supabaseImageHostname = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : null;
 
 const resolvedDistDir = process.env.NEXT_DIST_DIR || (process.env.NODE_ENV === 'development' ? '.next-local-dev' : '.next');
 
@@ -64,6 +65,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '*.notion.so' },
       { protocol: 'https', hostname: '*.amazonaws.com' },
+      ...(supabaseImageHostname ? [{ protocol: 'https', hostname: supabaseImageHostname }] : []),
     ],
   },
   // Bundle splitting optimization

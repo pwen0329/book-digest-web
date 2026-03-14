@@ -29,13 +29,7 @@ export default async function BooksPage({ params }: { params: Promise<{ locale: 
   setRequestLocale(locale);
   const t = await getTranslations('books');
 
-  // Sort by coverUrl number (extracted from filename), smaller numbers last
-  const data = (await getBooks())
-    .map(b => ({
-      ...getLocalizedBook(b, locale),
-      sortOrder: b.coverUrl ? parseInt(b.coverUrl.match(/\/(\d+)_/)?.[1] || '0', 10) : 0,
-    }))
-    .sort((a, b) => b.sortOrder - a.sortOrder);
+  const data = (await getBooks()).map((book) => getLocalizedBook(book, locale));
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
   const booksListJsonLd = {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
-import { loadAdminDocument, saveAdminDocument } from '@/lib/admin-content-store';
+import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import {
   REGISTRATION_SUCCESS_EMAIL_FILE,
@@ -24,6 +24,7 @@ const requestSchema = z.object({
       en: templateSchema,
     }),
   }),
+  expectedUpdatedAt: z.string().datetime().nullable().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -32,11 +33,13 @@ export async function GET(request: NextRequest) {
   }
 
   const includeOutbox = request.nextUrl.searchParams.get('includeOutbox') === '1';
-  const response: { settings: RegistrationSuccessEmailSettings; outbox?: ReturnType<typeof getEmailOutboxRecords> } = {
-    settings: await loadAdminDocument<RegistrationSuccessEmailSettings>({
+  const settingsRecord = await loadAdminDocumentRecord<RegistrationSuccessEmailSettings>({
       key: 'registration-success-email',
       fallbackFile: REGISTRATION_SUCCESS_EMAIL_FILE,
-    }),
+    });
+  const response: { settings: RegistrationSuccessEmailSettings; updatedAt: string | null; outbox?: ReturnType<typeof getEmailOutboxRecords> } = {
+    settings: settingsRecord.value,
+    updatedAt: settingsRecord.updatedAt,
   };
 
   if (includeOutbox) {
@@ -63,11 +66,21 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
   }
 
-  await saveAdminDocument(
-    { key: 'registration-success-email', fallbackFile: REGISTRATION_SUCCESS_EMAIL_FILE },
-    payload.settings satisfies RegistrationSuccessEmailSettings
-  );
-  return NextResponse.json({ ok: true, settings: payload.settings }, { status: 200 });
+  let savedRecord;
+  try {
+    savedRecord = await saveAdminDocumentRecord(
+      { key: 'registration-success-email', fallbackFile: REGISTRATION_SUCCESS_EMAIL_FILE },
+      payload.settings satisfies RegistrationSuccessEmailSettings,
+      payload.expectedUpdatedAt
+    );
+  } catch (error) {
+    if (error instanceof AdminDocumentConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+
+    throw error;
+  }
+  return NextResponse.json({ ok: true, settings: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });
 }
 
 export async function DELETE(request: NextRequest) {

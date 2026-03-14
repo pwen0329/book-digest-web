@@ -2,7 +2,7 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
-import { loadAdminDocument, saveAdminDocument } from '@/lib/admin-content-store';
+import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import type { EventContentId, EventContentMap } from '@/types/event-content';
 
@@ -34,6 +34,7 @@ const requestSchema = z.object({
     EN: eventRecordSchema,
     DETOX: eventRecordSchema,
   }),
+  expectedUpdatedAt: z.string().datetime().nullable().optional(),
 });
 
 function revalidateEventRoutes() {
@@ -58,9 +59,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return NextResponse.json({
-    events: await loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' }),
-  }, { status: 200 });
+  const record = await loadAdminDocumentRecord<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' });
+  return NextResponse.json({ events: record.value, updatedAt: record.updatedAt }, { status: 200 });
 }
 
 export async function PUT(request: NextRequest) {
@@ -88,8 +88,21 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  await saveAdminDocument({ key: 'events', fallbackFile: 'data/events-content.json' }, nextEvents);
+  let savedRecord;
+  try {
+    savedRecord = await saveAdminDocumentRecord(
+      { key: 'events', fallbackFile: 'data/events-content.json' },
+      nextEvents,
+      payload.expectedUpdatedAt
+    );
+  } catch (error) {
+    if (error instanceof AdminDocumentConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+
+    throw error;
+  }
   revalidateEventRoutes();
 
-  return NextResponse.json({ ok: true, events: nextEvents }, { status: 200 });
+  return NextResponse.json({ ok: true, events: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });
 }

@@ -2,7 +2,7 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
-import { loadAdminDocument, saveAdminDocument } from '@/lib/admin-content-store';
+import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import type { Book } from '@/types/book';
 
@@ -42,6 +42,7 @@ const bookSchema = z.object({
 
 const requestSchema = z.object({
   books: z.array(bookSchema).min(1),
+  expectedUpdatedAt: z.string().datetime().nullable().optional(),
 });
 
 function cleanOptional(value?: string | null): string | undefined {
@@ -105,9 +106,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return NextResponse.json({
-    books: await loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' }),
-  }, { status: 200 });
+  const record = await loadAdminDocumentRecord<Book[]>({ key: 'books', fallbackFile: 'data/books.json' });
+  return NextResponse.json({ books: record.value, updatedAt: record.updatedAt }, { status: 200 });
 }
 
 export async function PUT(request: NextRequest) {
@@ -133,8 +133,21 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Book slugs must be unique.' }, { status: 400 });
   }
 
-  await saveAdminDocument({ key: 'books', fallbackFile: 'data/books.json' }, normalizedBooks);
+  let savedRecord;
+  try {
+    savedRecord = await saveAdminDocumentRecord(
+      { key: 'books', fallbackFile: 'data/books.json' },
+      normalizedBooks,
+      parsedBody.expectedUpdatedAt
+    );
+  } catch (error) {
+    if (error instanceof AdminDocumentConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+
+    throw error;
+  }
   revalidateBookRoutes(normalizedBooks);
 
-  return NextResponse.json({ ok: true, books: normalizedBooks }, { status: 200 });
+  return NextResponse.json({ ok: true, books: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });
 }

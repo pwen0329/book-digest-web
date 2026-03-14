@@ -5,6 +5,7 @@ import path from 'node:path';
 import { resolveWorkspacePath } from '@/lib/json-store';
 
 const SUPABASE_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'admin-assets';
+const LOCAL_UPLOAD_ROOT = path.join('.local', 'uploads', 'admin');
 
 export function isPersistentUploadStoreConfigured(): boolean {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -36,7 +37,7 @@ export async function saveAdminUpload(scope: 'books' | 'events', fileName: strin
     return `${baseUrl}/storage/v1/object/public/${SUPABASE_STORAGE_BUCKET}/${objectPath}`;
   }
 
-  const relativeDirectory = path.join('public', 'uploads', 'admin', scope);
+  const relativeDirectory = path.join(LOCAL_UPLOAD_ROOT, scope);
   const absoluteDirectory = resolveWorkspacePath(relativeDirectory);
   mkdirSync(absoluteDirectory, { recursive: true });
 
@@ -44,4 +45,8 @@ export async function saveAdminUpload(scope: 'books' | 'events', fileName: strin
   const absolutePath = resolveWorkspacePath(relativePath);
   writeFileSync(absolutePath, buffer);
   return `/uploads/admin/${scope}/${fileName}`;
+}
+
+export function resolveLocalAdminUploadPath(scope: 'books' | 'events', fileName: string): string {
+  return resolveWorkspacePath(path.join(LOCAL_UPLOAD_ROOT, scope, fileName));
 }

@@ -8,8 +8,7 @@ type BooksStore = {
   books: Book[];
   booksBySlug: Map<string, Book>;
   booksByTag: Map<string, Book[]>;
-  sortedBooksByDate: Book[];
-  sortedBooksByNumber: Array<Book & { coverNumber: number }>;
+  orderedBooks: Book[];
 };
 
 let booksStore: BooksStore | null = null;
@@ -44,26 +43,11 @@ async function getBooksStore(): Promise<BooksStore> {
     });
   });
 
-  const sortedBooksByDate = [...books].sort((a, b) => {
-    if (!a.readDate && !b.readDate) return 0;
-    if (!a.readDate) return 1;
-    if (!b.readDate) return -1;
-    return new Date(b.readDate).getTime() - new Date(a.readDate).getTime();
-  });
-
-  const sortedBooksByNumber = [...books]
-    .map((book) => ({
-      ...book,
-      coverNumber: book.coverUrl ? parseInt(book.coverUrl.match(/\/(\d+)_/)?.[1] || '0', 10) : 0,
-    }))
-    .sort((a, b) => b.coverNumber - a.coverNumber);
-
   booksStore = {
     books,
     booksBySlug,
     booksByTag,
-    sortedBooksByDate,
-    sortedBooksByNumber,
+    orderedBooks: [...books],
   };
 
   return booksStore;
@@ -86,21 +70,21 @@ export async function getAllTags(): Promise<string[]> {
 }
 
 export async function getRecentBooks(limit: number = 40): Promise<Book[]> {
-  return (await getBooksStore()).sortedBooksByDate.slice(0, limit);
+  return (await getBooksStore()).orderedBooks.slice(0, limit);
 }
 
 export async function getTopBooksByNumber(limit: number = 30): Promise<Book[]> {
-  return (await getBooksStore()).sortedBooksByNumber.slice(0, limit);
+  return (await getBooksStore()).orderedBooks.slice(0, limit);
 }
 
 export const getCachedBookStats = unstable_cache(
   async () => {
-    const { books, booksByTag, sortedBooksByDate } = await getBooksStore();
+    const { books, booksByTag, orderedBooks } = await getBooksStore();
     return {
       totalBooks: books.length,
       totalTags: booksByTag.size,
-      latestBook: sortedBooksByDate[0],
-      oldestBook: sortedBooksByDate[sortedBooksByDate.length - 1],
+      latestBook: orderedBooks[0],
+      oldestBook: orderedBooks[orderedBooks.length - 1],
     };
   },
   ['book-stats'],

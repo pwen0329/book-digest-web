@@ -2,7 +2,7 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
-import { loadAdminDocument, saveAdminDocument } from '@/lib/admin-content-store';
+import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
 import type { CapacityConfigFile, SignupLocation } from '@/lib/signup-capacity-config';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 
@@ -23,6 +23,7 @@ const requestSchema = z.object({
     EN: slotSchema,
     DETOX: slotSchema,
   }),
+  expectedUpdatedAt: z.string().datetime().nullable().optional(),
 });
 
 function revalidateCapacityRoutes() {
@@ -49,9 +50,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return NextResponse.json({
-    capacity: await loadAdminDocument<CapacityConfigFile>({ key: 'capacity', fallbackFile: 'data/signup-capacity.json' }),
-  }, { status: 200 });
+  const record = await loadAdminDocumentRecord<CapacityConfigFile>({ key: 'capacity', fallbackFile: 'data/signup-capacity.json' });
+  return NextResponse.json({ capacity: record.value, updatedAt: record.updatedAt }, { status: 200 });
 }
 
 export async function PUT(request: NextRequest) {
@@ -80,8 +80,21 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  await saveAdminDocument({ key: 'capacity', fallbackFile: 'data/signup-capacity.json' }, nextCapacity satisfies CapacityConfigFile);
+  let savedRecord;
+  try {
+    savedRecord = await saveAdminDocumentRecord(
+      { key: 'capacity', fallbackFile: 'data/signup-capacity.json' },
+      nextCapacity satisfies CapacityConfigFile,
+      payload.expectedUpdatedAt
+    );
+  } catch (error) {
+    if (error instanceof AdminDocumentConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+
+    throw error;
+  }
   revalidateCapacityRoutes();
 
-  return NextResponse.json({ ok: true, capacity: nextCapacity }, { status: 200 });
+  return NextResponse.json({ ok: true, capacity: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });
 }

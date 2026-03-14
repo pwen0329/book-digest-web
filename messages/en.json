@@ -107,6 +107,7 @@
   },
   "books": {
     "title": "Books",
+    "register": "Sign Up",
     "summary": "Book Summary",
     "readingNotes": "Reading Notes",
     "notesComingSoon": "Detailed reading notes coming soon...",

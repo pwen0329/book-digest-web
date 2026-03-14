@@ -213,7 +213,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
                       className={`inline-flex items-center mt-4 px-4 py-2 bg-brand-pink text-white font-semibold rounded-full hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
                       prefetch={false}
                     >
-                      {t('register')}
+                      {t('signUp')}
                     </Link>
                   </>
                 )}

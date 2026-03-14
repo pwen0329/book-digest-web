@@ -21,3 +21,7 @@ tsconfig.tsbuildinfo
 /test
 playwright-report/
 test-results/
+
+# Local admin upload artifacts
+/public/uploads/
+/.local/
