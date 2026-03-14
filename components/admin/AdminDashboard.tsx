@@ -15,6 +15,15 @@ type AdminDashboardProps = {
 
 type DashboardTab = 'books' | 'events' | 'capacity' | 'emails';
 
+type CapacityLiveStatus = {
+  enabled: boolean;
+  open: boolean;
+  full: boolean;
+  count: number;
+  max: number | null;
+  reason: 'ok' | 'closed' | 'full';
+};
+
 const EVENT_IDS: EventContentId[] = ['TW', 'EN', 'NL', 'DETOX'];
 const CAPACITY_IDS: SignupLocation[] = ['TW', 'EN', 'NL', 'DETOX'];
 
@@ -76,6 +85,32 @@ async function uploadAsset(scope: 'books' | 'events', file: File): Promise<strin
   return payload.src as string;
 }
 
+function createDraftBook(existingBooks: Book[]): Book {
+  const index = existingBooks.length + 1;
+  const slugBase = `new-book-${index}`;
+  const slug = existingBooks.some((book) => book.slug === slugBase)
+    ? `new-book-${Date.now()}`
+    : slugBase;
+
+  return {
+    id: `draft-${Date.now()}`,
+    slug,
+    title: '新書籍',
+    titleEn: 'New Book',
+    author: '作者名稱',
+    authorEn: 'Author Name',
+    readDate: '',
+    summary: '',
+    summaryEn: '',
+    readingNotes: '',
+    readingNotesEn: '',
+    discussionPoints: [],
+    discussionPointsEn: [],
+    tags: [],
+    links: {},
+  };
+}
+
 export default function AdminDashboard({ initialBooks, initialEvents, initialCapacity, initialRegistrationEmails }: AdminDashboardProps) {
   const [hydrated, setHydrated] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('books');
@@ -83,6 +118,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
   const [events, setEvents] = useState<EventContentMap>(initialEvents);
   const [capacity, setCapacity] = useState<CapacityConfigFile>(initialCapacity);
   const [registrationEmails, setRegistrationEmails] = useState<RegistrationSuccessEmailSettings>(initialRegistrationEmails);
+  const [capacityStatus, setCapacityStatus] = useState<Partial<Record<SignupLocation, CapacityLiveStatus>>>({});
+  const [capacityStatusLoading, setCapacityStatusLoading] = useState(false);
   const [selectedBookSlug, setSelectedBookSlug] = useState(initialBooks[0]?.slug || '');
   const [selectedEventId, setSelectedEventId] = useState<EventContentId>('TW');
   const [message, setMessage] = useState<string | null>(null);
@@ -93,6 +130,53 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'capacity') {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function refreshCapacityStatus() {
+      setCapacityStatusLoading(true);
+      try {
+        const entries = await Promise.all(CAPACITY_IDS.map(async (location) => {
+          const response = await fetch(`/api/submit?loc=${location}`, { cache: 'no-store' });
+          if (!response.ok) {
+            throw new Error(`Unable to load capacity status for ${location}`);
+          }
+          const payload = await response.json();
+          return [location, {
+            enabled: payload.enabled === true,
+            open: payload.open !== false,
+            full: payload.full === true,
+            count: typeof payload.count === 'number' ? payload.count : 0,
+            max: typeof payload.max === 'number' ? payload.max : null,
+            reason: payload.reason === 'closed' || payload.reason === 'full' ? payload.reason : 'ok',
+          } satisfies CapacityLiveStatus] as const;
+        }));
+
+        if (!cancelled) {
+          setCapacityStatus(Object.fromEntries(entries));
+        }
+      } catch (refreshError) {
+        if (!cancelled) {
+          setError(refreshError instanceof Error ? refreshError.message : 'Unable to load capacity status.');
+        }
+      } finally {
+        if (!cancelled) {
+          setCapacityStatusLoading(false);
+        }
+      }
+    }
+
+    void refreshCapacityStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab]);
 
   const selectedBookIndex = books.findIndex((book) => book.slug === selectedBookSlug);
   const selectedBook = selectedBookIndex >= 0 ? books[selectedBookIndex] : books[0];
@@ -210,6 +294,20 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
     setCapacity(payload.capacity as CapacityConfigFile);
     setMessage('Signup windows and capacity settings updated.');
+
+    const refreshedStatus = await Promise.all(CAPACITY_IDS.map(async (location) => {
+      const response = await fetch(`/api/submit?loc=${location}`, { cache: 'no-store' });
+      const payloadStatus = await response.json().catch(() => null);
+      return [location, {
+        enabled: payloadStatus?.enabled === true,
+        open: payloadStatus?.open !== false,
+        full: payloadStatus?.full === true,
+        count: typeof payloadStatus?.count === 'number' ? payloadStatus.count : 0,
+        max: typeof payloadStatus?.max === 'number' ? payloadStatus.max : null,
+        reason: payloadStatus?.reason === 'closed' || payloadStatus?.reason === 'full' ? payloadStatus.reason : 'ok',
+      } satisfies CapacityLiveStatus] as const;
+    }));
+    setCapacityStatus(Object.fromEntries(refreshedStatus));
   }
 
   async function saveRegistrationEmails() {
@@ -250,6 +348,15 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
   }
 
   const selectedEvent = events[selectedEventId];
+
+  function addBook() {
+    const draft = createDraftBook(books);
+    setBooks((currentBooks) => [...currentBooks, draft]);
+    setSelectedBookSlug(draft.slug);
+    setActiveTab('books');
+    setMessage('Draft book added. Fill in the fields and save books to publish it.');
+    setError(null);
+  }
 
   return (
     <section data-dashboard-ready={hydrated ? 'true' : 'false'} className="min-h-screen bg-brand-navy px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -295,7 +402,16 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
         {activeTab === 'books' && selectedBook ? (
           <div aria-label="Books editor" className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
             <aside className="rounded-[28px] border border-white/10 bg-white/10 p-4">
-              <h2 className="mb-3 text-lg font-semibold font-outfit">Books</h2>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold font-outfit">Books</h2>
+                <button
+                  type="button"
+                  onClick={addBook}
+                  className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/10 hover:text-white"
+                >
+                  Add book
+                </button>
+              </div>
               <div className="space-y-2">
                 {books.map((book) => (
                   <button
@@ -333,7 +449,15 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                 </label>
                 <label className="block">
                   <span className="mb-2 block text-sm text-white/70">Slug</span>
-                  <input value={selectedBook.slug} readOnly className="w-full rounded-2xl bg-black/30 px-4 py-3 text-white/60 outline-none" />
+                  <input
+                    value={selectedBook.slug}
+                    onChange={(event) => {
+                      const nextSlug = event.target.value;
+                      updateSelectedBook({ slug: nextSlug });
+                      setSelectedBookSlug(nextSlug);
+                    }}
+                    className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
+                  />
                 </label>
                 <label className="block">
                   <span className="mb-2 block text-sm text-white/70">Read date</span>
@@ -595,12 +719,23 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
         {activeTab === 'capacity' ? (
           <div aria-label="Capacity editor" className="rounded-[28px] border border-white/10 bg-white/10 p-6">
+            <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/75 lg:flex-row lg:items-center lg:justify-between">
+              <p>
+                Live counts come from the signup capacity store used by the public form: Upstash Redis when configured, otherwise the local in-memory fallback. They are not read from a registrations database table.
+              </p>
+              <p>{capacityStatusLoading ? 'Refreshing live counts…' : 'Live counts loaded.'}</p>
+            </div>
             <div className="grid gap-4 lg:grid-cols-2">
               {CAPACITY_IDS.map((location) => {
                 const slot = capacity[location];
+                const liveStatus = capacityStatus[location];
                 if (!slot) {
                   return null;
                 }
+
+                const configuredMax = typeof slot.max === 'number' ? slot.max : 0;
+                const currentCount = liveStatus?.count ?? 0;
+                const remaining = configuredMax > 0 ? Math.max(0, configuredMax - currentCount) : 0;
 
                 return (
                   <div key={location} aria-label={`Capacity ${location}`} className="rounded-[24px] border border-white/10 bg-black/10 p-5">
@@ -610,6 +745,23 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                         <input type="checkbox" checked={slot.enabled === true} onChange={(event) => updateCapacityField(location, 'enabled', event.target.checked)} />
                         Enabled
                       </label>
+                    </div>
+
+                    <div className="mb-4 grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm md:grid-cols-3">
+                      <div>
+                        <p className="text-white/55">Successful signups</p>
+                        <p className="mt-1 text-lg font-semibold">{currentCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-white/55">Remaining if saved now</p>
+                        <p className="mt-1 text-lg font-semibold">{remaining}</p>
+                      </div>
+                      <div>
+                        <p className="text-white/55">Live status</p>
+                        <p className="mt-1 text-lg font-semibold">
+                          {liveStatus?.enabled === false ? 'Disabled' : liveStatus?.reason === 'full' ? 'Full' : liveStatus?.reason === 'closed' ? 'Closed' : 'Open'}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">

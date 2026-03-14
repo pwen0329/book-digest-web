@@ -29,17 +29,18 @@ export default function middleware(req: NextRequest) {
 
   // Build CSP with nonce (replaces 'unsafe-inline' for scripts)
   const scriptSrc = isDev
-    ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io`
-    : `script-src 'self' 'unsafe-inline' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io`;
+    ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io https://vercel.live`
+    : `script-src 'self' 'unsafe-inline' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io https://vercel.live`;
 
   const csp = [
     "default-src 'self'",
     scriptSrc,
+    "script-src-elem 'self' 'unsafe-inline' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io https://vercel.live",
     "style-src-elem 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
-    "connect-src 'self' https://plausible.io https://challenges.cloudflare.com https://*.ingest.sentry.io",
+    "connect-src 'self' https://plausible.io https://challenges.cloudflare.com https://*.ingest.sentry.io https://vercel.live",
     "frame-src https://challenges.cloudflare.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",

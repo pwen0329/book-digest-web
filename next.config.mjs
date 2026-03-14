@@ -8,10 +8,12 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 const sentryEnabled = process.env.NODE_ENV === 'production' && Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_AUTH_TOKEN);
 
+const resolvedDistDir = process.env.NEXT_DIST_DIR || (process.env.NODE_ENV === 'development' ? '.next-local-dev' : '.next');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Keep default `.next`, but allow override in restricted environments.
-  distDir: process.env.NEXT_DIST_DIR || '.next',
+  distDir: resolvedDistDir,
   // Security headers
   async headers() {
     return [

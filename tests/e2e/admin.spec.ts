@@ -140,6 +140,35 @@ test.describe.serial('admin dashboard', () => {
     });
   });
 
+  test('can add a draft book from the admin dashboard and publish it', async ({ page }) => {
+    const nextBookSlug = `admin-added-book-${Date.now()}`;
+    const nextBookTitle = `Admin Added Book ${Date.now()}`;
+
+    await signIn(page);
+    await page.getByRole('button', { name: 'Books', exact: true }).click();
+
+    const booksEditor = page.getByLabel('Books editor');
+    await booksEditor.getByRole('button', { name: 'Add book' }).click();
+    await expect(page.getByText('Draft book added. Fill in the fields and save books to publish it.')).toBeVisible();
+
+    await booksEditor.getByLabel('Title (EN)').fill(nextBookTitle);
+    await booksEditor.getByLabel('Title (ZH)').fill('新增書籍');
+    await booksEditor.getByLabel('Author (EN)').fill('Admin Author');
+    await booksEditor.getByLabel('Author (ZH)').fill('管理員作者');
+    await booksEditor.getByLabel('Read date').fill('2026-03-13');
+    await booksEditor.getByLabel('Slug').fill(nextBookSlug);
+
+    const bookSaveResponse = page.waitForResponse((response) => response.url().includes('/api/admin/books') && response.request().method() === 'PUT');
+    await booksEditor.getByRole('button', { name: 'Save books' }).click();
+    expect((await bookSaveResponse).ok()).toBeTruthy();
+    await expect(page.getByText('Books updated. Public pages were revalidated.')).toBeVisible();
+
+    await withPreviewPage(page, async (previewPage) => {
+      await previewPage.goto(`/en/books/${nextBookSlug}`, { waitUntil: 'domcontentloaded' });
+      await expect(previewPage.getByRole('heading', { name: nextBookTitle })).toBeVisible();
+    });
+  });
+
   test('can tighten capacity from admin and surface the full-state on the public signup page', async ({ page, request }) => {
     const now = Date.now();
     const startAt = new Date(now - 60 * 60 * 1000);
@@ -184,6 +213,50 @@ test.describe.serial('admin dashboard', () => {
 
     await page.goto('/en/signup?location=TW', { waitUntil: 'domcontentloaded' });
     await expect(page.getByText('Registration Full')).toBeVisible({ timeout: 15000 });
+  });
+
+  test('shows live signup counts and remaining slots in the capacity editor', async ({ page, request }) => {
+    const now = Date.now();
+    const startAt = new Date(now - 60 * 60 * 1000);
+    const endAt = new Date(now + 24 * 60 * 60 * 1000);
+
+    const nextCapacity = {
+      ...originalCapacity,
+      TW: {
+        ...originalCapacity.TW,
+        enabled: true,
+        forceFull: false,
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+        max: 3,
+      },
+    };
+
+    const capacityResponse = await request.put('/api/admin/capacity', { headers: adminHeaders, data: { capacity: nextCapacity } });
+    expect(capacityResponse.ok()).toBeTruthy();
+
+    const resetResponse = await request.delete('/api/submit?loc=TW&tempMax=3&forceFull=0');
+    expect(resetResponse.ok()).toBeTruthy();
+
+    const submitResponse = await request.post('/api/submit?loc=TW', {
+      data: {
+        name: 'Capacity Counter Test',
+        age: 29,
+        profession: 'QA',
+        email: `capacity-counter-${now}@example.com`,
+        referral: 'Instagram',
+      },
+    });
+    expect(submitResponse.status()).toBe(201);
+
+    await signIn(page);
+    await page.getByRole('button', { name: 'Capacity', exact: true }).click();
+
+    const twCard = page.getByLabel('Capacity TW');
+    await expect(twCard.getByText('Successful signups')).toBeVisible();
+    await expect(twCard.getByText('1')).toBeVisible();
+    await expect(twCard.getByText('Remaining if saved now')).toBeVisible();
+    await expect(twCard.getByText('2')).toBeVisible();
   });
 
   test('can configure registration success emails from admin and send a localized confirmation email', async ({ page, request }) => {

@@ -73,10 +73,8 @@ test.describe('Mobile header', () => {
 
       const homeLink = page.getByTestId('header-home-link-mobile');
       await expect(homeLink).toBeVisible();
-      await Promise.all([
-        page.waitForURL(new RegExp(`/${locale}$`), { timeout: 15000 }),
-        homeLink.click(),
-      ]);
+      await homeLink.click();
+      await expect(page).toHaveURL(new RegExp(`/${locale}$`), { timeout: 15000 });
     });
 
     test(`should close the mobile menu with Escape for /${locale}`, async ({ page }) => {

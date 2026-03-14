@@ -81,7 +81,7 @@ export default function ActivitySignupFlow({
     setCheckingSlot(true);
     setSlotError(null);
     try {
-      const res = await fetch(`/api/submit?loc=${location}`, { method: 'GET', signal: controller.signal });
+      const res = await fetch(`/api/submit?loc=${location}`, { method: 'GET', signal: controller.signal, cache: 'no-store' });
       if (!res.ok) {
         setSlotStatus(null);
         setSlotError(tSignup('slotCheckError'));
