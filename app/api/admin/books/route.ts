@@ -2,7 +2,7 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
-import { readJsonFile, writeJsonFile } from '@/lib/json-store';
+import { loadAdminDocument, saveAdminDocument } from '@/lib/admin-content-store';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import type { Book } from '@/types/book';
 
@@ -105,7 +105,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return NextResponse.json({ books: readJsonFile<Book[]>('data/books.json') }, { status: 200 });
+  return NextResponse.json({
+    books: await loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' }),
+  }, { status: 200 });
 }
 
 export async function PUT(request: NextRequest) {
@@ -131,7 +133,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Book slugs must be unique.' }, { status: 400 });
   }
 
-  writeJsonFile('data/books.json', normalizedBooks);
+  await saveAdminDocument({ key: 'books', fallbackFile: 'data/books.json' }, normalizedBooks);
   revalidateBookRoutes(normalizedBooks);
 
   return NextResponse.json({ ok: true, books: normalizedBooks }, { status: 200 });

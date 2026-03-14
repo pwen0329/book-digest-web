@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { readJsonFile } from '@/lib/json-store';
+import { loadAdminDocument } from '@/lib/admin-content-store';
 
 export type SignupLocation = 'TW' | 'NL' | 'EN' | 'DETOX';
 
@@ -16,10 +16,14 @@ export type CapacityConfigFile = Partial<Record<SignupLocation, CapacityConfigSl
 
 const SIGNUP_CAPACITY_FILE = 'data/signup-capacity.json';
 
-export function getSignupCapacityConfig(): CapacityConfigFile {
-  return readJsonFile<CapacityConfigFile>(SIGNUP_CAPACITY_FILE);
+export async function getSignupCapacityConfig(): Promise<CapacityConfigFile> {
+  return loadAdminDocument<CapacityConfigFile>({
+    key: 'capacity',
+    fallbackFile: SIGNUP_CAPACITY_FILE,
+  });
 }
 
-export function getSignupCapacitySlot(location: SignupLocation): CapacityConfigSlot {
-  return getSignupCapacityConfig()[location] || {};
+export async function getSignupCapacitySlot(location: SignupLocation): Promise<CapacityConfigSlot> {
+  const config = await getSignupCapacityConfig();
+  return config[location] || {};
 }

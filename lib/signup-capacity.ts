@@ -48,10 +48,10 @@ const memoryForceFullOverrides = new Map<string, boolean>();
  * Also clears any forceFull override for the location.
  * Only available in non-production environments.
  */
-export function _resetCountForTesting(location: Location, tempMax?: number): void {
+export async function _resetCountForTesting(location: Location, tempMax?: number): Promise<void> {
   if (process.env.ALLOW_CAPACITY_RESET !== '1') return;
   memoryForceFullOverrides.delete(location);
-  const config = parseSlotConfig(location);
+  const config = await parseSlotConfig(location);
   if (config.key) {
     memoryCounts.set(config.key, 0);
     if (tempMax !== undefined) {
@@ -71,12 +71,12 @@ export function _setForceFullForTesting(location: Location, value: boolean): voi
   memoryForceFullOverrides.set(location, value);
 }
 
-function getConfigSlot(location: Location): CapacityConfigSlot {
+async function getConfigSlot(location: Location): Promise<CapacityConfigSlot> {
   return getSignupCapacitySlot(location);
 }
 
-function parseSlotConfig(location: Location): SlotConfig {
-  const configSlot = getConfigSlot(location);
+async function parseSlotConfig(location: Location): Promise<SlotConfig> {
+  const configSlot = await getConfigSlot(location);
 
   const prefix = `SIGNUP_SLOT_${location}`;
   const enabledRaw = process.env[`${prefix}_ENABLED`];
@@ -186,7 +186,7 @@ async function decrement(config: SlotConfig): Promise<void> {
 }
 
 export async function getCapacityStatus(location: Location): Promise<CapacityStatus> {
-  const config = parseSlotConfig(location);
+  const config = await parseSlotConfig(location);
   if (!config.enabled || !config.max || !config.startAt || !config.endAt) {
     return {
       enabled: false,
@@ -197,6 +197,21 @@ export async function getCapacityStatus(location: Location): Promise<CapacitySta
       startAt: null,
       endAt: null,
       reason: 'ok',
+    };
+  }
+
+  const open = isOpenNow(config);
+
+  if (!open) {
+    return {
+      enabled: true,
+      open: false,
+      full: false,
+      count: 0,
+      max: config.max,
+      startAt: config.startAt.toISOString(),
+      endAt: config.endAt.toISOString(),
+      reason: 'closed',
     };
   }
 
@@ -214,7 +229,6 @@ export async function getCapacityStatus(location: Location): Promise<CapacitySta
   }
 
   const count = await getCount(config);
-  const open = isOpenNow(config);
   const full = count >= config.max;
 
   let reason: CapacityStatus['reason'] = 'ok';
@@ -239,7 +253,7 @@ export async function reserveCapacity(location: Location): Promise<ReserveResult
   if (!status.open) return { allowed: false, reason: 'closed' };
   if (status.full) return { allowed: false, reason: 'full' };
 
-  const config = parseSlotConfig(location);
+  const config = await parseSlotConfig(location);
   if (!config.enabled || !config.max || !config.key) return { allowed: true, reason: 'ok' };
 
   const next = await increment(config);
@@ -256,7 +270,7 @@ export async function reserveCapacity(location: Location): Promise<ReserveResult
 }
 
 export async function releaseCapacity(location: Location): Promise<void> {
-  const config = parseSlotConfig(location);
+  const config = await parseSlotConfig(location);
   if (!config.enabled) return;
   await decrement(config);
 }

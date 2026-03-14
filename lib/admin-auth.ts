@@ -65,7 +65,27 @@ export async function isAdminAuthenticated(): Promise<boolean> {
   return compareSecrets(expected, current);
 }
 
-export async function createAdminSession(): Promise<void> {
+export function shouldUseSecureAdminCookie(request?: NextRequest): boolean {
+  if (process.env.NODE_ENV !== 'production') {
+    return false;
+  }
+
+  if (!request) {
+    return false;
+  }
+
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const hostname = request.nextUrl.hostname;
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
+
+  if (isLocalHost) {
+    return false;
+  }
+
+  return forwardedProto ? forwardedProto === 'https' : request.nextUrl.protocol === 'https:';
+}
+
+export async function createAdminSession(request?: NextRequest): Promise<void> {
   const expected = getExpectedSessionValue();
   if (!expected) {
     throw new Error('Admin authentication is not configured.');
@@ -75,7 +95,7 @@ export async function createAdminSession(): Promise<void> {
   cookieStore.set(ADMIN_SESSION_COOKIE, expected, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: shouldUseSecureAdminCookie(request),
     maxAge: 60 * 60 * 12,
     path: '/',
   });

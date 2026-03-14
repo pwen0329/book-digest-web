@@ -1,8 +1,6 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
-import { resolveWorkspacePath } from '@/lib/json-store';
+import { saveAdminUpload } from '@/lib/admin-upload-storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,14 +43,8 @@ export async function POST(request: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const baseName = sanitizeFileSegment(file.name.replace(/\.[^.]+$/, ''));
-  const relativeDirectory = path.join('public', 'uploads', 'admin', scope);
-  const absoluteDirectory = resolveWorkspacePath(relativeDirectory);
-  mkdirSync(absoluteDirectory, { recursive: true });
-
   const fileName = `${Date.now()}-${baseName}${extension}`;
-  const relativePath = path.join(relativeDirectory, fileName);
-  const absolutePath = resolveWorkspacePath(relativePath);
-  writeFileSync(absolutePath, buffer);
+  const src = await saveAdminUpload(scope, fileName, file.type, buffer);
 
-  return NextResponse.json({ ok: true, src: `/uploads/admin/${scope}/${fileName}` }, { status: 201 });
+  return NextResponse.json({ ok: true, src }, { status: 201 });
 }

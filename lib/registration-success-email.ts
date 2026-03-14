@@ -52,22 +52,22 @@ function normalizeLocale(locale?: string): RegistrationEmailLocale {
   return locale === 'zh' ? 'zh' : 'en';
 }
 
-function getLocalizedEventTitle(location: SignupLocation, locale: RegistrationEmailLocale): string {
-  const event = getEventContent(location);
+async function getLocalizedEventTitle(location: SignupLocation, locale: RegistrationEmailLocale): Promise<string> {
+  const event = await getEventContent(location);
   return event.title[locale];
 }
 
-function renderMessage(
+async function renderMessage(
   settings: RegistrationSuccessEmailSettings,
   input: SendRegistrationSuccessEmailInput
-): { subject: string; text: string; locale: RegistrationEmailLocale } {
+): Promise<{ subject: string; text: string; locale: RegistrationEmailLocale }> {
   const locale = normalizeLocale(input.locale);
   const template = settings.templates[locale];
   const context: TemplateContext = {
     name: input.name,
     email: input.email,
     location: input.location,
-    eventTitle: getLocalizedEventTitle(input.location, locale),
+    eventTitle: await getLocalizedEventTitle(input.location, locale),
     siteUrl: getSiteUrl(),
   };
 
@@ -163,12 +163,12 @@ async function sendWithResend(payload: { to: string; subject: string; text: stri
 }
 
 export async function sendRegistrationSuccessEmail(input: SendRegistrationSuccessEmailInput): Promise<SendEmailResult> {
-  const settings = getRegistrationSuccessEmailSettings();
+  const settings = await getRegistrationSuccessEmailSettings();
   if (!settings.enabled) {
     return { status: 'disabled', reason: 'Registration success emails are disabled.' };
   }
 
-  const message = renderMessage(settings, input);
+  const message = await renderMessage(settings, input);
   const outboxPath = getOutboxPath();
 
   if (outboxPath) {

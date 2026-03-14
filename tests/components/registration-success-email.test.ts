@@ -24,10 +24,10 @@ describe('registration success email', () => {
     delete process.env.NEXT_PUBLIC_SITE_URL;
   });
 
-  it('renders the localized template tokens into a delivery-ready message', () => {
+  it('renders the localized template tokens into a delivery-ready message', async () => {
     process.env.NEXT_PUBLIC_SITE_URL = 'http://127.0.0.1:3000';
 
-    const rendered = renderRegistrationSuccessEmailMessage(originalSettings, {
+    const rendered = await renderRegistrationSuccessEmailMessage(originalSettings, {
       location: 'TW',
       locale: 'zh',
       name: '測試讀者',

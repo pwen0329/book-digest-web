@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { getTranslations } from 'next-intl/server';
-import { getBooksSync, getLocalizedBook, getBookBySlugSync } from '@/lib/books';
+import { getBooks, getLocalizedBook, getBookBySlug } from '@/lib/books';
 import { BLUR_BOOK_COVER_LARGE } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { getLocaleAlternates } from '@/lib/seo';
@@ -25,7 +25,7 @@ const BookArticleSidebar = dynamic(() => import('@/components/BookArticleSidebar
 
 // Generate static paths for all books and locales (SSG optimization)
 export async function generateStaticParams() {
-  const books = getBooksSync();
+  const books = await getBooks();
   return books.flatMap((book) => 
     locales.map((locale) => ({
       locale,
@@ -37,7 +37,7 @@ export async function generateStaticParams() {
 // Generate Metadata (SEO optimization)
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; locale: string }> }) {
   const { slug, locale } = await params;
-  const rawBook = getBookBySlugSync(slug);
+  const rawBook = await getBookBySlug(slug);
   
   if (!rawBook) {
     return { title: 'Book Not Found' };
@@ -80,8 +80,8 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
   // Now safe to use getTranslations
   const t = await getTranslations('books');
 
-  const allBooks = getBooksSync();
-  const rawBook = getBookBySlugSync(slug);
+  const allBooks = await getBooks();
+  const rawBook = await getBookBySlug(slug);
   if (!rawBook) return notFound();
   
   const book = getLocalizedBook(rawBook, locale);

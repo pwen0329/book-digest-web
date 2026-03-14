@@ -1,12 +1,8 @@
 import 'server-only';
 
-import { readJsonFile } from '@/lib/json-store';
+import { loadAdminDocument } from '@/lib/admin-content-store';
 import type { Book } from '@/types/book';
 import { unstable_cache } from 'next/cache';
-
-// ============================================
-// Performance optimization: Server-side file load + Pre-built indexes
-// ============================================
 
 type BooksStore = {
   books: Book[];
@@ -19,12 +15,15 @@ type BooksStore = {
 let booksStore: BooksStore | null = null;
 let booksSignature = '';
 
-function loadBooks(): Book[] {
-  return readJsonFile<Book[]>('data/books.json');
+async function loadBooks(): Promise<Book[]> {
+  return loadAdminDocument<Book[]>({
+    key: 'books',
+    fallbackFile: 'data/books.json',
+  });
 }
 
-function getBooksStore(): BooksStore {
-  const books = loadBooks();
+async function getBooksStore(): Promise<BooksStore> {
+  const books = await loadBooks();
   const nextSignature = JSON.stringify(
     books.map((book) => [book.id, book.slug, book.title, book.titleEn, book.coverUrl, book.coverUrlEn, book.readDate])
   );
@@ -35,10 +34,8 @@ function getBooksStore(): BooksStore {
 
   booksSignature = nextSignature;
 
-  // Pre-build slug index for O(1) lookup complexity
   const booksBySlug = new Map<string, Book>(books.map((book) => [book.slug, book]));
 
-  // Pre-build tag index
   const booksByTag = new Map<string, Book[]>();
   books.forEach((book) => {
     book.tags?.forEach((tag) => {
@@ -47,7 +44,6 @@ function getBooksStore(): BooksStore {
     });
   });
 
-  // Pre-sorted books list by date (avoid re-sorting on each request)
   const sortedBooksByDate = [...books].sort((a, b) => {
     if (!a.readDate && !b.readDate) return 0;
     if (!a.readDate) return 1;
@@ -55,7 +51,6 @@ function getBooksStore(): BooksStore {
     return new Date(b.readDate).getTime() - new Date(a.readDate).getTime();
   });
 
-  // Pre-sorted books list by cover number (largest first)
   const sortedBooksByNumber = [...books]
     .map((book) => ({
       ...book,
@@ -74,63 +69,33 @@ function getBooksStore(): BooksStore {
   return booksStore;
 }
 
-// ============================================
-// Public API
-// ============================================
-
-// Async version (for backward compatibility)
 export async function getBooks(): Promise<Book[]> {
-  return getBooksStore().books;
+  return (await getBooksStore()).books;
 }
 
-// Sync version (for server components)
-export function getBooksSync(): Book[] {
-  return getBooksStore().books;
-}
-
-// Fast lookup using index - O(1) complexity
-export function getBookBySlugSync(slug: string): Book | undefined {
-  return getBooksStore().booksBySlug.get(slug);
-}
-
-// Async version (for backward compatibility)
 export async function getBookBySlug(slug: string): Promise<Book | undefined> {
-  return getBooksStore().booksBySlug.get(slug);
+  return (await getBooksStore()).booksBySlug.get(slug);
 }
 
-// Get books by tag - O(1) complexity
-export function getBooksByTag(tag: string): Book[] {
-  return getBooksStore().booksByTag.get(tag) || [];
+export async function getBooksByTag(tag: string): Promise<Book[]> {
+  return (await getBooksStore()).booksByTag.get(tag) || [];
 }
 
-// Get all tags
-export function getAllTags(): string[] {
-  return Array.from(getBooksStore().booksByTag.keys());
+export async function getAllTags(): Promise<string[]> {
+  return Array.from((await getBooksStore()).booksByTag.keys());
 }
 
-// Get recent books using pre-sorted list
 export async function getRecentBooks(limit: number = 40): Promise<Book[]> {
-  return getBooksStore().sortedBooksByDate.slice(0, limit);
+  return (await getBooksStore()).sortedBooksByDate.slice(0, limit);
 }
 
-// Sync version
-export function getRecentBooksSync(limit: number = 40): Book[] {
-  return getBooksStore().sortedBooksByDate.slice(0, limit);
+export async function getTopBooksByNumber(limit: number = 30): Promise<Book[]> {
+  return (await getBooksStore()).sortedBooksByNumber.slice(0, limit);
 }
 
-// Get top books by cover number (largest numbers first)
-export function getTopBooksByNumberSync(limit: number = 30): Book[] {
-  return getBooksStore().sortedBooksByNumber.slice(0, limit);
-}
-
-// ============================================
-// Server-side cache (for data that needs revalidation)
-// ============================================
-
-// Cache book stats (revalidate every 1 hour)
 export const getCachedBookStats = unstable_cache(
   async () => {
-    const { books, booksByTag, sortedBooksByDate } = getBooksStore();
+    const { books, booksByTag, sortedBooksByDate } = await getBooksStore();
     return {
       totalBooks: books.length,
       totalTags: booksByTag.size,
@@ -139,10 +104,9 @@ export const getCachedBookStats = unstable_cache(
     };
   },
   ['book-stats'],
-  { revalidate: 3600 } // Revalidate every 1 hour
+  { revalidate: 3600 }
 );
 
-// Helper to get localized book data
 export function getLocalizedBook(book: Book, locale: string) {
   return {
     ...book,
@@ -154,7 +118,6 @@ export function getLocalizedBook(book: Book, locale: string) {
   };
 }
 
-// Helper to get localized title
 export function getLocalizedTitle(book: Book, locale: string): string {
   if (locale === 'en' && book.titleEn) return book.titleEn;
   return book.title;

@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { readJsonFile } from '@/lib/json-store';
+import { loadAdminDocument } from '@/lib/admin-content-store';
 import type {
   EventContentId,
   EventContentMap,
@@ -10,17 +10,21 @@ import type {
 
 const EVENTS_CONTENT_FILE = 'data/events-content.json';
 
-export function getEventsContent(): EventContentMap {
-  return readJsonFile<EventContentMap>(EVENTS_CONTENT_FILE);
+export async function getEventsContent(): Promise<EventContentMap> {
+  return loadAdminDocument<EventContentMap>({
+    key: 'events',
+    fallbackFile: EVENTS_CONTENT_FILE,
+  });
 }
 
-export function getEventContent(eventId: EventContentId) {
-  return getEventsContent()[eventId];
+export async function getEventContent(eventId: EventContentId) {
+  const events = await getEventsContent();
+  return events[eventId];
 }
 
-export function getLocalizedEventsContent(locale: string): LocalizedEventContentMap {
+export async function getLocalizedEventsContent(locale: string): Promise<LocalizedEventContentMap> {
   const language = locale === 'en' ? 'en' : 'zh';
-  const events = getEventsContent();
+  const events = await getEventsContent();
 
   return (Object.entries(events) as Array<[EventContentId, EventContentMap[EventContentId]]>).reduce(
     (accumulator, [eventId, event]) => {
@@ -46,6 +50,7 @@ export function getLocalizedEventsContent(locale: string): LocalizedEventContent
   );
 }
 
-export function getLocalizedEventContent(locale: string, eventId: EventContentId): LocalizedEventContentRecord {
-  return getLocalizedEventsContent(locale)[eventId];
+export async function getLocalizedEventContent(locale: string, eventId: EventContentId): Promise<LocalizedEventContentRecord> {
+  const events = await getLocalizedEventsContent(locale);
+  return events[eventId];
 }

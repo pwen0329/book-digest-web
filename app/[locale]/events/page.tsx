@@ -108,7 +108,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('events');
-  const events = getLocalizedEventsContent(locale);
+  const events = await getLocalizedEventsContent(locale);
   const ctaClass = locale === 'en' ? "inline-flex min-h-11 items-center justify-center rounded-full bg-brand-pink px-5 sm:px-7 py-2.5 sm:py-3 font-semibold text-white shadow font-outfit transition-all text-sm sm:text-base uppercase tracking-wider hover:brightness-110" : "inline-flex min-h-11 items-center justify-center rounded-full bg-brand-pink px-8 sm:px-9 py-2.5 sm:py-3 font-semibold text-white shadow transition-all text-base sm:text-lg tracking-[0.24em] sm:tracking-[0.3em] hover:brightness-110";
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';

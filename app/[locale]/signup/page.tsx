@@ -21,5 +21,5 @@ export default async function SignupPage({
   const { locale } = await params;
   const { location } = await searchParams;
   setRequestLocale(locale);
-  return <SignupClient initialLocation={location} events={getLocalizedEventsContent(locale)} />;
+  return <SignupClient initialLocation={location} events={await getLocalizedEventsContent(locale)} />;
 }

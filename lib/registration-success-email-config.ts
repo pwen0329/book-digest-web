@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { readJsonFile } from '@/lib/json-store';
+import { loadAdminDocument } from '@/lib/admin-content-store';
 
 export type RegistrationEmailLocale = 'zh' | 'en';
 
@@ -16,8 +16,11 @@ export type RegistrationSuccessEmailSettings = {
 
 const REGISTRATION_SUCCESS_EMAIL_FILE = 'data/registration-success-email.json';
 
-export function getRegistrationSuccessEmailSettings(): RegistrationSuccessEmailSettings {
-  return readJsonFile<RegistrationSuccessEmailSettings>(REGISTRATION_SUCCESS_EMAIL_FILE);
+export async function getRegistrationSuccessEmailSettings(): Promise<RegistrationSuccessEmailSettings> {
+  return loadAdminDocument<RegistrationSuccessEmailSettings>({
+    key: 'registration-success-email',
+    fallbackFile: REGISTRATION_SUCCESS_EMAIL_FILE,
+  });
 }
 
 export { REGISTRATION_SUCCESS_EMAIL_FILE };

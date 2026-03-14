@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
-import { getBooksSync, getLocalizedBook } from '@/lib/books';
+import { getBooks, getLocalizedBook } from '@/lib/books';
 import { BLUR_BOOK_COVER } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { pageSEO, getLocaleAlternates } from '@/lib/seo';
@@ -30,7 +30,7 @@ export default async function BooksPage({ params }: { params: Promise<{ locale: 
   const t = await getTranslations('books');
 
   // Sort by coverUrl number (extracted from filename), smaller numbers last
-  const data = getBooksSync()
+  const data = (await getBooks())
     .map(b => ({
       ...getLocalizedBook(b, locale),
       sortOrder: b.coverUrl ? parseInt(b.coverUrl.match(/\/(\d+)_/)?.[1] || '0', 10) : 0,

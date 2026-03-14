@@ -6,7 +6,7 @@ import DetoxClient from './client';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
-  const event = getLocalizedEventContent(locale, 'DETOX');
+  const event = await getLocalizedEventContent(locale, 'DETOX');
   return {
     title: event.title,
     description: event.description.slice(0, 160),
@@ -21,5 +21,5 @@ export function generateStaticParams() {
 export default async function DetoxPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <DetoxClient events={getLocalizedEventsContent(locale)} />;
+  return <DetoxClient events={await getLocalizedEventsContent(locale)} />;
 }

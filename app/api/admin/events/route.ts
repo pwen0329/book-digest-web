@@ -2,7 +2,7 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
-import { readJsonFile, writeJsonFile } from '@/lib/json-store';
+import { loadAdminDocument, saveAdminDocument } from '@/lib/admin-content-store';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import type { EventContentId, EventContentMap } from '@/types/event-content';
 
@@ -58,7 +58,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return NextResponse.json({ events: readJsonFile<EventContentMap>('data/events-content.json') }, { status: 200 });
+  return NextResponse.json({
+    events: await loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' }),
+  }, { status: 200 });
 }
 
 export async function PUT(request: NextRequest) {
@@ -86,7 +88,7 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  writeJsonFile('data/events-content.json', nextEvents);
+  await saveAdminDocument({ key: 'events', fallbackFile: 'data/events-content.json' }, nextEvents);
   revalidateEventRoutes();
 
   return NextResponse.json({ ok: true, events: nextEvents }, { status: 200 });

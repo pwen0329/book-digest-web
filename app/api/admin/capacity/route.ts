@@ -2,8 +2,8 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
-import { getSignupCapacityConfig, type CapacityConfigFile, type SignupLocation } from '@/lib/signup-capacity-config';
-import { writeJsonFile } from '@/lib/json-store';
+import { loadAdminDocument, saveAdminDocument } from '@/lib/admin-content-store';
+import type { CapacityConfigFile, SignupLocation } from '@/lib/signup-capacity-config';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +49,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return NextResponse.json({ capacity: getSignupCapacityConfig() }, { status: 200 });
+  return NextResponse.json({
+    capacity: await loadAdminDocument<CapacityConfigFile>({ key: 'capacity', fallbackFile: 'data/signup-capacity.json' }),
+  }, { status: 200 });
 }
 
 export async function PUT(request: NextRequest) {
@@ -78,7 +80,7 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  writeJsonFile('data/signup-capacity.json', nextCapacity satisfies CapacityConfigFile);
+  await saveAdminDocument({ key: 'capacity', fallbackFile: 'data/signup-capacity.json' }, nextCapacity satisfies CapacityConfigFile);
   revalidateCapacityRoutes();
 
   return NextResponse.json({ ok: true, capacity: nextCapacity }, { status: 200 });

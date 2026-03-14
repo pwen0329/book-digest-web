@@ -46,7 +46,7 @@ export async function DELETE(req: NextRequest) {
   const tempMax = tempMaxRaw !== null ? Number(tempMaxRaw) : undefined;
   const forceFullRaw = searchParams.get('forceFull');
   // Reset count first (also clears any prior forceFull override).
-  _resetCountForTesting(loc, tempMax !== undefined && Number.isInteger(tempMax) && tempMax > 0 ? tempMax : undefined);
+  await _resetCountForTesting(loc, tempMax !== undefined && Number.isInteger(tempMax) && tempMax > 0 ? tempMax : undefined);
   // Apply forceFull override after reset so it isn't cleared.
   if (forceFullRaw !== null) {
     _setForceFullForTesting(loc, forceFullRaw === '1' || forceFullRaw.toLowerCase() === 'true');
