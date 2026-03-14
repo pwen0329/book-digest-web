@@ -51,6 +51,7 @@ Core variables:
 - `SUPABASE_URL`: persistent admin document and upload backend base URL
 - `SUPABASE_SERVICE_ROLE_KEY`: server-side key used for admin document writes and storage uploads
 - `SUPABASE_ADMIN_DOCUMENTS_TABLE`: optional admin documents table name, defaults to `admin_documents`
+- `SUPABASE_REGISTRATIONS_TABLE`: optional persistent registrations table name, defaults to `registrations`
 - `SUPABASE_STORAGE_BUCKET`: optional asset bucket name, defaults to `admin-assets`
 - `TALLY_ENDPOINT_TW|NL|EN|DETOX`: optional upstream submission webhooks
 - `SUBMIT_SAVE_TO_NOTION=1`: additionally persist submissions to Notion
@@ -153,10 +154,10 @@ Books tab notes:
 
 Capacity tab notes:
 
-- the live count shown in the editor comes from the same signup capacity store used by the public form
-- when Upstash Redis is configured, that count is read from Redis
-- otherwise it falls back to the local in-memory counter
-- it is not currently calculated from a registrations database table
+- the live count shown in the editor is derived from the stored registrations source of truth
+- in persistent mode, counts come from the Supabase `registrations` table
+- without Supabase, counts fall back to the local registrations file used for development and tests
+- pending reservations are treated as active for a short TTL so in-flight submissions still reserve capacity
 
 For the `Emails` tab:
 
@@ -188,15 +189,21 @@ Recommended production setup:
 
 - Vercel for the public site and `/admin`
 - Supabase for persistent admin documents and uploaded assets
-- Upstash Redis for capacity counters when you need shared multi-instance accuracy
+- Supabase `registrations` for derived capacity counts and audit history
 
 Supabase bootstrap:
 
 1. Create a table and bucket using [docs/supabase-admin.sql](/data/yy/book-digest-web/docs/supabase-admin.sql).
-2. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ADMIN_DOCUMENTS_TABLE`, and `SUPABASE_STORAGE_BUCKET` in Vercel.
-3. Redeploy.
+2. Follow [docs/supabase-deployment-checklist.md](/data/yy/book-digest-web/docs/supabase-deployment-checklist.md).
+3. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ADMIN_DOCUMENTS_TABLE`, `SUPABASE_REGISTRATIONS_TABLE`, and `SUPABASE_STORAGE_BUCKET` in Vercel.
+4. Redeploy.
 
 Once Supabase is configured, `/admin` edits persist on Vercel and public pages read the same persistent data source.
+
+Supabase cost summary:
+
+- Free tier is available at `$0/month`, but free projects pause after inactivity and have smaller database/storage quotas.
+- Pro starts at `$25/month` and is the safer default for a real production admin workflow on Vercel.
 
 Supported email template tokens:
 
