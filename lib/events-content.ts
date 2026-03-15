@@ -1,8 +1,8 @@
 import 'server-only';
 
 import { loadAdminDocument } from '@/lib/admin-content-store';
-import { readJsonFile } from '@/lib/json-store';
 import { logServerEvent } from '@/lib/observability';
+import eventsFallbackData from '@/data/events-content.json';
 import type {
   AdminEditableLocaleText,
   EventContentId,
@@ -13,6 +13,7 @@ import type {
 
 const EVENTS_CONTENT_FILE = 'data/events-content.json';
 const EVENT_IDS: EventContentId[] = ['TW', 'NL', 'EN', 'DETOX'];
+const EVENTS_FALLBACK = eventsFallbackData as EventContentMap;
 
 function normalizeLocaleText(value: unknown, fallback: AdminEditableLocaleText): AdminEditableLocaleText {
   if (!value || typeof value !== 'object') {
@@ -67,8 +68,7 @@ export async function getEventsContent(): Promise<EventContentMap> {
     fallbackFile: EVENTS_CONTENT_FILE,
   });
 
-  const fallbackEvents = readJsonFile<EventContentMap>(EVENTS_CONTENT_FILE);
-  return normalizeEventsContentMap(events, fallbackEvents);
+  return normalizeEventsContentMap(events, EVENTS_FALLBACK);
 }
 
 export async function getEventContent(eventId: EventContentId) {

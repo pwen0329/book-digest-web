@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import FloatingLangToggle from '@/components/FloatingLangToggle';
 
 const originalInnerWidth = window.innerWidth;
-const replaceMock = vi.fn();
+const pushMock = vi.fn();
 
 function setViewport(width: number) {
   Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: width });
@@ -12,7 +12,7 @@ function setViewport(width: number) {
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/en/books',
-  useRouter: () => ({ replace: replaceMock }),
+  useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock('next-intl', () => ({
@@ -22,7 +22,7 @@ vi.mock('next-intl', () => ({
 describe('FloatingLangToggle', () => {
   beforeEach(() => {
     setViewport(1440);
-    replaceMock.mockReset();
+    pushMock.mockReset();
   });
 
   afterEach(() => {
@@ -34,7 +34,7 @@ describe('FloatingLangToggle', () => {
     render(<FloatingLangToggle />);
 
     await waitFor(() => expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-fixed'));
-    expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-right', '132');
+    expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-right', '12');
     expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-top', '12');
   });
 
@@ -62,6 +62,6 @@ describe('FloatingLangToggle', () => {
     const chineseButton = await screen.findByRole('button', { name: 'Switch to Chinese' });
     fireEvent.click(chineseButton);
 
-    expect(replaceMock).toHaveBeenCalledWith('/zh/books', { scroll: false });
+    expect(pushMock).toHaveBeenCalledWith('/zh/books', { scroll: false });
   });
 });

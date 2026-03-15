@@ -1,13 +1,14 @@
 import 'server-only';
 
 import { loadAdminDocument } from '@/lib/admin-content-store';
-import { readJsonFile } from '@/lib/json-store';
 import { logServerEvent } from '@/lib/observability';
 import { sortBooksDescending } from '@/lib/book-order';
+import booksFallbackData from '@/data/books.json';
 import type { Book } from '@/types/book';
 import { unstable_cache } from 'next/cache';
 
 const BOOKS_FILE = 'data/books.json';
+const BOOKS_FALLBACK = booksFallbackData as Book[];
 
 type BooksStore = {
   books: Book[];
@@ -22,8 +23,7 @@ async function loadBooks(): Promise<Book[]> {
     fallbackFile: BOOKS_FILE,
   });
 
-  const fallbackBooks = readJsonFile<Book[]>(BOOKS_FILE);
-  const normalizedBooks = normalizeBooksDocument(books, fallbackBooks);
+  const normalizedBooks = normalizeBooksDocument(books, BOOKS_FALLBACK);
 
   return sortBooksDescending(normalizedBooks);
 }

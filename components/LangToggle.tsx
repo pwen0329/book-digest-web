@@ -1,7 +1,7 @@
 'use client';
 
 import type { HTMLAttributes } from 'react';
-import { memo } from 'react';
+import { memo, useLayoutEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { buildLocalizedPath } from '@/lib/locale-switch';
@@ -15,6 +15,11 @@ export default memo(function LangToggle({ className = '', buttonClassName = '', 
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
+  const [isReady, setIsReady] = useState(false);
+
+  useLayoutEffect(() => {
+    setIsReady(true);
+  }, []);
 
   const switchLocale = (newLocale: 'en' | 'zh') => {
     if (newLocale === locale) return;
@@ -22,7 +27,14 @@ export default memo(function LangToggle({ className = '', buttonClassName = '', 
     const search = typeof window === 'undefined' ? '' : window.location.search;
     const hash = typeof window === 'undefined' ? '' : window.location.hash;
     const searchParams = search ? new URLSearchParams(search) : undefined;
-    router.replace(buildLocalizedPath(pathname, newLocale, searchParams, hash), { scroll: false });
+    const targetPath = buildLocalizedPath(pathname, newLocale, searchParams, hash);
+
+    if (pathname === '/' || pathname === '/en' || pathname === '/zh') {
+      window.location.assign(targetPath);
+      return;
+    }
+
+    router.push(targetPath, { scroll: false });
   };
 
   return (
@@ -34,7 +46,7 @@ export default memo(function LangToggle({ className = '', buttonClassName = '', 
         className={`inline-flex rounded-full border border-white/20 p-0.5 bg-brand-navy/90 backdrop-blur shadow-lg ${buttonClassName}`.trim()}
         role="group"
         aria-label="Language selector"
-        data-ready="true"
+        data-ready={isReady ? 'true' : 'false'}
       >
         <button
           type="button"

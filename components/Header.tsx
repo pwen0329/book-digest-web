@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState, useCallback, useEffect, useRef, memo } from 'react';
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, memo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 
 // Use memo to optimize navigation link component
@@ -69,7 +69,7 @@ export default function Header() {
   const pathname = usePathname();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setIsReady(true);
   }, []);
 

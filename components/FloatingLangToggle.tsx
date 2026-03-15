@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import LangToggle from '@/components/LangToggle';
 
 const DESKTOP_BREAKPOINT = 768;
-const HEADER_SHELL_MAX_WIDTH = 1152;
-const HEADER_SHELL_HORIZONTAL_PADDING = 48;
 const TOP_GAP = 12;
 const RIGHT_GAP = 12;
 
@@ -26,20 +24,27 @@ function getFloatingLangTogglePosition(width: number): FloatingPosition {
     };
   }
 
-  const desktopShellWidth = HEADER_SHELL_MAX_WIDTH + HEADER_SHELL_HORIZONTAL_PADDING;
-  const gutterRight = Math.max(0, Math.floor((width - desktopShellWidth) / 2));
-
   return {
     mode: 'desktop-fixed',
     top: TOP_GAP,
-    right: gutterRight + RIGHT_GAP,
+    right: RIGHT_GAP,
   };
 }
 
 export default function FloatingLangToggle() {
-  const [position, setPosition] = useState<FloatingPosition | null>(null);
+  const [position, setPosition] = useState<FloatingPosition>(() => {
+    if (typeof window === 'undefined') {
+      return {
+        mode: 'mobile',
+        top: TOP_GAP,
+        right: RIGHT_GAP,
+      };
+    }
 
-  useEffect(() => {
+    return getFloatingLangTogglePosition(window.innerWidth);
+  });
+
+  useLayoutEffect(() => {
     let frameId: number | null = null;
 
     const syncPosition = () => {
@@ -79,10 +84,6 @@ export default function FloatingLangToggle() {
       window.removeEventListener('resize', scheduleSyncPosition);
     };
   }, []);
-
-  if (!position) {
-    return null;
-  }
 
   const buttonClassName = position.mode === 'mobile'
     ? 'text-xs shadow-none [&>button]:min-h-11 [&>button]:min-w-[44px] [&>button]:px-3 [&>button]:py-2.5'

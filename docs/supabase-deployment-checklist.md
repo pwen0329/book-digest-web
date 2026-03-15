@@ -141,7 +141,21 @@ select value->'TW'->'title' as tw_title,
        value->'DETOX'->'title' as detox_title
 from public.admin_documents
 where key = 'events';
+
+select id, location, status, source, request_id, updated_at
+from public.registrations
+order by updated_at desc
+limit 20;
 ```
+
+12. If Supabase SQL editor says `column "id" does not exist` while inspecting `admin_documents`, the query is using the wrong schema assumption. `public.admin_documents` is key-value storage, so inspect `key`, `value`, and `updated_at`, not `id`.
+13. If Vercel logs show `ENOENT` for `/var/task/data/books.json` or `/var/task/data/events-content.json`, the deployed server is still evaluating a runtime filesystem fallback somewhere in the request path. Rebuild after confirming the app uses bundled JSON fallbacks or Supabase-backed loaders instead of unconditional `fs` reads.
+14. Fast production debug sequence when `/`, `/books`, or `/events` fail only on Vercel:
+   - open Vercel function logs for the failing request and note the first server-side stack frame
+   - run the SQL block above for `public.admin_documents`
+   - confirm `books` is a non-empty JSON array and `events` is a JSON object with `TW`, `NL`, `EN`, and `DETOX`
+   - confirm `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ADMIN_DOCUMENTS_TABLE`, and `SUPABASE_REGISTRATIONS_TABLE` are set on the same Vercel environment as the deployment
+   - redeploy after clearing any remaining runtime file reads in server utilities
 
 ## Operational Notes
 
@@ -151,4 +165,4 @@ where key = 'events';
 4. The upgraded registrations viewer also depends on `timestamp`, `external_id`, `request_id`, and JSON audit columns for filtering and reconciliation.
 5. For periodic storage cleanup, you can call `DELETE /api/admin/assets?gracePeriodHours=168` with `Authorization: Bearer $ADMIN_API_SECRET` from a cron job or GitHub Action.
 6. If concurrency becomes high enough that slot contention matters, the next upgrade is moving reservation acceptance into a database-side transactional function.
-7. If a Vercel deployment works locally with `npm run build && npm run start` but fails only in production, compare the persistent `public.admin_documents` payloads against local `data/books.json` and `data/events-content.json` before investigating Next.js itself.
+7. If a Vercel deployment works locally with `npm run build && npm run start` but fails only in production, compare the persistent `public.admin_documents` payloads against local `data/books.json` and `data/events-content.json` first, then check whether any server utility still performs unconditional runtime file reads for fallback normalization.

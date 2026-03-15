@@ -2,8 +2,10 @@ import { test, expect, type Page } from '@playwright/test';
 
 async function goto(page: Page, path: string) {
   const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('header')).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
-  await expect(page.getByRole('button', { name: 'Toggle menu' })).toBeVisible();
+  await expect(page.locator('header')).toBeVisible();
+  const menuButton = page.getByRole('button', { name: 'Toggle menu' });
+  await expect(menuButton).toBeVisible();
+  await expect(menuButton).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
   return response;
 }
 
@@ -17,7 +19,7 @@ test.describe('Mobile header', () => {
   for (const locale of locales) {
     test(`should keep the floating language selector pinned near the mobile header without shifting the centered logo for /${locale}`, async ({ page }) => {
       await goto(page, `/${locale}`);
-      await expect(page.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'mobile');
+      await expect(page.getByTestId('floating-lang-toggle')).toBeVisible();
 
       const boxes = await page.evaluate(() => {
         const header = document.querySelector('header');

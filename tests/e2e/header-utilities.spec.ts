@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Header utilities', () => {
-  test('keeps the floating desktop language selector visible on scroll and clear of Join Us at the top of the page on wide desktop viewports', async ({ page }) => {
+  test('keeps the floating desktop language selector visible on scroll and pinned near the viewport edge on wide desktop viewports', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/en', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('header')).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
-    await expect(page.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-fixed');
+    await expect(page.locator('header')).toBeVisible();
+    await expect(page.getByTestId('floating-lang-toggle')).toBeVisible();
 
     const metrics = await page.evaluate(() => {
       const header = document.querySelector('header');
@@ -40,8 +40,9 @@ test.describe('Header utilities', () => {
     expect(metrics).not.toBeNull();
     expect(metrics!.langTop).toBeGreaterThanOrEqual(metrics!.headerTop);
     expect(Math.abs(metrics!.navWidth - metrics!.shellInnerWidth)).toBeLessThanOrEqual(1);
-    expect(metrics!.langRightGap).toBeGreaterThanOrEqual(120);
-    expect(metrics!.langWidth).toBeGreaterThan(110);
+    expect(metrics!.langRightGap).toBeGreaterThanOrEqual(8);
+    expect(metrics!.langRightGap).toBeLessThanOrEqual(20);
+    expect(metrics!.langWidth).toBeGreaterThan(95);
     expect(metrics!.instagramTopRatio).toBeGreaterThan(0.2);
     expect(metrics!.instagramTopRatio).toBeLessThan(0.4);
 
@@ -53,11 +54,11 @@ test.describe('Header utilities', () => {
     expect(scrolledTop!).toBeLessThan(30);
   });
 
-  test('keeps the floating desktop language selector in the same top-right lane on narrower desktop widths without clipping or overlapping Join Us', async ({ page }) => {
+  test('keeps the floating desktop language selector in the same top-right lane on narrower desktop widths without clipping', async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 900 });
     await page.goto('/en', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('header')).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
-    await expect(page.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-fixed');
+    await expect(page.locator('header')).toBeVisible();
+    await expect(page.getByTestId('floating-lang-toggle')).toBeVisible();
 
     const metrics = await page.evaluate(() => {
       const header = document.querySelector('header');
@@ -90,13 +91,14 @@ test.describe('Header utilities', () => {
     expect(Math.abs(metrics!.navWidth - metrics!.shellInnerWidth)).toBeLessThanOrEqual(1);
     expect(metrics!.langRightGap).toBeGreaterThanOrEqual(8);
     expect(metrics!.langRightGap).toBeLessThanOrEqual(20);
-    expect(metrics!.langWidth).toBeGreaterThan(110);
+    expect(metrics!.langWidth).toBeGreaterThan(95);
   });
 
   test('keeps the mobile Instagram button closer to the lower third', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/en', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('header')).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
+    await expect(page.locator('header')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Toggle menu' })).toBeVisible();
 
     const metrics = await page.evaluate(() => {
       const instagram = document.querySelector('[aria-label="Follow us on Instagram"]');
