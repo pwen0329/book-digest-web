@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getNextBookSortOrder, normalizeBookSortOrder, sortBooksDescending } from '@/lib/book-order';
+import { getBookSortOrder, getNextBookSortOrder, normalizeBookSortOrder, sortBooksDescending } from '@/lib/book-order';
 
 describe('book order helpers', () => {
   it('sorts books by descending sortOrder', () => {
@@ -27,5 +27,15 @@ describe('book order helpers', () => {
       { id: 'a', slug: 'a', title: 'A', author: 'Author', sortOrder: 4 },
       { id: 'b', slug: 'b', title: 'B', author: 'Author', sortOrder: 8 },
     ])).toBe(9);
+  });
+
+  it('falls back to numbered cover assets when an explicit sortOrder is missing', () => {
+    expect(getBookSortOrder({
+      id: 'duck',
+      slug: 'duck',
+      title: 'Duck',
+      author: 'Author',
+      coverUrl: '/images/books_zh/60_家鴨與野鴨的投幣式置物櫃.webp',
+    })).toBe(60);
   });
 });

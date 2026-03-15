@@ -146,7 +146,12 @@ export async function loadAdminDocument<T>(options: LoaderOptions<T>): Promise<T
 }
 
 export async function loadAdminDocumentRecord<T>(options: LoaderOptions<T>): Promise<AdminDocumentRecord<T>> {
-  if (options.fallbackValue !== undefined || process.env.VITEST === 'true' || process.env.NODE_ENV === 'test') {
+  if (
+    options.fallbackValue !== undefined ||
+    process.env.VITEST === 'true' ||
+    process.env.NODE_ENV === 'test' ||
+    process.env.NODE_ENV === 'development'
+  ) {
     return loadDocumentUncached(options);
   }
 

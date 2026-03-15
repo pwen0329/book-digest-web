@@ -12,9 +12,6 @@ type BooksStore = {
   orderedBooks: Book[];
 };
 
-let booksStore: BooksStore | null = null;
-let booksSignature = '';
-
 async function loadBooks(): Promise<Book[]> {
   const books = await loadAdminDocument<Book[]>({
     key: 'books',
@@ -26,15 +23,6 @@ async function loadBooks(): Promise<Book[]> {
 
 async function getBooksStore(): Promise<BooksStore> {
   const books = await loadBooks();
-  const nextSignature = JSON.stringify(
-    books.map((book) => [book.id, book.slug, book.title, book.titleEn, book.coverUrl, book.coverUrlEn, book.readDate])
-  );
-
-  if (booksStore && booksSignature === nextSignature) {
-    return booksStore;
-  }
-
-  booksSignature = nextSignature;
 
   const booksBySlug = new Map<string, Book>(books.map((book) => [book.slug, book]));
 
@@ -46,14 +34,12 @@ async function getBooksStore(): Promise<BooksStore> {
     });
   });
 
-  booksStore = {
+  return {
     books,
     booksBySlug,
     booksByTag,
     orderedBooks: [...books],
   };
-
-  return booksStore;
 }
 
 export async function getBooks(): Promise<Book[]> {

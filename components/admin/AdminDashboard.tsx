@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useTransition, useCallback } from 'react';
-import { getNextBookSortOrder, sortBooksDescending } from '@/lib/book-order';
+import { getBookSortOrder, getNextBookSortOrder, sortBooksDescending } from '@/lib/book-order';
 import type { Book } from '@/types/book';
 import type { EventContentId, EventContentMap } from '@/types/event-content';
 import type { RegistrationEmailLocale, RegistrationSuccessEmailSettings } from '@/lib/registration-success-email-config';
@@ -110,18 +110,18 @@ async function uploadAsset(scope: 'books' | 'events', file: File): Promise<Uploa
 }
 
 function createDraftBook(existingBooks: Book[]): Book {
-  const index = existingBooks.length + 1;
-  const slugBase = `new-book-${index}`;
+  const nextOrder = getNextBookSortOrder(existingBooks);
+  const slugBase = `new-book-${nextOrder}`;
   const slug = existingBooks.some((book) => book.slug === slugBase)
     ? `new-book-${Date.now()}`
     : slugBase;
 
   return {
     id: `draft-${Date.now()}`,
-    sortOrder: getNextBookSortOrder(existingBooks),
+    sortOrder: nextOrder,
     slug,
-    title: '新書籍',
-    titleEn: 'New Book',
+    title: `新書籍 ${nextOrder}`,
+    titleEn: `New Book ${nextOrder}`,
     author: '作者名稱',
     authorEn: 'Author Name',
     readDate: '',
@@ -587,6 +587,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
               <div className="space-y-2">
                 {visibleBooks.map((book) => {
                   const absoluteIndex = books.findIndex((candidate) => candidate.id === book.id);
+                  const displayOrder = getBookSortOrder(book);
                   return (
                   <button
                     key={String(book.id)}
@@ -615,7 +616,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                         <div className="font-medium">{book.title}</div>
                         <div className="text-xs opacity-70">/{book.slug}</div>
                       </div>
-                      <span className="text-xs opacity-60">#{absoluteIndex + 1}</span>
+                      <span className="text-xs opacity-60">#{displayOrder}</span>
                     </div>
                   </button>
                 );})}

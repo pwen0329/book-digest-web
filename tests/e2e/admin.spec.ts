@@ -162,6 +162,7 @@ test.describe.serial('admin dashboard', () => {
   test('can add a draft book from the admin dashboard and publish it', async ({ page }) => {
     const nextBookSlug = `admin-added-book-${Date.now()}`;
     const nextBookTitle = `Admin Added Book ${Date.now()}`;
+    const nextSortOrder = Math.max(...originalBooks.map((book) => book.sortOrder || 0)) + 1;
 
     await signIn(page);
     await page.getByRole('button', { name: 'Books', exact: true }).click();
@@ -169,6 +170,7 @@ test.describe.serial('admin dashboard', () => {
     const booksEditor = page.getByLabel('Books editor');
     await booksEditor.getByRole('button', { name: 'Add book' }).click();
     await expect(page.getByText('Draft book added. Fill in the fields and save books to publish it.')).toBeVisible();
+    await expect(booksEditor.locator('aside .space-y-2 > button').first()).toContainText(`#${nextSortOrder}`);
 
     await booksEditor.getByLabel('Title (EN)').fill(nextBookTitle);
     await booksEditor.getByLabel('Title (ZH)').fill('新增書籍');
@@ -215,12 +217,14 @@ test.describe.serial('admin dashboard', () => {
     const originalFirst = originalBooks[0];
     const originalSecond = originalBooks[1];
     const reorderedFirstTitle = originalSecond.titleEn || originalSecond.title;
+    const highestOrder = Math.max(...originalBooks.map((book) => book.sortOrder || 0));
 
     await signIn(page);
     await page.getByRole('button', { name: 'Books', exact: true }).click();
 
     const booksEditor = page.getByLabel('Books editor');
     const bookButtons = booksEditor.locator('aside .space-y-2 > button');
+    await expect(bookButtons.first()).toContainText(`#${highestOrder}`);
     await expect(bookButtons).toHaveCount(10);
     await booksEditor.getByRole('button', { name: 'Load more books' }).click();
     await expect(bookButtons).toHaveCount(Math.min(20, originalBooks.length));
@@ -268,9 +272,15 @@ test.describe.serial('admin dashboard', () => {
     await booksEditor.getByRole('button', { name: 'Save books' }).click();
     expect((await saveDeletedResponse).ok()).toBeTruthy();
 
+    await expect.poll(async () => {
+      const response = await page.request.get('/api/admin/books', { headers: adminHeaders });
+      const payload = await response.json();
+      return (payload.books as BookRecord[]).some((book) => book.slug === deletedSlug);
+    }).toBe(false);
+
     await withPreviewPage(page, async (previewPage) => {
-      await previewPage.goto('/en/books', { waitUntil: 'domcontentloaded' });
-      await expect(previewPage.getByRole('link', { name: /Delete Me/i })).toHaveCount(0);
+      await previewPage.goto(`/en/books?refresh=${Date.now()}`, { waitUntil: 'domcontentloaded' });
+      await expect(previewPage.getByRole('link', { name: /Delete Me/i })).toHaveCount(0, { timeout: 15000 });
     });
   });
 
