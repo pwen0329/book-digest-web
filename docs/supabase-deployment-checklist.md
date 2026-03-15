@@ -41,6 +41,14 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
    - `registrations_timestamp_idx`
    - `registrations_external_id_idx`
    - `registrations_request_id_idx`
+8. After the first successful page render or first `/admin` login, confirm `public.admin_documents` contains these seeded rows:
+   - `key='books'`
+   - `key='events'`
+   - `key='capacity'`
+   - `key='registration-success-email'`
+9. Spot-check `public.admin_documents.value` for `books` and `events`:
+   - `books` should be a non-empty JSON array of book objects
+   - `events` should be a JSON object with `TW`, `NL`, `EN`, and `DETOX`
 
 ## RLS Model
 
@@ -114,6 +122,26 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
    - the row has a `requestId` and at least one `auditTrail` event
    - the capacity card in `/admin` reflects the new count
 9. If Notion mirror is enabled, open `Reconciliation` and confirm the new row is either matched or shows an actionable diff.
+10. If `/`, `/books`, or `/events` look wrong only on Vercel, inspect `public.admin_documents` first before suspecting build output:
+   - empty `books` value can blank the homepage and books page
+   - malformed `events` value can break `/events`
+11. Useful SQL spot-checks in the Supabase SQL editor:
+
+```sql
+select key, jsonb_typeof(value) as value_type, updated_at
+from public.admin_documents
+order by key;
+
+select jsonb_array_length(value) as books_count
+from public.admin_documents
+where key = 'books';
+
+select value->'TW'->'title' as tw_title,
+       value->'EN'->'title' as en_title,
+       value->'DETOX'->'title' as detox_title
+from public.admin_documents
+where key = 'events';
+```
 
 ## Operational Notes
 
@@ -123,3 +151,4 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 4. The upgraded registrations viewer also depends on `timestamp`, `external_id`, `request_id`, and JSON audit columns for filtering and reconciliation.
 5. For periodic storage cleanup, you can call `DELETE /api/admin/assets?gracePeriodHours=168` with `Authorization: Bearer $ADMIN_API_SECRET` from a cron job or GitHub Action.
 6. If concurrency becomes high enough that slot contention matters, the next upgrade is moving reservation acceptance into a database-side transactional function.
+7. If a Vercel deployment works locally with `npm run build && npm run start` but fails only in production, compare the persistent `public.admin_documents` payloads against local `data/books.json` and `data/events-content.json` before investigating Next.js itself.

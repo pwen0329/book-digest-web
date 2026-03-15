@@ -64,6 +64,8 @@ Core variables:
 
 If neither `RESEND_API_KEY` nor `EMAIL_OUTBOX_FILE` is configured, submissions still succeed, but confirmation emails are skipped even if the admin toggle is enabled.
 
+If you use Supabase's free tier for production-like environments, remember that inactive projects can auto-pause. When that happens, Vercel may still deploy successfully while `/`, `/books`, or `/events` fail or render stale fallback content until Supabase resumes.
+
 ### Admin auth setup
 
 The `/admin` page is protected by a password-based session.

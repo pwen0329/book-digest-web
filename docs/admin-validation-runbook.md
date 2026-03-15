@@ -43,6 +43,21 @@ Expected result:
 3. Public page renders the new cover.
 4. The canonical hint matches the numbering strategy you want for long-term library curation.
 
+## 1A. Header And Language Toggle Layout
+
+1. Open `/en` on desktop width.
+2. Confirm the language toggle sits in the top-right lane without shrinking the main nav width.
+3. Compare the header content width against the sections below.
+4. Resize to a narrower desktop width.
+5. Confirm `Books`, `Events`, `About Us`, and `Join Us` still use the full header content width.
+6. Open `/en/about-archive` or any route that only partially matches an existing nav path.
+
+Expected result:
+
+1. The floating language toggle does not reserve horizontal space inside the header shell.
+2. The desktop nav spans the same content width as the rest of the page.
+3. Links are only highlighted on exact path matches or nested child routes, not on partial prefix collisions.
+
 ## 2. Asset Scan And Cleanup
 
 1. Open `Assets` in `/admin`.
@@ -161,6 +176,19 @@ Run these only when Supabase mode is active.
    - `audit_trail`
 3. Confirm `timestamp` is populated.
 4. Confirm `external_id` is populated after a successful Notion mirror.
+5. Open `public.admin_documents` and confirm:
+   - `books.value` is a populated JSON array
+   - `events.value` contains `TW`, `NL`, `EN`, and `DETOX`
+6. If Vercel shows an empty homepage or books page, compare `books.value` against the repo seed in `data/books.json`.
+7. If Vercel shows an error on `/events`, compare `events.value` against the repo seed in `data/events-content.json` and verify every event still has localized `title` and `description` fields.
+8. Open two admin tabs that both edit the same document, such as `Books`.
+9. Save a change in the first tab.
+10. Save a different change in the second tab without refreshing.
+
+Expected result:
+
+1. The second save is rejected with a conflict instead of silently overwriting newer server state.
+2. The operator is told to refresh before saving again.
 
 ## 10. Recommended Automation After Manual Signoff
 
