@@ -13,10 +13,15 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 ## Create Project
 
 1. Create a new Supabase project.
-2. Copy the project URL.
-3. Set a strong Supabase database password during project creation and keep it only in your password manager. The app does not need the raw database password unless you later connect with psql or migration tools.
-4. Copy the service-role key from Project Settings -> API.
-5. Never expose the service-role key to the browser.
+2. Save these account-level credentials in your password manager:
+   - Supabase account email
+   - Supabase account password or SSO note
+   - project name / region
+3. Copy the project URL.
+4. Set a strong Supabase database password during project creation and keep it only in your password manager. The app does not need the raw database password unless you later connect with `psql`, Prisma, or migration tools.
+5. Copy the service-role key from Project Settings -> API.
+6. Never expose the service-role key to the browser.
+7. Optional but recommended: also copy the anon key into your password manager or deployment notes, even though this app currently does not need it for runtime writes.
 
 ## Initialize Database And Storage
 
@@ -28,6 +33,14 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
    - storage bucket `admin-assets`
 4. Confirm RLS is enabled on `public.admin_documents` and `public.registrations`.
 5. Confirm the public read policy exists for `storage.objects` on bucket `admin-assets`.
+6. Confirm `public.registrations` has these extra columns for the upgraded admin:
+   - `request_id`
+   - `mirror_state`
+   - `audit_trail`
+7. Confirm these indexes exist on `public.registrations`:
+   - `registrations_timestamp_idx`
+   - `registrations_external_id_idx`
+   - `registrations_request_id_idx`
 
 ## RLS Model
 
@@ -52,21 +65,29 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 5. `SUPABASE_ADMIN_DOCUMENTS_TABLE=admin_documents`
 6. `SUPABASE_REGISTRATIONS_TABLE=registrations`
 7. `SUPABASE_STORAGE_BUCKET=admin-assets`
-8. Optional: `RESEND_API_KEY`
-9. Optional: `REGISTRATION_EMAIL_FROM`
-10. Optional: `REGISTRATION_EMAIL_REPLY_TO`
-11. Optional: `NOTION_TOKEN`
-12. Optional: `NOTION_DB_ID`
-13. Optional: `SUBMIT_SAVE_TO_NOTION=1`
-14. Optional: `TALLY_ENDPOINT_TW`, `TALLY_ENDPOINT_NL`, `TALLY_ENDPOINT_EN`, `TALLY_ENDPOINT_DETOX`
-15. Recommended for Supabase-first setup: leave `NEXT_PUBLIC_FORMS_ENDPOINT_*` empty so public forms keep posting to the built-in `/api/submit` route.
+8. Optional but recommended for automation: `ADMIN_API_SECRET`
+9. Optional: `RESEND_API_KEY`
+10. Optional: `REGISTRATION_EMAIL_FROM`
+11. Optional: `REGISTRATION_EMAIL_REPLY_TO`
+12. Optional: `NOTION_TOKEN`
+13. Optional: `NOTION_DB_ID`
+14. Optional: `SUBMIT_SAVE_TO_NOTION=1`
+15. Optional: `TALLY_ENDPOINT_TW`, `TALLY_ENDPOINT_NL`, `TALLY_ENDPOINT_EN`, `TALLY_ENDPOINT_DETOX`
+16. Optional: `NEXT_PUBLIC_SENTRY_DSN`
+17. Optional: `SENTRY_AUTH_TOKEN`
+18. Recommended for Supabase-first setup: leave `NEXT_PUBLIC_FORMS_ENDPOINT_*` empty so public forms keep posting to the built-in `/api/submit` route.
 
 ## Secrets And Where To Store Them
 
-1. Store `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `NOTION_TOKEN`, and `TURNSTILE_SECRET_KEY` only in Vercel project environment variables or another server-side secret manager.
+1. Store `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `ADMIN_API_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `NOTION_TOKEN`, `TURNSTILE_SECRET_KEY`, and `SENTRY_AUTH_TOKEN` only in Vercel project environment variables or another server-side secret manager.
 2. Store the Supabase project password only in your password manager. Do not put it in `.env` unless you explicitly add a direct database client later.
-3. `NEXT_PUBLIC_*` values are browser-visible by design, so never put passwords or service-role keys in them.
-4. If you use local development, put secrets in `.env.local`; do not commit `.env.local`.
+3. Store the Supabase account login only in your password manager, not inside repo docs or `.env.local`.
+4. `NEXT_PUBLIC_*` values are browser-visible by design, so never put passwords, service-role keys, Notion tokens, or admin secrets in them.
+5. If you use local development, put runtime secrets in `.env.local`; do not commit `.env.local`.
+6. Recommended split:
+   - password manager: Supabase account login, Supabase DB password, Notion workspace/admin notes
+   - Vercel env: runtime keys and tokens used by the app
+   - `.env.local`: only local-dev copies of the same runtime keys
 
 ## Recommended Setup
 
@@ -75,22 +96,30 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 3. Notion becomes optional. Only enable it if you want a secondary mirror for manual ops or CRM workflows.
 4. Tally also becomes optional. Only enable it if you still need to forward submissions to an external form endpoint or legacy workflow.
 5. For the integration logic and decision tree, read [docs/admin-data-flow.md](/data/yy/book-digest-web/docs/admin-data-flow.md).
+6. For manual verification after deploy, read [docs/admin-validation-runbook.md](/data/yy/book-digest-web/docs/admin-validation-runbook.md).
 
 ## Post-Deploy Verification
 
 1. Log into `/admin` on Vercel.
-2. Add a draft book and save it.
-3. Upload a book cover and confirm the uploaded asset URL ends in `.webp`.
-4. Check `/` and `/books` to confirm the new order and cover are live.
-5. Update one event poster and confirm the change appears on `/events`.
-6. Submit one registration and verify:
+2. Open `Books` and confirm the canonical cover hints match your expected `books_zh` / `books_en` numbering strategy.
+3. Add a draft book and save it.
+4. Upload a book cover and confirm the uploaded asset URL ends in `.webp`.
+5. Open `Assets` in `/admin` and confirm the new upload is visible in storage scans.
+6. Check `/` and `/books` to confirm the new order and cover are live.
+7. Update one event poster and confirm the change appears on `/events`.
+8. Submit one registration and verify:
    - a row is added to `public.registrations`
    - `/api/submit?loc=...` count increases
+   - the `Registrations` tab shows the row
+   - the row has a `requestId` and at least one `auditTrail` event
    - the capacity card in `/admin` reflects the new count
+9. If Notion mirror is enabled, open `Reconciliation` and confirm the new row is either matched or shows an actionable diff.
 
 ## Operational Notes
 
 1. Free tier is enough for development, preview, or light testing.
 2. Production should usually use Pro to avoid project pausing and to get backups and better retention.
 3. The bootstrap SQL already adds indexes for `location`, `status`, `created_at`, and `updated_at` because those matter for capacity and admin inspection.
-4. If concurrency becomes high enough that slot contention matters, the next upgrade is moving reservation acceptance into a database-side transactional function.
+4. The upgraded registrations viewer also depends on `timestamp`, `external_id`, `request_id`, and JSON audit columns for filtering and reconciliation.
+5. For periodic storage cleanup, you can call `DELETE /api/admin/assets?gracePeriodHours=168` with `Authorization: Bearer $ADMIN_API_SECRET` from a cron job or GitHub Action.
+6. If concurrency becomes high enough that slot contention matters, the next upgrade is moving reservation acceptance into a database-side transactional function.

@@ -359,6 +359,16 @@ test.describe('Registrations API', () => {
     // Environments with the secret configured should return 400 for invalid limit.
     expect([400, 401]).toContain(response.status());
   });
+
+  test('should stream CSV when requested by an authorized admin', async ({ request }) => {
+    const response = await request.get('/api/registrations?limit=5&format=csv', {
+      headers: { Authorization: 'Bearer test-admin' },
+    });
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toContain('text/csv');
+    expect(await response.text()).toContain('requestId');
+  });
 });
 
 // ------------------------------------------------------------------

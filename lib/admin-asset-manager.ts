@@ -1,11 +1,32 @@
 import 'server-only';
 
-import { unlink } from 'node:fs/promises';
+import path from 'node:path';
+import { readdir, stat, unlink } from 'node:fs/promises';
 import type { Book } from '@/types/book';
 import type { EventContentMap } from '@/types/event-content';
-import { resolveLocalAdminUploadPath } from '@/lib/admin-upload-storage';
+import { loadAdminDocument } from '@/lib/admin-content-store';
+import { isPersistentUploadStoreConfigured, resolveLocalAdminUploadPath } from '@/lib/admin-upload-storage';
 
 type UploadScope = 'books' | 'events';
+
+export type ManagedAssetRecord = {
+  url: string;
+  scope: UploadScope;
+  fileName: string;
+  storage: 'local' | 'supabase';
+  modifiedAt?: string;
+};
+
+export type ManagedAssetReport = {
+  generatedAt: string;
+  gracePeriodHours: number;
+  referencedCount: number;
+  storedCount: number;
+  orphanedCount: number;
+  missingReferencedCount: number;
+  orphaned: ManagedAssetRecord[];
+  missingReferenced: Array<{ url: string; scope: UploadScope; fileName: string }>;
+};
 
 type AssetCleanupInput = {
   previousBooks: Book[];
@@ -121,4 +142,157 @@ export async function cleanupRemovedAdminAssets({ previousBooks, nextBooks, prev
 
   const orphanedAssets = [...previousAssets].filter((url) => !nextAssets.has(url));
   await Promise.all(orphanedAssets.map((url) => deleteManagedAsset(url)));
+}
+
+async function listLocalAssets(scope: UploadScope): Promise<ManagedAssetRecord[]> {
+  const directory = path.dirname(resolveLocalAdminUploadPath(scope, 'placeholder.txt'));
+  const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+  const assets = await Promise.all(entries.filter((entry) => entry.isFile()).map(async (entry) => {
+    const entryStat = await stat(resolveLocalAdminUploadPath(scope, entry.name)).catch(() => null);
+    return {
+      url: `/uploads/admin/${scope}/${entry.name}`,
+      scope,
+      fileName: entry.name,
+      storage: 'local' as const,
+      modifiedAt: entryStat?.mtime.toISOString(),
+    };
+  }));
+
+  return assets;
+}
+
+async function listSupabaseAssets(scope: UploadScope): Promise<ManagedAssetRecord[]> {
+  const supabaseUrl = getSupabaseUrl();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
+  if (!supabaseUrl || !serviceRoleKey) {
+    return [];
+  }
+
+  const bucket = getStorageBucket();
+  const assets: ManagedAssetRecord[] = [];
+  let offset = 0;
+  const limit = 100;
+
+  while (true) {
+    const response = await fetch(`${supabaseUrl}/storage/v1/object/list/${bucket}`, {
+      method: 'POST',
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prefix: `admin/${scope}`,
+        limit,
+        offset,
+        sortBy: { column: 'name', order: 'asc' },
+      }),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      break;
+    }
+
+    const batch = await response.json() as Array<{ name?: string; updated_at?: string; created_at?: string }>;
+    if (!batch.length) {
+      break;
+    }
+
+    assets.push(...batch
+      .filter((entry) => entry.name)
+      .map((entry) => ({
+        url: `${supabaseUrl}/storage/v1/object/public/${bucket}/admin/${scope}/${entry.name}`,
+        scope,
+        fileName: entry.name!,
+        storage: 'supabase' as const,
+        modifiedAt: entry.updated_at || entry.created_at,
+      })));
+
+    if (batch.length < limit) {
+      break;
+    }
+
+    offset += batch.length;
+  }
+
+  return assets;
+}
+
+async function listStoredAssets(): Promise<ManagedAssetRecord[]> {
+  const [bookAssets, eventAssets] = await Promise.all([
+    isPersistentUploadStoreConfigured() ? listSupabaseAssets('books') : listLocalAssets('books'),
+    isPersistentUploadStoreConfigured() ? listSupabaseAssets('events') : listLocalAssets('events'),
+  ]);
+
+  return [...bookAssets, ...eventAssets];
+}
+
+function getReferencedAssets(books: Book[], events: EventContentMap): ManagedAssetRecord[] {
+  const urls = [
+    ...extractBookAssetUrls(books),
+    ...extractEventAssetUrls(events),
+  ];
+
+  return [...urls]
+    .map((url) => {
+      const parsed = parseManagedAssetUrl(url);
+      if (!parsed) {
+        return null;
+      }
+
+      return {
+        url,
+        scope: parsed.scope,
+        fileName: parsed.fileName,
+        storage: parsed.objectPath ? 'supabase' : 'local',
+      } satisfies ManagedAssetRecord;
+    })
+    .filter((item): item is ManagedAssetRecord => Boolean(item));
+}
+
+export async function buildManagedAssetReport(gracePeriodHours = 168): Promise<ManagedAssetReport> {
+  const [books, events, storedAssets] = await Promise.all([
+    loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' }),
+    loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' }),
+    listStoredAssets(),
+  ]);
+
+  const referencedAssets = getReferencedAssets(books, events);
+  const storedByUrl = new Map(storedAssets.map((asset) => [asset.url, asset]));
+  const referencedByUrl = new Map(referencedAssets.map((asset) => [asset.url, asset]));
+
+  const orphaned = storedAssets.filter((asset) => !referencedByUrl.has(asset.url));
+  const missingReferenced = referencedAssets
+    .filter((asset) => !storedByUrl.has(asset.url))
+    .map((asset) => ({ url: asset.url, scope: asset.scope, fileName: asset.fileName }));
+
+  return {
+    generatedAt: new Date().toISOString(),
+    gracePeriodHours,
+    referencedCount: referencedAssets.length,
+    storedCount: storedAssets.length,
+    orphanedCount: orphaned.length,
+    missingReferencedCount: missingReferenced.length,
+    orphaned,
+    missingReferenced,
+  };
+}
+
+export async function pruneOrphanedManagedAssets(gracePeriodHours = 168): Promise<{ deleted: ManagedAssetRecord[]; skipped: ManagedAssetRecord[] }> {
+  const report = await buildManagedAssetReport(gracePeriodHours);
+  const cutoff = Date.now() - gracePeriodHours * 60 * 60 * 1000;
+
+  const deletable = report.orphaned.filter((asset) => {
+    if (!asset.modifiedAt) {
+      return false;
+    }
+
+    return new Date(asset.modifiedAt).getTime() <= cutoff;
+  });
+
+  const skipped = report.orphaned.filter((asset) => !deletable.includes(asset));
+  await Promise.all(deletable.map((asset) => deleteManagedAsset(asset.url)));
+
+  return { deleted: deletable, skipped };
 }

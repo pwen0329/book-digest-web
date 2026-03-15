@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { processAdminImageUpload } from '@/lib/admin-image-processing';
 import { saveAdminUpload } from '@/lib/admin-upload-storage';
-import { logServerError } from '@/lib/observability';
+import { logServerError, runWithRequestTrace } from '@/lib/observability';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,61 +13,63 @@ function sanitizeFileSegment(value: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await isAuthorizedAdminRequest(request))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  return runWithRequestTrace(request, 'admin.upload.post', async () => {
+    if (!(await isAuthorizedAdminRequest(request))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const scope = request.nextUrl.searchParams.get('scope');
-  if (scope !== 'books' && scope !== 'events') {
-    return NextResponse.json({ error: 'Invalid upload scope.' }, { status: 400 });
-  }
+    const scope = request.nextUrl.searchParams.get('scope');
+    if (scope !== 'books' && scope !== 'events') {
+      return NextResponse.json({ error: 'Invalid upload scope.' }, { status: 400 });
+    }
 
-  const formData = await request.formData();
-  const file = formData.get('file');
+    const formData = await request.formData();
+    const file = formData.get('file');
 
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'A file is required.' }, { status: 400 });
-  }
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: 'A file is required.' }, { status: 400 });
+    }
 
-  if (!ALLOWED_MIME_TYPES.has(file.type)) {
-    return NextResponse.json({ error: 'Unsupported file type.' }, { status: 400 });
-  }
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      return NextResponse.json({ error: 'Unsupported file type.' }, { status: 400 });
+    }
 
-  if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: 'File is too large.' }, { status: 400 });
-  }
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'File is too large.' }, { status: 400 });
+    }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const baseName = sanitizeFileSegment(file.name.replace(/\.[^.]+$/, ''));
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const baseName = sanitizeFileSegment(file.name.replace(/\.[^.]+$/, ''));
 
-  let processedImage;
-  try {
-    processedImage = await processAdminImageUpload(buffer);
-  } catch (error) {
-    await logServerError('admin.upload.processing_failed', error, { scope, fileName: file.name });
+    let processedImage;
+    try {
+      processedImage = await processAdminImageUpload(buffer);
+    } catch (error) {
+      await logServerError('admin.upload.processing_failed', error, { scope, fileName: file.name });
+      return NextResponse.json({
+        error: error instanceof Error ? error.message : 'Unable to process this image.',
+      }, { status: 400 });
+    }
+
+    const fileName = `${Date.now()}-${baseName}${processedImage.extension}`;
+
+    let src: string;
+    try {
+      src = await saveAdminUpload(scope, fileName, processedImage.contentType, processedImage.buffer);
+    } catch (error) {
+      await logServerError('admin.upload.storage_failed', error, { scope, fileName });
+      return NextResponse.json({
+        error: error instanceof Error ? error.message : 'Unable to store this image.',
+      }, { status: 500 });
+    }
+
     return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unable to process this image.',
-    }, { status: 400 });
-  }
-
-  const fileName = `${Date.now()}-${baseName}${processedImage.extension}`;
-
-  let src: string;
-  try {
-    src = await saveAdminUpload(scope, fileName, processedImage.contentType, processedImage.buffer);
-  } catch (error) {
-    await logServerError('admin.upload.storage_failed', error, { scope, fileName });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unable to store this image.',
-    }, { status: 500 });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    src,
-    width: processedImage.width,
-    height: processedImage.height,
-    blurDataURL: processedImage.blurDataURL,
-    format: 'webp',
-  }, { status: 201 });
+      ok: true,
+      src,
+      width: processedImage.width,
+      height: processedImage.height,
+      blurDataURL: processedImage.blurDataURL,
+      format: 'webp',
+    }, { status: 201 });
+  });
 }

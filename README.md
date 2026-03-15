@@ -146,11 +146,15 @@ Current dashboard areas:
 - `Events`: edit event titles, descriptions, posters, and coming-soon state
 - `Capacity`: control registration windows and max capacity
 - `Emails`: turn confirmation emails on or off and edit localized subject/body templates
+- `Registrations`: filter by activity, status, source, and submission time; inspect request-aware audit trail; export CSV
+- `Reconciliation`: compare the source-of-truth registrations store against the optional Notion mirror
+- `Assets`: scan referenced uploads vs stored uploads and prune old orphaned assets safely
 
 Books tab notes:
 
 - use `Add book` to create a draft entry
 - set a unique slug before saving if you want a custom public URL
+- uploaded covers now show canonical `books_zh` / `books_en` numbering hints so you can keep long-term cover naming consistent
 
 Capacity tab notes:
 
@@ -190,6 +194,8 @@ Recommended production setup:
 - Vercel for the public site and `/admin`
 - Supabase for persistent admin documents and uploaded assets
 - Supabase `registrations` for derived capacity counts and audit history
+- optional Notion mirror only if your team wants a second human-facing review surface
+- optional Tally forwarding only if you still need an external webhook destination
 
 Supabase bootstrap:
 
@@ -212,6 +218,12 @@ Supported email template tokens:
 - `{{location}}`
 - `{{eventTitle}}`
 - `{{siteUrl}}`
+
+Operational docs:
+
+- [docs/admin-data-flow.md](/data/yy/book-digest-web/docs/admin-data-flow.md)
+- [docs/admin-validation-runbook.md](/data/yy/book-digest-web/docs/admin-validation-runbook.md)
+- [docs/supabase-deployment-checklist.md](/data/yy/book-digest-web/docs/supabase-deployment-checklist.md)
 
 ## Development notes
 

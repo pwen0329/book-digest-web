@@ -9,7 +9,7 @@ import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTest
 import { getRetryAfterSeconds } from '@/lib/http-response';
 import { parseApiReferral } from '@/lib/signup';
 import { createRegistrationReservation, updateRegistrationReservation } from '@/lib/registration-store';
-import { logServerError } from '@/lib/observability';
+import { logServerError, runWithRequestTrace } from '@/lib/observability';
 
 type Location = 'TW' | 'NL' | 'EN' | 'DETOX';
 
@@ -58,11 +58,13 @@ export async function DELETE(req: NextRequest) {
 
 // POST /api/submit?loc=TW|NL|EN|DETOX
 export async function POST(req: NextRequest) {
-  let reservedLoc: Location | null = null;
-  let reservationRecordId: string | null = null;
-  let tallySucceeded = false;
-  let registrationStored = false;
-  try {
+  return runWithRequestTrace(req, 'submit.registration', async () => {
+    let reservedLoc: Location | null = null;
+    let reservationRecordId: string | null = null;
+    let tallySucceeded = false;
+    let registrationStored = false;
+    const requestId = req.headers.get('x-request-id') || undefined;
+    try {
     // Rate limiting
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
     const { allowed, retryAfterMs } = await rateLimit(ip);
@@ -163,6 +165,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Referral note too long' }, { status: 400 });
     }
 
+    const saveAlsoToNotion = process.env.SUBMIT_SAVE_TO_NOTION === '1';
+    const dbId = process.env.NOTION_DB_ID;
+    const token = process.env.NOTION_TOKEN;
+    const tallyTW = process.env.TALLY_ENDPOINT_TW;
+    const tallyNL = process.env.TALLY_ENDPOINT_NL;
+    const tallyEN = process.env.TALLY_ENDPOINT_EN;
+    const tallyDetox = process.env.TALLY_ENDPOINT_DETOX;
+    const tallyEndpoint = payload.location === 'TW'
+      ? tallyTW
+      : payload.location === 'NL'
+        ? tallyNL
+        : payload.location === 'EN'
+          ? tallyEN
+          : tallyDetox;
+
     const reservation = await reserveCapacity(loc);
     if (!reservation.allowed) {
       return NextResponse.json(
@@ -183,33 +200,47 @@ export async function POST(req: NextRequest) {
       referralOther: payload.referralOther,
       bankAccount: payload.bankAccount,
       visitorId: payload.visitorId,
+      requestId,
       timestamp: payload.timestamp || new Date().toISOString(),
       status: 'pending',
       source: 'pending',
+      mirrorState: {
+        notion: { enabled: saveAlsoToNotion, status: saveAlsoToNotion ? 'pending' : 'not_configured' },
+        tally: { enabled: Boolean(tallyEndpoint), status: tallyEndpoint ? 'pending' : 'not_configured' },
+        email: { enabled: Boolean(process.env.RESEND_API_KEY || process.env.EMAIL_OUTBOX_FILE), status: 'pending' },
+      },
     });
 
     const postReservationStatus = await getCapacityStatus(loc);
     if (postReservationStatus.enabled && postReservationStatus.full && postReservationStatus.count > (postReservationStatus.max || 0)) {
-      await updateRegistrationReservation(reservationRecord.id, { status: 'cancelled' });
+      await updateRegistrationReservation(reservationRecord.id, {
+        status: 'cancelled',
+        auditEntry: {
+          at: new Date().toISOString(),
+          event: 'reservation_cancelled',
+          actor: 'system',
+          summary: 'Reservation cancelled because capacity overflow was detected after booking.',
+          requestId,
+          details: { reason: 'overflow_after_reservation' },
+        },
+      });
       return NextResponse.json({ error: 'Registration full', reason: 'full' }, { status: 409 });
     }
 
     reservedLoc = loc;
     reservationRecordId = reservationRecord.id;
-    // Use per-location endpoint if provided.
-    const tallyTW = process.env.TALLY_ENDPOINT_TW;
-    const tallyNL = process.env.TALLY_ENDPOINT_NL;
-    const tallyEN = process.env.TALLY_ENDPOINT_EN;
-    const tallyDetox = process.env.TALLY_ENDPOINT_DETOX;
-    const tallyEndpoint = payload.location === 'TW'
-      ? tallyTW
-      : payload.location === 'NL'
-        ? tallyNL
-        : payload.location === 'EN'
-          ? tallyEN
-          : tallyDetox;
 
     if (tallyEndpoint) {
+      await updateRegistrationReservation(reservationRecord.id, {
+        auditEntry: {
+          at: new Date().toISOString(),
+          event: 'tally_forward_attempted',
+          actor: 'tally',
+          summary: 'Attempting to forward registration payload to Tally.',
+          requestId,
+          details: { location: loc },
+        },
+      });
       // Map payload to the requested column names for Tally or generic webhook.
       const tallyBody = {
         // Preferred columns from user request
@@ -242,17 +273,47 @@ export async function POST(req: NextRequest) {
       });
       if (!forward.ok) {
         const forwardErr = await forward.text().catch(() => 'unknown');
+        await updateRegistrationReservation(reservationRecord.id, {
+          mirrorState: {
+            tally: {
+              enabled: true,
+              status: 'failed',
+              lastAttemptAt: new Date().toISOString(),
+              error: `HTTP ${forward.status}: ${forwardErr}`,
+            },
+          },
+          auditEntry: {
+            at: new Date().toISOString(),
+            event: 'tally_forward_failed',
+            actor: 'tally',
+            summary: 'Tally forward failed.',
+            requestId,
+            details: { status: forward.status, reason: forwardErr },
+          },
+        });
         await logServerError('submit.tally_forward_failed', new Error(`Tally forward failed: ${forward.status} ${forwardErr}`), { loc, status: forward.status });
         await releaseCapacity(loc);
         return NextResponse.json({ error: 'Upstream processor error' }, { status: 502 });
       }
       tallySucceeded = true;
+      await updateRegistrationReservation(reservationRecord.id, {
+        mirrorState: {
+          tally: {
+            enabled: true,
+            status: 'forwarded',
+            lastAttemptAt: new Date().toISOString(),
+            lastSuccessAt: new Date().toISOString(),
+          },
+        },
+        auditEntry: {
+          at: new Date().toISOString(),
+          event: 'tally_forwarded',
+          actor: 'tally',
+          summary: 'Registration payload forwarded to Tally.',
+          requestId,
+        },
+      });
     }
-
-    // 2) Optional Notion save (server-side) based on env flag
-    const saveAlsoToNotion = process.env.SUBMIT_SAVE_TO_NOTION === '1';
-    const dbId = process.env.NOTION_DB_ID;
-    const token = process.env.NOTION_TOKEN;
 
     console.debug('[api/submit] routing', {
       loc,
@@ -263,23 +324,126 @@ export async function POST(req: NextRequest) {
     });
 
     if (saveAlsoToNotion && dbId && token) {
-      const result = await saveRegistrationToNotion(dbId, payload);
+      await updateRegistrationReservation(reservationRecord.id, {
+        auditEntry: {
+          at: new Date().toISOString(),
+          event: 'notion_mirror_attempted',
+          actor: 'notion',
+          summary: 'Attempting to mirror registration into Notion.',
+          requestId,
+        },
+      });
+      let result;
+      try {
+        result = await saveRegistrationToNotion(dbId, { ...payload, registrationId: reservationRecord.id });
+      } catch (notionError) {
+        await updateRegistrationReservation(reservationRecord.id, {
+          mirrorState: {
+            notion: {
+              enabled: true,
+              status: 'failed',
+              lastAttemptAt: new Date().toISOString(),
+              error: notionError instanceof Error ? notionError.message : String(notionError),
+            },
+          },
+          auditEntry: {
+            at: new Date().toISOString(),
+            event: 'notion_mirror_failed',
+            actor: 'notion',
+            summary: 'Notion mirror failed.',
+            requestId,
+            details: { error: notionError instanceof Error ? notionError.message : String(notionError) },
+          },
+        });
+        throw notionError;
+      }
       registrationStored = true;
       await updateRegistrationReservation(reservationRecord.id, {
         status: 'confirmed',
         source: 'notion',
         externalId: (result as { id?: string }).id,
+        mirrorState: {
+          notion: {
+            enabled: true,
+            status: 'mirrored',
+            lastAttemptAt: new Date().toISOString(),
+            lastSuccessAt: new Date().toISOString(),
+            externalId: (result as { id?: string }).id,
+          },
+        },
+        auditEntries: [
+          {
+            at: new Date().toISOString(),
+            event: 'notion_mirrored',
+            actor: 'notion',
+            summary: 'Registration mirrored into Notion.',
+            requestId,
+            details: { notionPageId: (result as { id?: string }).id },
+          },
+          {
+            at: new Date().toISOString(),
+            event: 'reservation_confirmed',
+            actor: 'system',
+            summary: 'Registration confirmed after successful Notion mirroring.',
+            requestId,
+          },
+        ],
       });
 
       let emailResult: Awaited<ReturnType<typeof sendRegistrationSuccessEmail>> = { status: 'skipped', reason: 'Email transport not attempted.' };
       try {
+        await updateRegistrationReservation(reservationRecord.id, {
+          auditEntry: {
+            at: new Date().toISOString(),
+            event: 'email_attempted',
+            actor: 'email',
+            summary: 'Attempting to send registration success email.',
+            requestId,
+          },
+        });
         emailResult = await sendRegistrationSuccessEmail({
           location: loc,
           locale,
           name: payload.name,
           email: payload.email,
         });
+        await updateRegistrationReservation(reservationRecord.id, {
+          mirrorState: {
+            email: {
+              enabled: true,
+              status: emailResult.status === 'sent' ? 'forwarded' : 'skipped',
+              lastAttemptAt: new Date().toISOString(),
+              lastSuccessAt: emailResult.status === 'sent' ? new Date().toISOString() : undefined,
+            },
+          },
+          auditEntry: {
+            at: new Date().toISOString(),
+            event: emailResult.status === 'sent' ? 'email_sent' : 'email_skipped',
+            actor: 'email',
+            summary: emailResult.status === 'sent' ? 'Registration success email sent.' : 'Registration success email skipped.',
+            requestId,
+            details: emailResult,
+          },
+        });
       } catch (emailError) {
+        await updateRegistrationReservation(reservationRecord.id, {
+          mirrorState: {
+            email: {
+              enabled: true,
+              status: 'failed',
+              lastAttemptAt: new Date().toISOString(),
+              error: emailError instanceof Error ? emailError.message : String(emailError),
+            },
+          },
+          auditEntry: {
+            at: new Date().toISOString(),
+            event: 'email_failed',
+            actor: 'email',
+            summary: 'Registration success email failed.',
+            requestId,
+            details: { error: emailError instanceof Error ? emailError.message : String(emailError) },
+          },
+        });
         await logServerError('submit.registration_email_failed', emailError, { loc, email: payload.email, locale });
         emailResult = { status: 'skipped', reason: 'Registration succeeded but email delivery failed.' };
       }
@@ -291,17 +455,72 @@ export async function POST(req: NextRequest) {
     if (!tallyEndpoint) {
       await new Promise((r) => setTimeout(r, 300));
       registrationStored = true;
-      await updateRegistrationReservation(reservationRecord.id, { status: 'confirmed', source: 'simulated' });
+      await updateRegistrationReservation(reservationRecord.id, {
+        status: 'confirmed',
+        source: 'simulated',
+        auditEntry: {
+          at: new Date().toISOString(),
+          event: 'reservation_confirmed',
+          actor: 'system',
+          summary: 'Registration confirmed without external forwarding.',
+          requestId,
+        },
+      });
 
       let emailResult: Awaited<ReturnType<typeof sendRegistrationSuccessEmail>> = { status: 'skipped', reason: 'Email transport not attempted.' };
       try {
+        await updateRegistrationReservation(reservationRecord.id, {
+          auditEntry: {
+            at: new Date().toISOString(),
+            event: 'email_attempted',
+            actor: 'email',
+            summary: 'Attempting to send registration success email.',
+            requestId,
+          },
+        });
         emailResult = await sendRegistrationSuccessEmail({
           location: loc,
           locale,
           name: payload.name,
           email: payload.email,
         });
+        await updateRegistrationReservation(reservationRecord.id, {
+          mirrorState: {
+            email: {
+              enabled: true,
+              status: emailResult.status === 'sent' ? 'forwarded' : 'skipped',
+              lastAttemptAt: new Date().toISOString(),
+              lastSuccessAt: emailResult.status === 'sent' ? new Date().toISOString() : undefined,
+            },
+          },
+          auditEntry: {
+            at: new Date().toISOString(),
+            event: emailResult.status === 'sent' ? 'email_sent' : 'email_skipped',
+            actor: 'email',
+            summary: emailResult.status === 'sent' ? 'Registration success email sent.' : 'Registration success email skipped.',
+            requestId,
+            details: emailResult,
+          },
+        });
       } catch (emailError) {
+        await updateRegistrationReservation(reservationRecord.id, {
+          mirrorState: {
+            email: {
+              enabled: true,
+              status: 'failed',
+              lastAttemptAt: new Date().toISOString(),
+              error: emailError instanceof Error ? emailError.message : String(emailError),
+            },
+          },
+          auditEntry: {
+            at: new Date().toISOString(),
+            event: 'email_failed',
+            actor: 'email',
+            summary: 'Registration success email failed.',
+            requestId,
+            details: { error: emailError instanceof Error ? emailError.message : String(emailError) },
+          },
+        });
         await logServerError('submit.registration_email_failed', emailError, { loc, email: payload.email, locale });
         emailResult = { status: 'skipped', reason: 'Registration succeeded but email delivery failed.' };
       }
@@ -311,37 +530,103 @@ export async function POST(req: NextRequest) {
 
     // If Tally forward succeeded (and we didn't save to Notion), return success
     registrationStored = true;
-    await updateRegistrationReservation(reservationRecord.id, { status: 'confirmed', source: 'tally' });
+    await updateRegistrationReservation(reservationRecord.id, {
+      status: 'confirmed',
+      source: 'tally',
+      auditEntry: {
+        at: new Date().toISOString(),
+        event: 'reservation_confirmed',
+        actor: 'system',
+        summary: 'Registration confirmed after successful Tally forwarding.',
+        requestId,
+      },
+    });
 
     let emailResult: Awaited<ReturnType<typeof sendRegistrationSuccessEmail>> = { status: 'skipped', reason: 'Email transport not attempted.' };
     try {
+      await updateRegistrationReservation(reservationRecord.id, {
+        auditEntry: {
+          at: new Date().toISOString(),
+          event: 'email_attempted',
+          actor: 'email',
+          summary: 'Attempting to send registration success email.',
+          requestId,
+        },
+      });
       emailResult = await sendRegistrationSuccessEmail({
         location: loc,
         locale,
         name: payload.name,
         email: payload.email,
       });
+      await updateRegistrationReservation(reservationRecord.id, {
+        mirrorState: {
+          email: {
+            enabled: true,
+            status: emailResult.status === 'sent' ? 'forwarded' : 'skipped',
+            lastAttemptAt: new Date().toISOString(),
+            lastSuccessAt: emailResult.status === 'sent' ? new Date().toISOString() : undefined,
+          },
+        },
+        auditEntry: {
+          at: new Date().toISOString(),
+          event: emailResult.status === 'sent' ? 'email_sent' : 'email_skipped',
+          actor: 'email',
+          summary: emailResult.status === 'sent' ? 'Registration success email sent.' : 'Registration success email skipped.',
+          requestId,
+          details: emailResult,
+        },
+      });
     } catch (emailError) {
+      await updateRegistrationReservation(reservationRecord.id, {
+        mirrorState: {
+          email: {
+            enabled: true,
+            status: 'failed',
+            lastAttemptAt: new Date().toISOString(),
+            error: emailError instanceof Error ? emailError.message : String(emailError),
+          },
+        },
+        auditEntry: {
+          at: new Date().toISOString(),
+          event: 'email_failed',
+          actor: 'email',
+          summary: 'Registration success email failed.',
+          requestId,
+          details: { error: emailError instanceof Error ? emailError.message : String(emailError) },
+        },
+      });
       await logServerError('submit.registration_email_failed', emailError, { loc, email: payload.email, locale });
       emailResult = { status: 'skipped', reason: 'Registration succeeded but email delivery failed.' };
     }
 
     return NextResponse.json({ ok: true, forwarded: true, email: emailResult }, { status: 201 });
-  } catch (err) {
-    if (reservationRecordId) {
-      await updateRegistrationReservation(reservationRecordId, { status: 'cancelled' }).catch(() => undefined);
+    } catch (err) {
+      if (reservationRecordId) {
+        await updateRegistrationReservation(reservationRecordId, {
+          status: 'cancelled',
+          auditEntry: {
+            at: new Date().toISOString(),
+            event: 'reservation_cancelled',
+            actor: 'system',
+            summary: 'Registration cancelled after request failure.',
+            requestId,
+            details: { error: err instanceof Error ? err.message : String(err) },
+          },
+        }).catch(() => undefined);
+      }
+      if (reservedLoc && !registrationStored && !tallySucceeded) {
+        await releaseCapacity(reservedLoc);
+      }
+      await logServerError('submit.request_failed', err, {
+        reservedLoc,
+        tallySucceeded,
+        registrationStored,
+        url: req.url,
+      });
+      return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
-    if (reservedLoc && !registrationStored && !tallySucceeded) {
-      await releaseCapacity(reservedLoc);
-    }
-    await logServerError('submit.request_failed', err, {
-      reservedLoc,
-      tallySucceeded,
-      registrationStored,
-      url: req.url,
-    });
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
-  }
+  });
 }
 
 

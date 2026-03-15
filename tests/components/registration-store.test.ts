@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { countActiveRegistrations, createRegistrationReservation, resetRegistrationsForTesting, updateRegistrationReservation } from '@/lib/registration-store';
+import { countActiveRegistrations, createRegistrationReservation, listStoredRegistrations, resetRegistrationsForTesting, serializeRegistrationsCsv, updateRegistrationReservation } from '@/lib/registration-store';
 
 describe('registration store', () => {
   afterEach(async () => {
@@ -59,5 +59,66 @@ describe('registration store', () => {
     await updateRegistrationReservation(pending.id, { status: 'cancelled' });
 
     expect(await countActiveRegistrations('TW')).toBe(1);
+  });
+
+  it('stores audit entries and supports createdAt filtering plus CSV export', async () => {
+    const olderTimestamp = new Date('2026-03-10T08:00:00.000Z').toISOString();
+    const newerTimestamp = new Date('2026-03-12T10:30:00.000Z').toISOString();
+
+    const older = await createRegistrationReservation({
+      location: 'EN',
+      locale: 'en',
+      name: 'Older Reader',
+      age: 32,
+      profession: 'Editor',
+      email: 'older@example.com',
+      referral: 'Instagram',
+      requestId: 'req-older',
+      timestamp: olderTimestamp,
+      status: 'pending',
+      source: 'pending',
+    });
+
+    const newer = await createRegistrationReservation({
+      location: 'EN',
+      locale: 'en',
+      name: 'Newer Reader',
+      age: 34,
+      profession: 'Producer',
+      email: 'newer@example.com',
+      referral: 'Instagram',
+      requestId: 'req-newer',
+      timestamp: newerTimestamp,
+      status: 'pending',
+      source: 'pending',
+    });
+
+    await updateRegistrationReservation(newer.id, {
+      status: 'confirmed',
+      source: 'simulated',
+      auditEntry: {
+        at: new Date('2026-03-12T10:31:00.000Z').toISOString(),
+        event: 'reservation_confirmed',
+        actor: 'system',
+        summary: 'Confirmed in test.',
+        requestId: 'req-newer',
+      },
+    });
+
+    const filtered = await listStoredRegistrations({
+      limit: 10,
+      location: 'EN',
+      createdAfter: '2026-03-11T00:00:00.000Z',
+    });
+
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].id).toBe(newer.id);
+    expect(filtered[0].auditTrail?.map((entry) => entry.event)).toContain('reservation_created');
+    expect(filtered[0].auditTrail?.map((entry) => entry.event)).toContain('reservation_confirmed');
+
+    const csv = serializeRegistrationsCsv([older, filtered[0]]);
+    expect(csv).toContain('requestId');
+    expect(csv).toContain('req-newer');
+    expect(csv).toContain('reservation_confirmed');
   });
 });

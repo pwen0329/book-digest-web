@@ -10,6 +10,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { cryptoRandomId } from '@/lib/crypto-id';
 
 export type RegistrationInput = {
+  registrationId?: string;
   location: 'TW' | 'NL' | 'EN' | 'DETOX';
   firstName?: string;
   lastName?: string;
@@ -23,6 +24,24 @@ export type RegistrationInput = {
   bankAccount?: string;
   timestamp?: string; // ISO
   visitorId?: string;
+};
+
+export type NotionRegistrationRecord = {
+  id: string;
+  registrationId: string;
+  title: string;
+  name: string;
+  email: string;
+  location: string;
+  age: number | null;
+  occupation: string;
+  instagram: string;
+  findingUs: string;
+  findingUsOthers: string;
+  visitorId: string;
+  bankAccount: string;
+  createdTime: string;
+  lastEditedTime: string;
 };
 
 function getNotion(): Client | null {
@@ -46,7 +65,7 @@ export async function saveRegistrationToNotion(dbId: string, data: RegistrationI
   // Compose values
   const fullName = data.name.trim();
   const titleText = `${fullName} — ${data.location}`;
-  const idText = cryptoRandomId();
+  const idText = data.registrationId || cryptoRandomId();
 
   // Map to Notion properties. Types are chosen to be broadly compatible:
   // - Title: title
@@ -127,21 +146,24 @@ export async function saveRegistrationToNotion(dbId: string, data: RegistrationI
   return res;
 }
 
-export async function listRegistrations(dbId: string, limit = 10) {
+export async function listRegistrations(dbId: string, limit = 10): Promise<NotionRegistrationRecord[]> {
   const notion = getNotion();
   if (!notion) throw new Error('NOTION_TOKEN is not configured');
 
-  const q = await notion.databases.query({
-    database_id: dbId,
-    page_size: Math.min(100, Math.max(1, limit)),
-    sorts: [
-      // Prefer system created_time if available
-      { timestamp: 'created_time', direction: 'descending' },
-    ],
-  });
+  const results: NotionRegistrationRecord[] = [];
+  let startCursor: string | undefined;
 
-  // Map back to a minimal shape for verification
-  return q.results.map((page: unknown) => {
+  while (results.length < limit) {
+    const q = await notion.databases.query({
+      database_id: dbId,
+      page_size: Math.min(100, Math.max(1, limit - results.length)),
+      start_cursor: startCursor,
+      sorts: [
+        { timestamp: 'created_time', direction: 'descending' },
+      ],
+    });
+
+    results.push(...q.results.map((page: unknown) => {
     type NotionResult = {
       id: string;
       created_time: string;
@@ -162,8 +184,10 @@ export async function listRegistrations(dbId: string, limit = 10) {
     const ageProp = props.Age as { number?: number } | undefined;
     const locationProp = props.Location as { select?: { name?: string } } | undefined;
     const findingUsProp = props.FindingUs as { select?: { name?: string } } | undefined;
+    const idProp = props.ID;
     return {
       id: p.id,
+      registrationId: getText(idProp),
       title: getTitle(props.Title),
       name: getText(props.Name),
       email: (emailProp && typeof emailProp.email === 'string') ? emailProp.email : '',
@@ -173,10 +197,21 @@ export async function listRegistrations(dbId: string, limit = 10) {
       instagram: getText(props.InstagramAccount),
       findingUs: (findingUsProp && findingUsProp.select && typeof findingUsProp.select.name === 'string') ? findingUsProp.select.name : '',
       findingUsOthers: getText(props.findingUsOthers),
+      visitorId: getText(props.visitorId),
+      bankAccount: getText(props.bankAccount),
       createdTime: p.created_time,
       lastEditedTime: p.last_edited_time,
     };
-  });
+    }));
+
+    if (!q.has_more || !q.next_cursor) {
+      break;
+    }
+
+    startCursor = q.next_cursor;
+  }
+
+  return results;
 }
 
 

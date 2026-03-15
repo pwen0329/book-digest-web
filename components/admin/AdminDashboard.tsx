@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { getBookSortOrder, getNextBookSortOrder, sortBooksDescending } from '@/lib/book-order';
+import { getCanonicalBookCoverHints } from '@/lib/book-cover-strategy';
 import type { Book } from '@/types/book';
 import type { EventContentId, EventContentMap } from '@/types/event-content';
 import type { RegistrationEmailLocale, RegistrationSuccessEmailSettings } from '@/lib/registration-success-email-config';
@@ -21,7 +22,7 @@ type AdminDashboardProps = {
   };
 };
 
-type DashboardTab = 'books' | 'events' | 'capacity' | 'emails' | 'registrations';
+type DashboardTab = 'books' | 'events' | 'capacity' | 'emails' | 'registrations' | 'reconciliation' | 'assets';
 
 type CapacityLiveStatus = {
   enabled: boolean;
@@ -90,6 +91,76 @@ type RegistrationsResponse = {
   summary: RegistrationAuditSummary;
   viewerSource: string;
   notionMirrorEnabled: boolean;
+};
+
+type ReconciliationRow = {
+  kind: 'matched' | 'missing_in_notion' | 'field_mismatch';
+  sourceRecord: RegistrationRecord;
+  notionRecord?: {
+    id: string;
+    registrationId: string;
+    title: string;
+    name: string;
+    email: string;
+    location: string;
+    age: number | null;
+    occupation: string;
+    instagram: string;
+    findingUs: string;
+    findingUsOthers: string;
+    visitorId: string;
+    bankAccount: string;
+    createdTime: string;
+    lastEditedTime: string;
+  };
+  mismatchFields: string[];
+};
+
+type ReconciliationResponse = {
+  summary: {
+    sourceOfTruth: 'supabase.registrations' | 'local-registration-store';
+    notionConfigured: boolean;
+    notionMirrorEnabled: boolean;
+    totalSourceRecords: number;
+    totalNotionRecords: number;
+    matched: number;
+    missingInNotion: number;
+    missingInSource: number;
+    mismatched: number;
+    comparedAt: string;
+  };
+  rows: ReconciliationRow[];
+  notionOnlyRows: Array<{
+    kind: 'missing_in_source';
+    notionRecord: {
+      id: string;
+      registrationId: string;
+      title: string;
+      name: string;
+      email: string;
+      location: string;
+      age: number | null;
+      occupation: string;
+      instagram: string;
+      findingUs: string;
+      findingUsOthers: string;
+      visitorId: string;
+      bankAccount: string;
+      createdTime: string;
+      lastEditedTime: string;
+    };
+  }>;
+};
+
+type AssetReportResponse = {
+  generatedAt: string;
+  gracePeriodHours: number;
+  referencedCount: number;
+  storedCount: number;
+  orphanedCount: number;
+  missingReferencedCount: number;
+  orphaned: Array<{ url: string; scope: 'books' | 'events'; fileName: string; storage: 'local' | 'supabase'; modifiedAt?: string }>;
+  missingReferenced: Array<{ url: string; scope: 'books' | 'events'; fileName: string }>;
 };
 
 async function uploadAsset(scope: 'books' | 'events', file: File): Promise<UploadedAsset> {
@@ -161,10 +232,17 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
   const [registrationStatusFilter, setRegistrationStatusFilter] = useState<'ALL' | RegistrationRecordStatus>('ALL');
   const [registrationSourceFilter, setRegistrationSourceFilter] = useState<'ALL' | RegistrationRecord['source']>('ALL');
   const [registrationSearch, setRegistrationSearch] = useState('');
+  const [registrationCreatedAfter, setRegistrationCreatedAfter] = useState('');
+  const [registrationCreatedBefore, setRegistrationCreatedBefore] = useState('');
+  const [reconciliation, setReconciliation] = useState<ReconciliationResponse | null>(null);
+  const [reconciliationLoading, setReconciliationLoading] = useState(false);
+  const [assetReport, setAssetReport] = useState<AssetReportResponse | null>(null);
+  const [assetReportLoading, setAssetReportLoading] = useState(false);
+  const [assetGracePeriodHours, setAssetGracePeriodHours] = useState('168');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [actionInFlight, setActionInFlight] = useState(false);
 
   useEffect(() => {
     setHydrated(true);
@@ -223,6 +301,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
   const selectedBookIndex = books.findIndex((book) => book.id === selectedBookId);
   const selectedBook = selectedBookIndex >= 0 ? books[selectedBookIndex] : books[0];
+  const selectedBookCoverHints = selectedBook ? getCanonicalBookCoverHints(selectedBook) : null;
   const visibleBooks = useMemo(() => books.slice(0, visibleBookCount), [books, visibleBookCount]);
 
   useEffect(() => {
@@ -333,7 +412,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     }));
   }
 
-  function deleteSelectedBook() {
+  async function deleteSelectedBook() {
     if (!selectedBook) {
       return;
     }
@@ -343,9 +422,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       return;
     }
 
-    setBooks((currentBooks) => normalizeLocalBookOrder(currentBooks.filter((book) => book.id !== selectedBook.id)));
-    setMessage('Book removed locally. Save books to publish the deletion.');
-    setError(null);
+    const nextBooks = normalizeLocalBookOrder(books.filter((book) => book.id !== selectedBook.id));
+    await saveBooks(nextBooks, 'Book deleted and public pages were revalidated.');
   }
 
   const refreshRegistrations = useCallback(async () => {
@@ -364,6 +442,12 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       if (registrationSearch.trim()) {
         params.set('search', registrationSearch.trim());
       }
+      if (registrationCreatedAfter) {
+        params.set('createdAfter', toIsoString(registrationCreatedAfter));
+      }
+      if (registrationCreatedBefore) {
+        params.set('createdBefore', toIsoString(registrationCreatedBefore));
+      }
 
       const response = await fetch(`/api/registrations?${params.toString()}`, { cache: 'no-store' });
       const payload = await response.json().catch(() => null) as RegistrationsResponse | null;
@@ -380,7 +464,106 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     } finally {
       setRegistrationsLoading(false);
     }
-  }, [registrationLocationFilter, registrationSearch, registrationSourceFilter, registrationStatusFilter]);
+  }, [registrationCreatedAfter, registrationCreatedBefore, registrationLocationFilter, registrationSearch, registrationSourceFilter, registrationStatusFilter]);
+
+  const refreshReconciliation = useCallback(async () => {
+    setReconciliationLoading(true);
+    try {
+      const response = await fetch('/api/admin/reconciliation?limit=500', { cache: 'no-store' });
+      const payload = await response.json().catch(() => null) as ReconciliationResponse | null;
+      if (!response.ok || !payload) {
+        throw new Error(payload && 'error' in payload ? String((payload as { error?: unknown }).error) : 'Unable to load reconciliation report.');
+      }
+
+      setReconciliation(payload);
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : 'Unable to load reconciliation report.');
+    } finally {
+      setReconciliationLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'reconciliation') {
+      return;
+    }
+
+    void refreshReconciliation();
+  }, [activeTab, refreshReconciliation]);
+
+  const refreshAssetReport = useCallback(async () => {
+    setAssetReportLoading(true);
+    try {
+      const response = await fetch(`/api/admin/assets?gracePeriodHours=${encodeURIComponent(assetGracePeriodHours)}`, { cache: 'no-store' });
+      const payload = await response.json().catch(() => null) as AssetReportResponse | null;
+      if (!response.ok || !payload) {
+        throw new Error(payload && 'error' in payload ? String((payload as { error?: unknown }).error) : 'Unable to load asset report.');
+      }
+
+      setAssetReport(payload);
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : 'Unable to load asset report.');
+    } finally {
+      setAssetReportLoading(false);
+    }
+  }, [assetGracePeriodHours]);
+
+  useEffect(() => {
+    if (activeTab !== 'assets') {
+      return;
+    }
+
+    void refreshAssetReport();
+  }, [activeTab, refreshAssetReport]);
+
+  async function pruneOrphanedAssets() {
+    const response = await fetch(`/api/admin/assets?gracePeriodHours=${encodeURIComponent(assetGracePeriodHours)}`, { method: 'DELETE' });
+    const payload = await response.json().catch(() => ({ error: 'Unable to prune orphaned assets.' }));
+    if (!response.ok) {
+      throw new Error(payload.error || 'Unable to prune orphaned assets.');
+    }
+
+    setMessage(`Deleted ${Array.isArray(payload.deleted) ? payload.deleted.length : 0} orphaned assets older than ${assetGracePeriodHours} hours.`);
+    await refreshAssetReport();
+  }
+
+  async function downloadRegistrationsCsv() {
+    const params = new URLSearchParams({ limit: '1000', format: 'csv' });
+    if (registrationLocationFilter !== 'ALL') {
+      params.set('location', registrationLocationFilter);
+    }
+    if (registrationStatusFilter !== 'ALL') {
+      params.set('status', registrationStatusFilter);
+    }
+    if (registrationSourceFilter !== 'ALL') {
+      params.set('source', registrationSourceFilter);
+    }
+    if (registrationSearch.trim()) {
+      params.set('search', registrationSearch.trim());
+    }
+    if (registrationCreatedAfter) {
+      params.set('createdAfter', toIsoString(registrationCreatedAfter));
+    }
+    if (registrationCreatedBefore) {
+      params.set('createdBefore', toIsoString(registrationCreatedBefore));
+    }
+
+    const response = await fetch(`/api/registrations?${params.toString()}`, { cache: 'no-store' });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({ error: 'Unable to export CSV.' }));
+      throw new Error(payload.error || 'Unable to export CSV.');
+    }
+
+    const blob = await response.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = downloadUrl;
+    anchor.download = `registrations-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(downloadUrl);
+  }
 
   useEffect(() => {
     if (activeTab !== 'registrations') {
@@ -510,11 +693,18 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
   }
 
   async function handleAction(action: () => Promise<void>) {
-    startTransition(() => {
-      void action().catch((actionError) => {
-        setError(actionError instanceof Error ? actionError.message : 'Unexpected error.');
-      });
-    });
+    if (actionInFlight) {
+      return;
+    }
+
+    setActionInFlight(true);
+    try {
+      await action();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'Unexpected error.');
+    } finally {
+      setActionInFlight(false);
+    }
   }
 
   const selectedEvent = events[selectedEventId];
@@ -543,7 +733,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {(['books', 'events', 'capacity', 'emails', 'registrations'] as DashboardTab[]).map((tab) => (
+              {(['books', 'events', 'capacity', 'emails', 'registrations', 'reconciliation', 'assets'] as DashboardTab[]).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -552,7 +742,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                     activeTab === tab ? 'bg-brand-pink text-brand-navy' : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
                   }`}
                 >
-                  {tab === 'books' ? 'Books' : tab === 'events' ? 'Events' : tab === 'capacity' ? 'Capacity' : tab === 'emails' ? 'Emails' : 'Registrations'}
+                  {tab === 'books' ? 'Books' : tab === 'events' ? 'Events' : tab === 'capacity' ? 'Capacity' : tab === 'emails' ? 'Emails' : tab === 'registrations' ? 'Registrations' : tab === 'reconciliation' ? 'Reconciliation' : 'Assets'}
                 </button>
               ))}
               <button
@@ -697,6 +887,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                     </label>
                   </div>
                   <input value={selectedBook.coverUrl || ''} onChange={(event) => updateSelectedBook({ coverUrl: event.target.value })} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
+                  {selectedBookCoverHints ? <p className="mt-3 text-xs text-white/60">Canonical strategy: <span className="font-mono text-white">{selectedBookCoverHints.zh}</span></p> : null}
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
@@ -726,6 +917,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                     </label>
                   </div>
                   <input value={selectedBook.coverUrlEn || ''} onChange={(event) => updateSelectedBook({ coverUrlEn: event.target.value })} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
+                  {selectedBookCoverHints ? <p className="mt-3 text-xs text-white/60">Canonical strategy: <span className="font-mono text-white">{selectedBookCoverHints.en}</span></p> : null}
                 </div>
               </div>
 
@@ -787,10 +979,10 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
               <div className="mt-8">
                 <div className="flex flex-wrap gap-3">
-                  <button type="button" onClick={() => void handleAction(saveBooks)} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
-                    {isPending ? 'Saving…' : 'Save books'}
+                  <button type="button" onClick={() => void handleAction(saveBooks)} disabled={actionInFlight} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
+                    {actionInFlight ? 'Saving…' : 'Save books'}
                   </button>
-                  <button type="button" onClick={deleteSelectedBook} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full border border-rose-400/40 bg-rose-500/10 px-6 py-3 font-semibold text-rose-100 transition hover:bg-rose-500/20 disabled:opacity-60">
+                  <button type="button" onClick={() => void handleAction(deleteSelectedBook)} disabled={actionInFlight} className="inline-flex min-h-11 items-center rounded-full border border-rose-400/40 bg-rose-500/10 px-6 py-3 font-semibold text-rose-100 transition hover:bg-rose-500/20 disabled:opacity-60">
                     Delete book
                   </button>
                 </div>
@@ -951,8 +1143,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
               ) : null}
 
               <div className="mt-8">
-                <button type="button" onClick={() => void handleAction(saveEvents)} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
-                  {isPending ? 'Saving…' : 'Save events'}
+                <button type="button" onClick={() => void handleAction(saveEvents)} disabled={actionInFlight} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
+                  {actionInFlight ? 'Saving…' : 'Save events'}
                 </button>
               </div>
             </div>
@@ -1030,8 +1222,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
             </div>
 
             <div className="mt-8">
-              <button type="button" onClick={() => void handleAction(saveCapacity)} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
-                {isPending ? 'Saving…' : 'Save capacity settings'}
+              <button type="button" onClick={() => void handleAction(saveCapacity)} disabled={actionInFlight} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
+                {actionInFlight ? 'Saving…' : 'Save capacity settings'}
               </button>
             </div>
           </div>
@@ -1087,8 +1279,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
               </div>
 
               <div className="mt-8">
-                <button type="button" onClick={() => void handleAction(saveRegistrationEmails)} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
-                  {isPending ? 'Saving…' : 'Save email settings'}
+                <button type="button" onClick={() => void handleAction(saveRegistrationEmails)} disabled={actionInFlight} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
+                  {actionInFlight ? 'Saving…' : 'Save email settings'}
                 </button>
               </div>
             </div>
@@ -1102,15 +1294,20 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                 <div>
                   <h2 className="text-xl font-semibold font-outfit">Registrations audit</h2>
                   <p className="mt-2 max-w-3xl text-sm text-white/70">
-                    This viewer reads from the app registration store used for capacity and confirmation flow. It does not query Notion directly. If Notion mirroring is enabled, rows with source <span className="font-mono text-white">notion</span> were mirrored successfully.
+                    This viewer reads from the app registration store used for capacity and confirmation flow. It supports CSV export, time-window filtering, and a per-row lifecycle trail including request id, mirror states, and delivery attempts.
                   </p>
                 </div>
-                <button type="button" onClick={() => void refreshRegistrations()} disabled={registrationsLoading} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
-                  {registrationsLoading ? 'Refreshing…' : 'Refresh'}
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" onClick={() => void handleAction(downloadRegistrationsCsv)} disabled={registrationsLoading || actionInFlight} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
+                    Export CSV
+                  </button>
+                  <button type="button" onClick={() => void refreshRegistrations()} disabled={registrationsLoading} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
+                    {registrationsLoading ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                 <label className="block">
                   <span className="mb-2 block text-sm text-white/70">Location</span>
                   <select value={registrationLocationFilter} onChange={(event) => setRegistrationLocationFilter(event.target.value as 'ALL' | SignupLocation)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
@@ -1138,14 +1335,23 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                   <span className="mb-2 block text-sm text-white/70">Search</span>
                   <input value={registrationSearch} onChange={(event) => setRegistrationSearch(event.target.value)} placeholder="Name, email, profession" className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
                 </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-white/70">Submitted after</span>
+                  <input type="datetime-local" value={registrationCreatedAfter} onChange={(event) => setRegistrationCreatedAfter(event.target.value)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-white/70">Submitted before</span>
+                  <input type="datetime-local" value={registrationCreatedBefore} onChange={(event) => setRegistrationCreatedBefore(event.target.value)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
+                </label>
               </div>
 
               {registrationsSummary ? (
-                <div className="grid gap-4 md:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-5">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Total</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.total}</p></div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Confirmed</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.byStatus.confirmed}</p></div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Pending</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.byStatus.pending}</p></div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Mirrored to Notion</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.notionMirrored}</p></div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Failed mirrors</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.failedMirrors}</p></div>
                 </div>
               ) : null}
 
@@ -1165,6 +1371,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                         <th className="px-4 py-3 font-medium">Status</th>
                         <th className="px-4 py-3 font-medium">Source</th>
                         <th className="px-4 py-3 font-medium">Profession</th>
+                        <th className="px-4 py-3 font-medium">Audit</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/10 bg-black/10">
@@ -1177,17 +1384,198 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                           <td className="px-4 py-3"><span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{registration.status}</span></td>
                           <td className="px-4 py-3 text-white/85">{registration.source}</td>
                           <td className="px-4 py-3 text-white/75">{registration.profession}</td>
+                          <td className="px-4 py-3 text-white/75">
+                            <details className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                              <summary className="cursor-pointer text-white">Details</summary>
+                              <div className="mt-3 space-y-2 text-xs text-white/70">
+                                <p>Request ID: <span className="font-mono text-white">{registration.requestId || 'n/a'}</span></p>
+                                <p>Visitor ID: <span className="font-mono text-white">{registration.visitorId || 'n/a'}</span></p>
+                                <p>Bank account: <span className="font-mono text-white">{registration.bankAccount || 'n/a'}</span></p>
+                                <p>External ID: <span className="font-mono text-white">{registration.externalId || 'n/a'}</span></p>
+                                <p>Notion: <span className="font-mono text-white">{registration.mirrorState?.notion?.status || 'n/a'}</span></p>
+                                <p>Tally: <span className="font-mono text-white">{registration.mirrorState?.tally?.status || 'n/a'}</span></p>
+                                <p>Email: <span className="font-mono text-white">{registration.mirrorState?.email?.status || 'n/a'}</span></p>
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                                  <p className="mb-2 text-white/85">Audit trail</p>
+                                  <div className="space-y-2">
+                                    {(registration.auditTrail || []).map((entry) => (
+                                      <div key={`${registration.id}-${entry.at}-${entry.event}`} className="rounded-xl border border-white/10 bg-white/5 p-2">
+                                        <p className="text-white">{entry.event}</p>
+                                        <p>{new Date(entry.at).toLocaleString()} by {entry.actor}</p>
+                                        <p>{entry.summary}</p>
+                                      </div>
+                                    ))}
+                                    {!registration.auditTrail?.length ? <p>No audit entries recorded.</p> : null}
+                                  </div>
+                                </div>
+                              </div>
+                            </details>
+                          </td>
                         </tr>
                       ))}
                       {!registrations.length ? (
                         <tr>
-                          <td colSpan={7} className="px-4 py-8 text-center text-white/60">No registrations matched the current filters.</td>
+                          <td colSpan={8} className="px-4 py-8 text-center text-white/60">No registrations matched the current filters.</td>
                         </tr>
                       ) : null}
                     </tbody>
                   </table>
                 </div>
               </div>
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === 'reconciliation' ? (
+          <div aria-label="Reconciliation viewer" className="rounded-[28px] border border-white/10 bg-white/10 p-6">
+            <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-black/10 p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold font-outfit">Notion vs source-of-truth reconciliation</h2>
+                  <p className="mt-2 max-w-3xl text-sm text-white/70">
+                    This page compares the app registration store against the optional Notion mirror and highlights where the mirror is missing, where fields drifted, and where Notion contains rows the app does not know about.
+                  </p>
+                </div>
+                <button type="button" onClick={() => void refreshReconciliation()} disabled={reconciliationLoading} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
+                  {reconciliationLoading ? 'Refreshing…' : 'Refresh reconciliation'}
+                </button>
+              </div>
+
+              {reconciliation ? (
+                <>
+                  <div className="grid gap-4 md:grid-cols-6">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Source of truth</p><p className="mt-1 text-sm font-semibold">{reconciliation.summary.sourceOfTruth}</p></div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Matched</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.matched}</p></div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Missing in Notion</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.missingInNotion}</p></div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Field drift</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.mismatched}</p></div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Notion only</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.missingInSource}</p></div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Mirror enabled</p><p className="mt-1 text-sm font-semibold">{reconciliation.summary.notionMirrorEnabled ? 'enabled' : 'disabled'}</p></div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-brand-navy/50 p-4 text-sm text-white/70">
+                    Compared at {new Date(reconciliation.summary.comparedAt).toLocaleString()}. Notion configured: <span className="font-mono text-white">{reconciliation.summary.notionConfigured ? 'yes' : 'no'}</span>.
+                  </div>
+
+                  <div className="grid gap-6 xl:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                      <h3 className="text-lg font-semibold font-outfit">Source rows with drift</h3>
+                      <div className="mt-4 space-y-3">
+                        {reconciliation.rows.filter((row) => row.kind !== 'matched').map((row) => (
+                          <div key={row.sourceRecord.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <p className="font-semibold text-white">{row.sourceRecord.name}</p>
+                              <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{row.kind}</span>
+                            </div>
+                            <p className="mt-2">{row.sourceRecord.email} · {row.sourceRecord.location}</p>
+                            <p className="mt-2">Request ID: <span className="font-mono text-white">{row.sourceRecord.requestId || 'n/a'}</span></p>
+                            {row.mismatchFields.length ? <p className="mt-2">Mismatched fields: <span className="font-mono text-white">{row.mismatchFields.join(', ')}</span></p> : null}
+                            {row.notionRecord ? <p className="mt-2">Notion page: <span className="font-mono text-white">{row.notionRecord.id}</span></p> : null}
+                          </div>
+                        ))}
+                        {!reconciliation.rows.some((row) => row.kind !== 'matched') ? <p className="text-sm text-white/60">No reconciliation differences found.</p> : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                      <h3 className="text-lg font-semibold font-outfit">Notion-only rows</h3>
+                      <div className="mt-4 space-y-3">
+                        {reconciliation.notionOnlyRows.map((row) => (
+                          <div key={row.notionRecord.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <p className="font-semibold text-white">{row.notionRecord.name || row.notionRecord.title}</p>
+                              <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">missing_in_source</span>
+                            </div>
+                            <p className="mt-2">{row.notionRecord.email} · {row.notionRecord.location}</p>
+                            <p className="mt-2">Registration ID: <span className="font-mono text-white">{row.notionRecord.registrationId || 'n/a'}</span></p>
+                            <p className="mt-2">Notion page: <span className="font-mono text-white">{row.notionRecord.id}</span></p>
+                          </div>
+                        ))}
+                        {!reconciliation.notionOnlyRows.length ? <p className="text-sm text-white/60">No Notion-only rows found.</p> : null}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-white/60">No reconciliation report loaded yet.</p>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === 'assets' ? (
+          <div aria-label="Assets viewer" className="rounded-[28px] border border-white/10 bg-white/10 p-6">
+            <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-black/10 p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold font-outfit">Admin asset scan and cleanup</h2>
+                  <p className="mt-2 max-w-3xl text-sm text-white/70">
+                    The asset manager compares referenced admin images against the actual storage bucket or local upload directory, then prunes only orphaned files older than the configured grace period.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" onClick={() => void refreshAssetReport()} disabled={assetReportLoading} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
+                    {assetReportLoading ? 'Scanning…' : 'Scan assets'}
+                  </button>
+                  <button type="button" onClick={() => void handleAction(pruneOrphanedAssets)} disabled={assetReportLoading || actionInFlight} className="inline-flex min-h-11 items-center rounded-full border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20 disabled:opacity-60">
+                    Prune old orphans
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+                <label className="block">
+                  <span className="mb-2 block text-sm text-white/70">Grace period hours</span>
+                  <input value={assetGracePeriodHours} onChange={(event) => setAssetGracePeriodHours(event.target.value.replace(/[^0-9]/g, '') || '168')} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
+                </label>
+                <div className="rounded-2xl border border-white/10 bg-brand-navy/50 p-4 text-sm text-white/70">
+                  Recommended policy: keep a 7-day grace period so uploads that were processed but not yet referenced by a saved document do not get deleted by the cleanup pass.
+                </div>
+              </div>
+
+              {assetReport ? (
+                <>
+                  <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-5">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Referenced</p><p className="mt-1 text-2xl font-semibold">{assetReport.referencedCount}</p></div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Stored</p><p className="mt-1 text-2xl font-semibold">{assetReport.storedCount}</p></div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Orphaned</p><p className="mt-1 text-2xl font-semibold">{assetReport.orphanedCount}</p></div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Missing referenced</p><p className="mt-1 text-2xl font-semibold">{assetReport.missingReferencedCount}</p></div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Generated</p><p className="mt-1 text-sm font-semibold">{new Date(assetReport.generatedAt).toLocaleString()}</p></div>
+                  </div>
+
+                  <div className="grid gap-6 xl:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                      <h3 className="text-lg font-semibold font-outfit">Orphaned assets</h3>
+                      <div className="mt-4 space-y-3">
+                        {assetReport.orphaned.map((asset) => (
+                          <div key={asset.url} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
+                            <p className="font-mono text-white">{asset.fileName}</p>
+                            <p className="mt-2">{asset.scope} · {asset.storage}</p>
+                            <p className="mt-2 break-all">{asset.url}</p>
+                            <p className="mt-2">Modified: {asset.modifiedAt ? new Date(asset.modifiedAt).toLocaleString() : 'unknown'}</p>
+                          </div>
+                        ))}
+                        {!assetReport.orphaned.length ? <p className="text-sm text-white/60">No orphaned assets detected.</p> : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                      <h3 className="text-lg font-semibold font-outfit">Referenced but missing in storage</h3>
+                      <div className="mt-4 space-y-3">
+                        {assetReport.missingReferenced.map((asset) => (
+                          <div key={asset.url} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
+                            <p className="font-mono text-white">{asset.fileName}</p>
+                            <p className="mt-2">{asset.scope}</p>
+                            <p className="mt-2 break-all">{asset.url}</p>
+                          </div>
+                        ))}
+                        {!assetReport.missingReferenced.length ? <p className="text-sm text-white/60">No missing referenced assets detected.</p> : null}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-white/60">No asset report loaded yet.</p>
+              )}
             </div>
           </div>
         ) : null}

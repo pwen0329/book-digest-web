@@ -17,13 +17,20 @@ create table if not exists public.registrations (
   referral_other text,
   bank_account text,
   visitor_id text,
+  request_id text,
   timestamp timestamptz not null,
   status text not null check (status in ('pending', 'confirmed', 'cancelled')),
   source text not null check (source in ('pending', 'simulated', 'tally', 'notion')),
   external_id text,
+  mirror_state jsonb not null default '{"notion":{"enabled":false,"status":"not_configured"},"tally":{"enabled":false,"status":"not_configured"},"email":{"enabled":false,"status":"not_configured"}}'::jsonb,
+  audit_trail jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.registrations add column if not exists request_id text;
+alter table public.registrations add column if not exists mirror_state jsonb not null default '{"notion":{"enabled":false,"status":"not_configured"},"tally":{"enabled":false,"status":"not_configured"},"email":{"enabled":false,"status":"not_configured"}}'::jsonb;
+alter table public.registrations add column if not exists audit_trail jsonb not null default '[]'::jsonb;
 
 create or replace function public.set_admin_documents_updated_at()
 returns trigger
@@ -57,6 +64,15 @@ on public.registrations (created_at desc);
 
 create index if not exists registrations_updated_at_idx
 on public.registrations (updated_at desc);
+
+create index if not exists registrations_timestamp_idx
+on public.registrations (timestamp desc);
+
+create index if not exists registrations_external_id_idx
+on public.registrations (external_id);
+
+create index if not exists registrations_request_id_idx
+on public.registrations (request_id);
 
 alter table public.admin_documents enable row level security;
 alter table public.registrations enable row level security;

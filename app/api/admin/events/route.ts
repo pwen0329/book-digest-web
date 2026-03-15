@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { AdminDocumentConflictError, loadAdminDocument, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
 import { cleanupRemovedAdminAssets } from '@/lib/admin-asset-manager';
-import { logServerError, logServerWarning } from '@/lib/observability';
+import { logServerError, logServerWarning, runWithRequestTrace } from '@/lib/observability';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import type { EventContentId, EventContentMap } from '@/types/event-content';
 import type { Book } from '@/types/book';
@@ -61,59 +61,63 @@ function revalidateEventRoutes() {
 }
 
 export async function GET(request: NextRequest) {
-  if (!(await isAuthorizedAdminRequest(request))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  return runWithRequestTrace(request, 'admin.events.get', async () => {
+    if (!(await isAuthorizedAdminRequest(request))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const record = await loadAdminDocumentRecord<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' });
-  return NextResponse.json({ events: record.value, updatedAt: record.updatedAt }, { status: 200 });
+    const record = await loadAdminDocumentRecord<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' });
+    return NextResponse.json({ events: record.value, updatedAt: record.updatedAt }, { status: 200 });
+  });
 }
 
 export async function PUT(request: NextRequest) {
-  if (!(await isAuthorizedAdminRequest(request))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  let payload: z.infer<typeof requestSchema>;
-
-  try {
-    payload = await parseJsonRequest(request, requestSchema, { maxBytes: 250_000 });
-  } catch (error) {
-    if (error instanceof JsonRequestError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+  return runWithRequestTrace(request, 'admin.events.put', async () => {
+    if (!(await isAuthorizedAdminRequest(request))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
-  }
+    let payload: z.infer<typeof requestSchema>;
 
-  const nextEvents = payload.events as EventContentMap;
-  const previousEvents = await loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' });
-  const currentBooks = await loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' });
+    try {
+      payload = await parseJsonRequest(request, requestSchema, { maxBytes: 250_000 });
+    } catch (error) {
+      if (error instanceof JsonRequestError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
 
-  for (const eventId of Object.keys(nextEvents) as EventContentId[]) {
-    if (nextEvents[eventId].comingSoon && !nextEvents[eventId].comingSoonBody) {
-      return NextResponse.json({ error: `${eventId} requires a coming-soon message.` }, { status: 400 });
-    }
-  }
-
-  let savedRecord;
-  try {
-    savedRecord = await saveAdminDocumentRecord(
-      { key: 'events', fallbackFile: 'data/events-content.json' },
-      nextEvents,
-      payload.expectedUpdatedAt
-    );
-  } catch (error) {
-    if (error instanceof AdminDocumentConflictError) {
-      await logServerWarning('admin.events.save_conflict', { expectedUpdatedAt: payload.expectedUpdatedAt });
-      return NextResponse.json({ error: error.message }, { status: 409 });
+      return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
     }
 
-    await logServerError('admin.events.save_failed', error, { eventIds: Object.keys(nextEvents) });
-    throw error;
-  }
-  await cleanupRemovedAdminAssets({ previousBooks: currentBooks, nextBooks: currentBooks, previousEvents, nextEvents: savedRecord.value });
-  revalidateEventRoutes();
+    const nextEvents = payload.events as EventContentMap;
+    const previousEvents = await loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' });
+    const currentBooks = await loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' });
 
-  return NextResponse.json({ ok: true, events: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });
+    for (const eventId of Object.keys(nextEvents) as EventContentId[]) {
+      if (nextEvents[eventId].comingSoon && !nextEvents[eventId].comingSoonBody) {
+        return NextResponse.json({ error: `${eventId} requires a coming-soon message.` }, { status: 400 });
+      }
+    }
+
+    let savedRecord;
+    try {
+      savedRecord = await saveAdminDocumentRecord(
+        { key: 'events', fallbackFile: 'data/events-content.json' },
+        nextEvents,
+        payload.expectedUpdatedAt
+      );
+    } catch (error) {
+      if (error instanceof AdminDocumentConflictError) {
+        await logServerWarning('admin.events.save_conflict', { expectedUpdatedAt: payload.expectedUpdatedAt });
+        return NextResponse.json({ error: error.message }, { status: 409 });
+      }
+
+      await logServerError('admin.events.save_failed', error, { eventIds: Object.keys(nextEvents) });
+      throw error;
+    }
+    await cleanupRemovedAdminAssets({ previousBooks: currentBooks, nextBooks: currentBooks, previousEvents, nextEvents: savedRecord.value });
+    revalidateEventRoutes();
+
+    return NextResponse.json({ ok: true, events: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });
+  });
 }

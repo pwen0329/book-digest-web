@@ -249,7 +249,7 @@ test.describe.serial('admin dashboard', () => {
     expect(originalFirst.slug).not.toBe(originalSecond.slug);
   });
 
-  test('can delete a draft book and remove it from the public books page after saving', async ({ page }) => {
+  test('can delete a draft book and remove it from the public books page immediately', async ({ page }) => {
     const deletedSlug = `deleted-admin-book-${Date.now()}`;
 
     await signIn(page);
@@ -264,13 +264,11 @@ test.describe.serial('admin dashboard', () => {
     await booksEditor.getByRole('button', { name: 'Save books' }).click();
     expect((await saveAddedResponse).ok()).toBeTruthy();
 
+    const saveDeletedResponse = page.waitForResponse((response) => response.url().includes('/api/admin/books') && response.request().method() === 'PUT');
     page.once('dialog', (dialog) => dialog.accept());
     await booksEditor.getByRole('button', { name: 'Delete book' }).click();
-    await expect(booksEditor.getByLabel('Slug')).not.toHaveValue(deletedSlug);
-
-    const saveDeletedResponse = page.waitForResponse((response) => response.url().includes('/api/admin/books') && response.request().method() === 'PUT');
-    await booksEditor.getByRole('button', { name: 'Save books' }).click();
     expect((await saveDeletedResponse).ok()).toBeTruthy();
+    await expect(booksEditor.getByLabel('Slug')).not.toHaveValue(deletedSlug);
 
     await expect.poll(async () => {
       const response = await page.request.get('/api/admin/books', { headers: adminHeaders });
@@ -500,5 +498,19 @@ test.describe.serial('admin dashboard', () => {
     await expect(viewer.getByRole('heading', { name: 'Registrations audit' })).toBeVisible();
     await expect(viewer.getByText('Viewer Reader')).toBeVisible({ timeout: 15000 });
     await expect(viewer.getByText('registration-store')).toBeVisible();
+    await viewer.getByLabel('Submitted after').fill(toInputDate(new Date(Date.now() - 60 * 60 * 1000)));
+    await viewer.getByRole('button', { name: 'Refresh' }).click();
+    await expect(viewer.getByText('Viewer Reader')).toBeVisible({ timeout: 15000 });
+    await expect(viewer.getByText('Details').first()).toBeVisible();
+
+    await page.getByRole('button', { name: 'Reconciliation', exact: true }).click();
+    const reconciliationViewer = page.getByLabel('Reconciliation viewer');
+    await expect(reconciliationViewer.getByRole('heading', { name: 'Notion vs source-of-truth reconciliation' })).toBeVisible();
+    await expect(reconciliationViewer.getByText(/source of truth/i)).toBeVisible({ timeout: 15000 });
+
+    await page.getByRole('button', { name: 'Assets', exact: true }).click();
+    const assetsViewer = page.getByLabel('Assets viewer');
+    await expect(assetsViewer.getByRole('heading', { name: 'Admin asset scan and cleanup' })).toBeVisible();
+    await expect(assetsViewer.getByText(/Recommended policy/i)).toBeVisible();
   });
 });

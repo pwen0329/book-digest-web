@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
-import { logServerError, logServerWarning } from '@/lib/observability';
+import { logServerError, logServerWarning, runWithRequestTrace } from '@/lib/observability';
 import type { CapacityConfigFile, SignupLocation } from '@/lib/signup-capacity-config';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 
@@ -47,57 +47,61 @@ function validateSlotWindow(slot: z.infer<typeof slotSchema>) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!(await isAuthorizedAdminRequest(request))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  return runWithRequestTrace(request, 'admin.capacity.get', async () => {
+    if (!(await isAuthorizedAdminRequest(request))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const record = await loadAdminDocumentRecord<CapacityConfigFile>({ key: 'capacity', fallbackFile: 'data/signup-capacity.json' });
-  return NextResponse.json({ capacity: record.value, updatedAt: record.updatedAt }, { status: 200 });
+    const record = await loadAdminDocumentRecord<CapacityConfigFile>({ key: 'capacity', fallbackFile: 'data/signup-capacity.json' });
+    return NextResponse.json({ capacity: record.value, updatedAt: record.updatedAt }, { status: 200 });
+  });
 }
 
 export async function PUT(request: NextRequest) {
-  if (!(await isAuthorizedAdminRequest(request))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  let payload: z.infer<typeof requestSchema>;
-
-  try {
-    payload = await parseJsonRequest(request, requestSchema, { maxBytes: 20_000 });
-  } catch (error) {
-    if (error instanceof JsonRequestError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+  return runWithRequestTrace(request, 'admin.capacity.put', async () => {
+    if (!(await isAuthorizedAdminRequest(request))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
-  }
+    let payload: z.infer<typeof requestSchema>;
 
-  const nextCapacity = payload.capacity;
+    try {
+      payload = await parseJsonRequest(request, requestSchema, { maxBytes: 20_000 });
+    } catch (error) {
+      if (error instanceof JsonRequestError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
 
-  for (const location of Object.keys(nextCapacity) as SignupLocation[]) {
-    const slot = nextCapacity[location];
-    if (!validateSlotWindow(slot)) {
-      return NextResponse.json({ error: `${location} has an invalid signup window.` }, { status: 400 });
-    }
-  }
-
-  let savedRecord;
-  try {
-    savedRecord = await saveAdminDocumentRecord(
-      { key: 'capacity', fallbackFile: 'data/signup-capacity.json' },
-      nextCapacity satisfies CapacityConfigFile,
-      payload.expectedUpdatedAt
-    );
-  } catch (error) {
-    if (error instanceof AdminDocumentConflictError) {
-      await logServerWarning('admin.capacity.save_conflict', { expectedUpdatedAt: payload.expectedUpdatedAt });
-      return NextResponse.json({ error: error.message }, { status: 409 });
+      return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
     }
 
-    await logServerError('admin.capacity.save_failed', error, { locations: Object.keys(nextCapacity) });
-    throw error;
-  }
-  revalidateCapacityRoutes();
+    const nextCapacity = payload.capacity;
 
-  return NextResponse.json({ ok: true, capacity: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });
+    for (const location of Object.keys(nextCapacity) as SignupLocation[]) {
+      const slot = nextCapacity[location];
+      if (!validateSlotWindow(slot)) {
+        return NextResponse.json({ error: `${location} has an invalid signup window.` }, { status: 400 });
+      }
+    }
+
+    let savedRecord;
+    try {
+      savedRecord = await saveAdminDocumentRecord(
+        { key: 'capacity', fallbackFile: 'data/signup-capacity.json' },
+        nextCapacity satisfies CapacityConfigFile,
+        payload.expectedUpdatedAt
+      );
+    } catch (error) {
+      if (error instanceof AdminDocumentConflictError) {
+        await logServerWarning('admin.capacity.save_conflict', { expectedUpdatedAt: payload.expectedUpdatedAt });
+        return NextResponse.json({ error: error.message }, { status: 409 });
+      }
+
+      await logServerError('admin.capacity.save_failed', error, { locations: Object.keys(nextCapacity) });
+      throw error;
+    }
+    revalidateCapacityRoutes();
+
+    return NextResponse.json({ ok: true, capacity: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });
+  });
 }

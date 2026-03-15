@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { getRetryAfterSeconds } from '@/lib/http-response';
-import { listStoredRegistrations, summarizeStoredRegistrations } from '@/lib/registration-store';
-import { logServerError } from '@/lib/observability';
+import { listStoredRegistrations, serializeRegistrationsCsv, summarizeStoredRegistrations } from '@/lib/registration-store';
+import { logServerError, runWithRequestTrace } from '@/lib/observability';
 
 // Force dynamic rendering (API routes are not suitable for static generation)
 export const dynamic = 'force-dynamic';
 
-// GET /api/registrations?limit=50&location=TW&status=confirmed&source=notion&search=alice
+// GET /api/registrations?limit=50&location=TW&status=confirmed&source=notion&search=alice&createdAfter=...&createdBefore=...&format=csv
 export async function GET(req: NextRequest) {
-  try {
+  return runWithRequestTrace(req, 'registrations.list', async () => {
+    try {
     if (!(await isAuthorizedAdminRequest(req))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -54,19 +55,34 @@ export async function GET(req: NextRequest) {
       : undefined;
 
     const search = req.nextUrl.searchParams.get('search') || undefined;
+    const createdAfter = req.nextUrl.searchParams.get('createdAfter') || undefined;
+    const createdBefore = req.nextUrl.searchParams.get('createdBefore') || undefined;
+    const format = req.nextUrl.searchParams.get('format') || 'json';
 
     const [items, summary] = await Promise.all([
-      listStoredRegistrations({ limit, location, status, source, search }),
+      listStoredRegistrations({ limit, location, status, source, search, createdAfter, createdBefore }),
       summarizeStoredRegistrations(),
     ]);
+
+    if (format === 'csv') {
+      return new NextResponse(serializeRegistrationsCsv(items), {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="registrations-${new Date().toISOString().slice(0, 10)}.csv"`,
+        },
+      });
+    }
+
     return NextResponse.json({
       items,
       summary,
       viewerSource: 'registration-store',
       notionMirrorEnabled: process.env.SUBMIT_SAVE_TO_NOTION === '1' && Boolean(process.env.NOTION_DB_ID && process.env.NOTION_TOKEN),
     }, { status: 200 });
-  } catch (err) {
-    await logServerError('registrations.list_failed', err, { url: req.url });
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
-  }
+    } catch (err) {
+      await logServerError('registrations.list_failed', err, { url: req.url });
+      return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    }
+  });
 }

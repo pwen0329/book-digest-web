@@ -10,9 +10,19 @@ const intlMiddleware = createIntlMiddleware({
 
 export default function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+  const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
+
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-request-id', requestId);
 
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
-    return NextResponse.next();
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+    response.headers.set('x-request-id', requestId);
+    return response;
   }
 
   const hasLocalePrefix = locales.some(
@@ -21,7 +31,13 @@ export default function middleware(req: NextRequest) {
 
   // Locale-prefixed routes already encode the locale in the pathname.
   // Only run next-intl's routing middleware when locale negotiation is still needed.
-  const response = hasLocalePrefix ? NextResponse.next() : intlMiddleware(req);
+  const response = hasLocalePrefix
+    ? NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      })
+    : intlMiddleware(req);
 
   // Generate a CSP nonce in an Edge-compatible way (Buffer is not guaranteed in Edge runtime).
   const nonce = btoa(crypto.randomUUID());
@@ -49,6 +65,7 @@ export default function middleware(req: NextRequest) {
 
   // Pass the nonce to the layout via request header
   response.headers.set('x-nonce', nonce);
+  response.headers.set('x-request-id', requestId);
   // Set the dynamic CSP header
   response.headers.set('Content-Security-Policy', csp);
 

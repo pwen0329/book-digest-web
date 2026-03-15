@@ -5,7 +5,7 @@ import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { AdminDocumentConflictError, loadAdminDocument, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
 import { normalizeBookSortOrder, sortBooksDescending } from '@/lib/book-order';
 import { cleanupRemovedAdminAssets } from '@/lib/admin-asset-manager';
-import { logServerError, logServerWarning } from '@/lib/observability';
+import { logServerError, logServerWarning, runWithRequestTrace } from '@/lib/observability';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import type { Book } from '@/types/book';
 import type { EventContentMap } from '@/types/event-content';
@@ -98,7 +98,7 @@ function normalizeBooks(books: z.infer<typeof bookSchema>[]): Book[] {
   })));
 }
 
-function revalidateBookRoutes(books: Book[]) {
+function revalidateBookRoutes(previousBooks: Book[], nextBooks: Book[]) {
   revalidatePath('/');
   revalidatePath('/zh');
   revalidatePath('/en');
@@ -106,65 +106,77 @@ function revalidateBookRoutes(books: Book[]) {
   revalidatePath('/en/books');
   revalidatePath('/sitemap.xml');
 
-  for (const book of books) {
-    revalidatePath(`/zh/books/${book.slug}`);
-    revalidatePath(`/en/books/${book.slug}`);
+  const slugs = new Set<string>();
+  for (const book of previousBooks) {
+    slugs.add(book.slug);
+  }
+  for (const book of nextBooks) {
+    slugs.add(book.slug);
+  }
+
+  for (const slug of slugs) {
+    revalidatePath(`/zh/books/${slug}`);
+    revalidatePath(`/en/books/${slug}`);
   }
 }
 
 export async function GET(request: NextRequest) {
-  if (!(await isAuthorizedAdminRequest(request))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  return runWithRequestTrace(request, 'admin.books.get', async () => {
+    if (!(await isAuthorizedAdminRequest(request))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const record = await loadAdminDocumentRecord<Book[]>({ key: 'books', fallbackFile: 'data/books.json' });
-  return NextResponse.json({ books: sortBooksDescending(record.value), updatedAt: record.updatedAt }, { status: 200 });
+    const record = await loadAdminDocumentRecord<Book[]>({ key: 'books', fallbackFile: 'data/books.json' });
+    return NextResponse.json({ books: sortBooksDescending(record.value), updatedAt: record.updatedAt }, { status: 200 });
+  });
 }
 
 export async function PUT(request: NextRequest) {
-  if (!(await isAuthorizedAdminRequest(request))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  let parsedBody: z.infer<typeof requestSchema>;
-
-  try {
-    parsedBody = await parseJsonRequest(request, requestSchema, { maxBytes: 2_000_000 });
-  } catch (error) {
-    if (error instanceof JsonRequestError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+  return runWithRequestTrace(request, 'admin.books.put', async () => {
+    if (!(await isAuthorizedAdminRequest(request))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
-  }
+    let parsedBody: z.infer<typeof requestSchema>;
 
-  const normalizedBooks = normalizeBooks(parsedBody.books);
-  const uniqueSlugs = new Set(normalizedBooks.map((book) => book.slug));
-  if (uniqueSlugs.size !== normalizedBooks.length) {
-    return NextResponse.json({ error: 'Book slugs must be unique.' }, { status: 400 });
-  }
+    try {
+      parsedBody = await parseJsonRequest(request, requestSchema, { maxBytes: 2_000_000 });
+    } catch (error) {
+      if (error instanceof JsonRequestError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
 
-  const previousBooks = await loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' });
-  const currentEvents = await loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' });
-
-  let savedRecord;
-  try {
-    savedRecord = await saveAdminDocumentRecord(
-      { key: 'books', fallbackFile: 'data/books.json' },
-      normalizedBooks,
-      parsedBody.expectedUpdatedAt
-    );
-  } catch (error) {
-    if (error instanceof AdminDocumentConflictError) {
-      await logServerWarning('admin.books.save_conflict', { expectedUpdatedAt: parsedBody.expectedUpdatedAt });
-      return NextResponse.json({ error: error.message }, { status: 409 });
+      return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
     }
 
-    await logServerError('admin.books.save_failed', error, { count: normalizedBooks.length });
-    throw error;
-  }
-  await cleanupRemovedAdminAssets({ previousBooks, nextBooks: savedRecord.value, previousEvents: currentEvents, nextEvents: currentEvents });
-  revalidateBookRoutes(normalizedBooks);
+    const normalizedBooks = normalizeBooks(parsedBody.books);
+    const uniqueSlugs = new Set(normalizedBooks.map((book) => book.slug));
+    if (uniqueSlugs.size !== normalizedBooks.length) {
+      return NextResponse.json({ error: 'Book slugs must be unique.' }, { status: 400 });
+    }
 
-  return NextResponse.json({ ok: true, books: sortBooksDescending(savedRecord.value), updatedAt: savedRecord.updatedAt }, { status: 200 });
+    const previousBooks = await loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' });
+    const currentEvents = await loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' });
+
+    let savedRecord;
+    try {
+      savedRecord = await saveAdminDocumentRecord(
+        { key: 'books', fallbackFile: 'data/books.json' },
+        normalizedBooks,
+        parsedBody.expectedUpdatedAt
+      );
+    } catch (error) {
+      if (error instanceof AdminDocumentConflictError) {
+        await logServerWarning('admin.books.save_conflict', { expectedUpdatedAt: parsedBody.expectedUpdatedAt });
+        return NextResponse.json({ error: error.message }, { status: 409 });
+      }
+
+      await logServerError('admin.books.save_failed', error, { count: normalizedBooks.length });
+      throw error;
+    }
+    await cleanupRemovedAdminAssets({ previousBooks, nextBooks: savedRecord.value, previousEvents: currentEvents, nextEvents: currentEvents });
+    revalidateBookRoutes(previousBooks, savedRecord.value);
+
+    return NextResponse.json({ ok: true, books: sortBooksDescending(savedRecord.value), updatedAt: savedRecord.updatedAt }, { status: 200 });
+  });
 }

@@ -5,6 +5,47 @@ import { readJsonFile, writeJsonFile } from '@/lib/json-store';
 import type { SignupLocation } from '@/lib/signup-capacity-config';
 
 export type RegistrationRecordStatus = 'pending' | 'confirmed' | 'cancelled';
+export type RegistrationRecordSource = 'pending' | 'simulated' | 'tally' | 'notion';
+
+export type RegistrationSyncStatus = 'pending' | 'mirrored' | 'forwarded' | 'failed' | 'skipped' | 'not_configured';
+
+export type RegistrationAuditEntry = {
+  at: string;
+  event:
+    | 'reservation_created'
+    | 'reservation_confirmed'
+    | 'reservation_cancelled'
+    | 'tally_forward_attempted'
+    | 'tally_forwarded'
+    | 'tally_forward_failed'
+    | 'notion_mirror_attempted'
+    | 'notion_mirrored'
+    | 'notion_mirror_failed'
+    | 'email_attempted'
+    | 'email_sent'
+    | 'email_skipped'
+    | 'email_failed'
+    | 'admin_updated';
+  actor: 'system' | 'tally' | 'notion' | 'email' | 'admin';
+  summary: string;
+  requestId?: string;
+  details?: Record<string, unknown>;
+};
+
+export type RegistrationSyncChannelState = {
+  enabled: boolean;
+  status: RegistrationSyncStatus;
+  lastAttemptAt?: string;
+  lastSuccessAt?: string;
+  externalId?: string;
+  error?: string;
+};
+
+export type RegistrationMirrorState = {
+  notion: RegistrationSyncChannelState;
+  tally: RegistrationSyncChannelState;
+  email: RegistrationSyncChannelState;
+};
 
 export type RegistrationRecord = {
   id: string;
@@ -19,10 +60,13 @@ export type RegistrationRecord = {
   referralOther?: string;
   bankAccount?: string;
   visitorId?: string;
+  requestId?: string;
   timestamp: string;
   status: RegistrationRecordStatus;
-  source: 'pending' | 'simulated' | 'tally' | 'notion';
+  source: RegistrationRecordSource;
   externalId?: string;
+  mirrorState?: RegistrationMirrorState;
+  auditTrail?: RegistrationAuditEntry[];
   createdAt: string;
   updatedAt: string;
 };
@@ -31,8 +75,10 @@ export type RegistrationListFilters = {
   limit: number;
   location?: SignupLocation;
   status?: RegistrationRecordStatus;
-  source?: RegistrationRecord['source'];
+  source?: RegistrationRecordSource;
   search?: string;
+  createdAfter?: string;
+  createdBefore?: string;
 };
 
 export type RegistrationAuditSummary = {
@@ -40,17 +86,139 @@ export type RegistrationAuditSummary = {
   byStatus: Record<RegistrationRecordStatus, number>;
   byLocation: Record<SignupLocation, Record<RegistrationRecordStatus, number> & { total: number }>;
   notionMirrored: number;
+  failedMirrors: number;
 };
 
 type CreateRegistrationInput = Omit<RegistrationRecord, 'id' | 'createdAt' | 'updatedAt'> & {
   id?: string;
 };
 
-type UpdateRegistrationPatch = Partial<Pick<RegistrationRecord, 'status' | 'source' | 'externalId' | 'bankAccount' | 'visitorId'>>;
+type UpdateRegistrationPatch = Partial<Pick<RegistrationRecord, 'status' | 'source' | 'externalId' | 'bankAccount' | 'visitorId' | 'requestId'>> & {
+  mirrorState?: Partial<RegistrationMirrorState>;
+  auditEntry?: RegistrationAuditEntry;
+  auditEntries?: RegistrationAuditEntry[];
+};
+
+type SupabaseRegistrationRow = {
+  id: string;
+  location: SignupLocation;
+  locale: 'zh' | 'en';
+  name: string;
+  age: number;
+  profession: string;
+  email: string;
+  instagram?: string | null;
+  referral: string;
+  referral_other?: string | null;
+  bank_account?: string | null;
+  visitor_id?: string | null;
+  request_id?: string | null;
+  timestamp: string;
+  status: RegistrationRecordStatus;
+  source: RegistrationRecordSource;
+  external_id?: string | null;
+  mirror_state?: RegistrationMirrorState | null;
+  audit_trail?: RegistrationAuditEntry[] | null;
+  created_at: string;
+  updated_at: string;
+};
 
 const REGISTRATIONS_FALLBACK_FILE = '.local/registrations.json';
 const SUPABASE_REGISTRATIONS_TABLE = process.env.SUPABASE_REGISTRATIONS_TABLE || 'registrations';
 const PENDING_TTL_MS = 30 * 60 * 1000;
+
+function createDefaultMirrorState(): RegistrationMirrorState {
+  return {
+    notion: { enabled: process.env.SUBMIT_SAVE_TO_NOTION === '1', status: process.env.SUBMIT_SAVE_TO_NOTION === '1' ? 'pending' : 'not_configured' },
+    tally: { enabled: Boolean(process.env.TALLY_ENDPOINT_TW || process.env.TALLY_ENDPOINT_NL || process.env.TALLY_ENDPOINT_EN || process.env.TALLY_ENDPOINT_DETOX), status: 'not_configured' },
+    email: { enabled: Boolean(process.env.RESEND_API_KEY || process.env.EMAIL_OUTBOX_FILE), status: 'not_configured' },
+  };
+}
+
+function mergeMirrorState(current?: RegistrationMirrorState, patch?: Partial<RegistrationMirrorState>): RegistrationMirrorState {
+  const base = current || createDefaultMirrorState();
+
+  if (!patch) {
+    return base;
+  }
+
+  return {
+    notion: { ...base.notion, ...(patch.notion || {}) },
+    tally: { ...base.tally, ...(patch.tally || {}) },
+    email: { ...base.email, ...(patch.email || {}) },
+  };
+}
+
+function normalizeAuditTrail(value?: RegistrationAuditEntry[] | null): RegistrationAuditEntry[] {
+  return (value || []).filter((entry) => Boolean(entry?.at && entry?.event && entry?.actor && entry?.summary));
+}
+
+function normalizeRecord(record: RegistrationRecord): RegistrationRecord {
+  return {
+    ...record,
+    referralOther: record.referralOther || undefined,
+    bankAccount: record.bankAccount || undefined,
+    visitorId: record.visitorId || undefined,
+    requestId: record.requestId || undefined,
+    externalId: record.externalId || undefined,
+    mirrorState: mergeMirrorState(record.mirrorState),
+    auditTrail: normalizeAuditTrail(record.auditTrail),
+  };
+}
+
+function toSupabaseRow(record: RegistrationRecord): SupabaseRegistrationRow {
+  const normalized = normalizeRecord(record);
+
+  return {
+    id: normalized.id,
+    location: normalized.location,
+    locale: normalized.locale,
+    name: normalized.name,
+    age: normalized.age,
+    profession: normalized.profession,
+    email: normalized.email,
+    instagram: normalized.instagram || null,
+    referral: normalized.referral,
+    referral_other: normalized.referralOther || null,
+    bank_account: normalized.bankAccount || null,
+    visitor_id: normalized.visitorId || null,
+    request_id: normalized.requestId || null,
+    timestamp: normalized.timestamp,
+    status: normalized.status,
+    source: normalized.source,
+    external_id: normalized.externalId || null,
+    mirror_state: normalized.mirrorState || createDefaultMirrorState(),
+    audit_trail: normalized.auditTrail || [],
+    created_at: normalized.createdAt,
+    updated_at: normalized.updatedAt,
+  };
+}
+
+function fromSupabaseRow(row: SupabaseRegistrationRow): RegistrationRecord {
+  return normalizeRecord({
+    id: row.id,
+    location: row.location,
+    locale: row.locale,
+    name: row.name,
+    age: row.age,
+    profession: row.profession,
+    email: row.email,
+    instagram: row.instagram || undefined,
+    referral: row.referral,
+    referralOther: row.referral_other || undefined,
+    bankAccount: row.bank_account || undefined,
+    visitorId: row.visitor_id || undefined,
+    requestId: row.request_id || undefined,
+    timestamp: row.timestamp,
+    status: row.status,
+    source: row.source,
+    externalId: row.external_id || undefined,
+    mirrorState: row.mirror_state || undefined,
+    auditTrail: row.audit_trail || undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  });
+}
 
 function getSupabaseUrl(): string | null {
   return process.env.SUPABASE_URL || null;
@@ -89,14 +257,14 @@ export function isPersistentRegistrationStoreConfigured(): boolean {
 
 function readFallbackRegistrations(): RegistrationRecord[] {
   try {
-    return readJsonFile<RegistrationRecord[]>(REGISTRATIONS_FALLBACK_FILE);
+    return readJsonFile<RegistrationRecord[]>(REGISTRATIONS_FALLBACK_FILE).map((record) => normalizeRecord(record));
   } catch {
     return [];
   }
 }
 
 function writeFallbackRegistrations(records: RegistrationRecord[]): void {
-  writeJsonFile(REGISTRATIONS_FALLBACK_FILE, records);
+  writeJsonFile(REGISTRATIONS_FALLBACK_FILE, records.map((record) => normalizeRecord(record)));
 }
 
 function isActiveRegistration(record: RegistrationRecord): boolean {
@@ -114,6 +282,8 @@ function isActiveRegistration(record: RegistrationRecord): boolean {
 
 function filterRegistrations(records: RegistrationRecord[], filters: Omit<RegistrationListFilters, 'limit'>): RegistrationRecord[] {
   const searchTerm = filters.search?.trim().toLowerCase();
+  const createdAfter = filters.createdAfter ? new Date(filters.createdAfter).getTime() : Number.NaN;
+  const createdBefore = filters.createdBefore ? new Date(filters.createdBefore).getTime() : Number.NaN;
 
   return records.filter((record) => {
     if (filters.location && record.location !== filters.location) {
@@ -125,30 +295,68 @@ function filterRegistrations(records: RegistrationRecord[], filters: Omit<Regist
     if (filters.source && record.source !== filters.source) {
       return false;
     }
+    if (Number.isFinite(createdAfter) && new Date(record.timestamp).getTime() < createdAfter) {
+      return false;
+    }
+    if (Number.isFinite(createdBefore) && new Date(record.timestamp).getTime() > createdBefore) {
+      return false;
+    }
     if (!searchTerm) {
       return true;
     }
 
-    return [record.name, record.email, record.profession, record.instagram, record.externalId]
+    return [record.name, record.email, record.profession, record.instagram, record.externalId, record.requestId, record.bankAccount, record.visitorId]
       .filter((value): value is string => Boolean(value))
       .some((value) => value.toLowerCase().includes(searchTerm));
   });
 }
 
+async function getStoredRegistrationById(id: string): Promise<RegistrationRecord | null> {
+  if (isPersistentRegistrationStoreConfigured()) {
+    const response = await fetch(`${getSupabaseTableUrl()}?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, {
+      method: 'GET',
+      headers: getSupabaseHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const reason = await response.text().catch(() => 'unknown');
+      throw new Error(`Supabase registration lookup failed: ${response.status} ${reason}`);
+    }
+
+    const rows = await response.json() as SupabaseRegistrationRow[];
+    return rows[0] ? fromSupabaseRow(rows[0]) : null;
+  }
+
+  return readFallbackRegistrations().find((record) => record.id === id) || null;
+}
+
 export async function createRegistrationReservation(input: CreateRegistrationInput): Promise<RegistrationRecord> {
   const now = new Date().toISOString();
-  const record: RegistrationRecord = {
+  const record = normalizeRecord({
     ...input,
     id: input.id || cryptoRandomId(),
+    mirrorState: mergeMirrorState(input.mirrorState),
+    auditTrail: [
+      ...normalizeAuditTrail(input.auditTrail),
+      {
+        at: now,
+        event: 'reservation_created',
+        actor: 'system',
+        summary: 'Registration reservation created.',
+        requestId: input.requestId,
+        details: { status: input.status, source: input.source, location: input.location },
+      },
+    ],
     createdAt: now,
     updatedAt: now,
-  };
+  });
 
   if (isPersistentRegistrationStoreConfigured()) {
     const response = await fetch(getSupabaseTableUrl(), {
       method: 'POST',
       headers: getSupabaseHeaders({ Prefer: 'return=representation' }),
-      body: JSON.stringify([record]),
+      body: JSON.stringify([toSupabaseRow(record)]),
       cache: 'no-store',
     });
 
@@ -157,8 +365,8 @@ export async function createRegistrationReservation(input: CreateRegistrationInp
       throw new Error(`Supabase registration insert failed: ${response.status} ${reason}`);
     }
 
-    const rows = await response.json() as RegistrationRecord[];
-    return rows[0] || record;
+    const rows = await response.json() as SupabaseRegistrationRow[];
+    return rows[0] ? fromSupabaseRow(rows[0]) : record;
   }
 
   const records = readFallbackRegistrations();
@@ -170,11 +378,40 @@ export async function createRegistrationReservation(input: CreateRegistrationInp
 export async function updateRegistrationReservation(id: string, patch: UpdateRegistrationPatch): Promise<RegistrationRecord | null> {
   const updatedAt = new Date().toISOString();
 
+  const current = await getStoredRegistrationById(id);
+  if (!current) {
+    return null;
+  }
+
+  const auditTrail = [
+    ...normalizeAuditTrail(current.auditTrail),
+    ...normalizeAuditTrail(patch.auditEntries),
+    ...(patch.auditEntry ? [patch.auditEntry] : []),
+  ];
+
+  const updated = normalizeRecord({
+    ...current,
+    ...patch,
+    mirrorState: mergeMirrorState(current.mirrorState, patch.mirrorState),
+    auditTrail,
+    updatedAt,
+  });
+
   if (isPersistentRegistrationStoreConfigured()) {
     const response = await fetch(`${getSupabaseTableUrl()}?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
       headers: getSupabaseHeaders({ Prefer: 'return=representation' }),
-      body: JSON.stringify({ ...patch, updatedAt }),
+      body: JSON.stringify({
+        status: updated.status,
+        source: updated.source,
+        external_id: updated.externalId || null,
+        bank_account: updated.bankAccount || null,
+        visitor_id: updated.visitorId || null,
+        request_id: updated.requestId || null,
+        mirror_state: updated.mirrorState || createDefaultMirrorState(),
+        audit_trail: updated.auditTrail || [],
+        updated_at: updated.updatedAt,
+      }),
       cache: 'no-store',
     });
 
@@ -183,8 +420,8 @@ export async function updateRegistrationReservation(id: string, patch: UpdateReg
       throw new Error(`Supabase registration update failed: ${response.status} ${reason}`);
     }
 
-    const rows = await response.json() as RegistrationRecord[];
-    return rows[0] || null;
+    const rows = await response.json() as SupabaseRegistrationRow[];
+    return rows[0] ? fromSupabaseRow(rows[0]) : null;
   }
 
   const records = readFallbackRegistrations();
@@ -193,7 +430,6 @@ export async function updateRegistrationReservation(id: string, patch: UpdateReg
     return null;
   }
 
-  const updated = { ...records[index], ...patch, updatedAt };
   records[index] = updated;
   writeFallbackRegistrations(records);
   return updated;
@@ -246,9 +482,15 @@ export async function listStoredRegistrations(filters: RegistrationListFilters):
     if (filters.source) {
       queryParts.push(`source=eq.${encodeURIComponent(filters.source)}`);
     }
+    if (filters.createdAfter) {
+      queryParts.push(`timestamp=gte.${encodeURIComponent(filters.createdAfter)}`);
+    }
+    if (filters.createdBefore) {
+      queryParts.push(`timestamp=lte.${encodeURIComponent(filters.createdBefore)}`);
+    }
     if (filters.search?.trim()) {
       const token = `*${filters.search.trim()}*`;
-      queryParts.push(`or=${encodeURIComponent(`name.ilike.${token},email.ilike.${token},profession.ilike.${token}`)}`);
+      queryParts.push(`or=${encodeURIComponent(`name.ilike.${token},email.ilike.${token},profession.ilike.${token},external_id.ilike.${token},request_id.ilike.${token}`)}`);
     }
 
     const response = await fetch(`${getSupabaseTableUrl()}?${queryParts.join('&')}`, {
@@ -262,7 +504,8 @@ export async function listStoredRegistrations(filters: RegistrationListFilters):
       throw new Error(`Supabase registration list failed: ${response.status} ${reason}`);
     }
 
-    return await response.json() as RegistrationRecord[];
+    const rows = await response.json() as SupabaseRegistrationRow[];
+    return rows.map((row) => fromSupabaseRow(row));
   }
 
   const records = filterRegistrations(readFallbackRegistrations(), filters)
@@ -281,6 +524,12 @@ async function countStoredRegistrations(filters: Omit<RegistrationListFilters, '
     }
     if (filters.source) {
       queryParts.push(`source=eq.${encodeURIComponent(filters.source)}`);
+    }
+    if (filters.createdAfter) {
+      queryParts.push(`timestamp=gte.${encodeURIComponent(filters.createdAfter)}`);
+    }
+    if (filters.createdBefore) {
+      queryParts.push(`timestamp=lte.${encodeURIComponent(filters.createdBefore)}`);
     }
 
     const response = await fetch(`${getSupabaseTableUrl()}?${queryParts.join('&')}`, {
@@ -328,13 +577,83 @@ export async function summarizeStoredRegistrations(): Promise<RegistrationAuditS
   })));
 
   const notionMirrored = await countStoredRegistrations({ source: 'notion' });
+  const failedMirrors = (await listStoredRegistrations({ limit: 1000 })).filter((record) => record.mirrorState?.notion?.status === 'failed' || record.mirrorState?.tally?.status === 'failed').length;
 
   return {
     total: byStatus.pending + byStatus.confirmed + byStatus.cancelled,
     byStatus,
     byLocation,
     notionMirrored,
+    failedMirrors,
   };
+}
+
+function escapeCsvValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const text = typeof value === 'string' ? value : JSON.stringify(value);
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+export function serializeRegistrationsCsv(records: RegistrationRecord[]): string {
+  const headers = [
+    'id',
+    'createdAt',
+    'updatedAt',
+    'timestamp',
+    'location',
+    'locale',
+    'name',
+    'email',
+    'age',
+    'profession',
+    'instagram',
+    'referral',
+    'referralOther',
+    'bankAccount',
+    'visitorId',
+    'requestId',
+    'status',
+    'source',
+    'externalId',
+    'notionStatus',
+    'tallyStatus',
+    'emailStatus',
+    'auditTrail',
+  ];
+
+  const rows = records.map((record) => [
+    record.id,
+    record.createdAt,
+    record.updatedAt,
+    record.timestamp,
+    record.location,
+    record.locale,
+    record.name,
+    record.email,
+    record.age,
+    record.profession,
+    record.instagram,
+    record.referral,
+    record.referralOther,
+    record.bankAccount,
+    record.visitorId,
+    record.requestId,
+    record.status,
+    record.source,
+    record.externalId,
+    record.mirrorState?.notion?.status,
+    record.mirrorState?.tally?.status,
+    record.mirrorState?.email?.status,
+    record.auditTrail,
+  ]);
+
+  return [headers, ...rows].map((row) => row.map((value) => escapeCsvValue(value)).join(',')).join('\n');
 }
 
 export async function resetRegistrationsForTesting(location: SignupLocation): Promise<void> {
