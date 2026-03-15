@@ -1,9 +1,11 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 type BookRecord = {
+  id: string | number;
   slug: string;
   title: string;
   titleEn?: string;
+  sortOrder?: number;
   [key: string]: unknown;
 };
 
@@ -56,6 +58,23 @@ async function readAdminState<T>(request: APIRequestContext, path: string, key: 
   return payload[key] as T;
 }
 
+async function restoreAdminState(request: APIRequestContext, path: string, data: Record<string, unknown>) {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await request.put(path, { headers: adminHeaders, data });
+      expect(response.ok()).toBeTruthy();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+
+  throw lastError;
+}
+
 async function signIn(page: Page) {
   await page.goto('/admin', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('[data-ready="true"]')).toBeVisible();
@@ -88,10 +107,10 @@ test.describe.serial('admin dashboard', () => {
   });
 
   test.afterEach(async ({ request }) => {
-    await request.put('/api/admin/books', { headers: adminHeaders, data: { books: originalBooks } });
-    await request.put('/api/admin/events', { headers: adminHeaders, data: { events: originalEvents } });
-    await request.put('/api/admin/capacity', { headers: adminHeaders, data: { capacity: originalCapacity } });
-    await request.put('/api/admin/email', { headers: adminHeaders, data: { settings: originalEmailSettings } });
+    await restoreAdminState(request, '/api/admin/books', { books: originalBooks });
+    await restoreAdminState(request, '/api/admin/events', { events: originalEvents });
+    await restoreAdminState(request, '/api/admin/capacity', { capacity: originalCapacity });
+    await restoreAdminState(request, '/api/admin/email', { settings: originalEmailSettings });
     await request.delete('/api/admin/email?outbox=1', { headers: adminHeaders });
 
     for (const location of ['TW', 'NL', 'EN', 'DETOX']) {
@@ -169,6 +188,27 @@ test.describe.serial('admin dashboard', () => {
     });
   });
 
+  test('keeps book editing stable after changing the slug and persists later field edits', async ({ page }) => {
+    const updatedSlug = `stable-admin-book-${Date.now()}`;
+    const updatedTitle = `Stable Admin Title ${Date.now()}`;
+
+    await signIn(page);
+    await page.getByRole('button', { name: 'Books', exact: true }).click();
+
+    const booksEditor = page.getByLabel('Books editor');
+    await booksEditor.getByLabel('Slug').fill(updatedSlug);
+    await booksEditor.getByLabel('Title (EN)').fill(updatedTitle);
+
+    const saveResponse = page.waitForResponse((response) => response.url().includes('/api/admin/books') && response.request().method() === 'PUT');
+    await booksEditor.getByRole('button', { name: 'Save books' }).click();
+    expect((await saveResponse).ok()).toBeTruthy();
+
+    await withPreviewPage(page, async (previewPage) => {
+      await previewPage.goto(`/en/books/${updatedSlug}`, { waitUntil: 'domcontentloaded' });
+      await expect(previewPage.getByRole('heading', { name: updatedTitle })).toBeVisible();
+    });
+  });
+
   test('supports load more and drag-reordering books, and syncs the order to public pages', async ({ page }) => {
     test.skip(originalBooks.length < 11, 'Requires more than 10 books to verify load more behavior.');
 
@@ -203,6 +243,35 @@ test.describe.serial('admin dashboard', () => {
     });
 
     expect(originalFirst.slug).not.toBe(originalSecond.slug);
+  });
+
+  test('can delete a draft book and remove it from the public books page after saving', async ({ page }) => {
+    const deletedSlug = `deleted-admin-book-${Date.now()}`;
+
+    await signIn(page);
+    await page.getByRole('button', { name: 'Books', exact: true }).click();
+
+    const booksEditor = page.getByLabel('Books editor');
+    await booksEditor.getByRole('button', { name: 'Add book' }).click();
+    await booksEditor.getByLabel('Slug').fill(deletedSlug);
+    await booksEditor.getByLabel('Title (EN)').fill('Delete Me');
+
+    const saveAddedResponse = page.waitForResponse((response) => response.url().includes('/api/admin/books') && response.request().method() === 'PUT');
+    await booksEditor.getByRole('button', { name: 'Save books' }).click();
+    expect((await saveAddedResponse).ok()).toBeTruthy();
+
+    page.once('dialog', (dialog) => dialog.accept());
+    await booksEditor.getByRole('button', { name: 'Delete book' }).click();
+    await expect(booksEditor.getByLabel('Slug')).not.toHaveValue(deletedSlug);
+
+    const saveDeletedResponse = page.waitForResponse((response) => response.url().includes('/api/admin/books') && response.request().method() === 'PUT');
+    await booksEditor.getByRole('button', { name: 'Save books' }).click();
+    expect((await saveDeletedResponse).ok()).toBeTruthy();
+
+    await withPreviewPage(page, async (previewPage) => {
+      await previewPage.goto('/en/books', { waitUntil: 'domcontentloaded' });
+      await expect(previewPage.getByRole('link', { name: /Delete Me/i })).toHaveCount(0);
+    });
   });
 
   test('can upload an optimized cover from admin and publish it directly to the public book page', async ({ page }) => {
@@ -393,5 +462,33 @@ test.describe.serial('admin dashboard', () => {
     expect(outbox[0].subject).toContain(subject);
     expect(outbox[0].text).toContain('管理員測試用戶');
     expect(outbox[0].text).toContain('台灣讀書會');
+  });
+
+  test('shows the admin-specific favicon and the registrations audit viewer', async ({ page, request }) => {
+    const now = Date.now();
+    const resetResponse = await request.delete('/api/submit?loc=EN&tempMax=3&forceFull=0');
+    expect(resetResponse.ok()).toBeTruthy();
+
+    const submitResponse = await request.post('/api/submit?loc=EN', {
+      data: {
+        locale: 'en',
+        name: 'Viewer Reader',
+        age: 31,
+        profession: 'Analyst',
+        email: `viewer-${now}@example.com`,
+        referral: 'Instagram',
+      },
+    });
+    expect(submitResponse.status()).toBe(201);
+
+    await signIn(page);
+    const faviconHref = await page.locator('link[rel="icon"]').first().getAttribute('href');
+    expect(faviconHref).toContain('/images/favicon-en.ico');
+
+    await page.getByRole('button', { name: 'Registrations', exact: true }).click();
+    const viewer = page.getByLabel('Registrations viewer');
+    await expect(viewer.getByRole('heading', { name: 'Registrations audit' })).toBeVisible();
+    await expect(viewer.getByText('Viewer Reader')).toBeVisible({ timeout: 15000 });
+    await expect(viewer.getByText('registration-store')).toBeVisible();
   });
 });
