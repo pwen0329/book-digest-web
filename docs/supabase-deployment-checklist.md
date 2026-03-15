@@ -14,8 +14,9 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 
 1. Create a new Supabase project.
 2. Copy the project URL.
-3. Copy the service-role key from Project Settings -> API.
-4. Never expose the service-role key to the browser.
+3. Set a strong Supabase database password during project creation and keep it only in your password manager. The app does not need the raw database password unless you later connect with psql or migration tools.
+4. Copy the service-role key from Project Settings -> API.
+5. Never expose the service-role key to the browser.
 
 ## Initialize Database And Storage
 
@@ -54,6 +55,26 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 8. Optional: `RESEND_API_KEY`
 9. Optional: `REGISTRATION_EMAIL_FROM`
 10. Optional: `REGISTRATION_EMAIL_REPLY_TO`
+11. Optional: `NOTION_TOKEN`
+12. Optional: `NOTION_DB_ID`
+13. Optional: `SUBMIT_SAVE_TO_NOTION=1`
+14. Optional: `TALLY_ENDPOINT_TW`, `TALLY_ENDPOINT_NL`, `TALLY_ENDPOINT_EN`, `TALLY_ENDPOINT_DETOX`
+15. Recommended for Supabase-first setup: leave `NEXT_PUBLIC_FORMS_ENDPOINT_*` empty so public forms keep posting to the built-in `/api/submit` route.
+
+## Secrets And Where To Store Them
+
+1. Store `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `NOTION_TOKEN`, and `TURNSTILE_SECRET_KEY` only in Vercel project environment variables or another server-side secret manager.
+2. Store the Supabase project password only in your password manager. Do not put it in `.env` unless you explicitly add a direct database client later.
+3. `NEXT_PUBLIC_*` values are browser-visible by design, so never put passwords or service-role keys in them.
+4. If you use local development, put secrets in `.env.local`; do not commit `.env.local`.
+
+## Recommended Setup
+
+1. For the simplest production stack, use Supabase plus the built-in `/api/submit` route.
+2. In that setup, Supabase becomes the source of truth for admin documents, registrations, and uploaded assets.
+3. Notion becomes optional. Only enable it if you want a secondary mirror for manual ops or CRM workflows.
+4. Tally also becomes optional. Only enable it if you still need to forward submissions to an external form endpoint or legacy workflow.
+5. For the integration logic and decision tree, read [docs/admin-data-flow.md](/data/yy/book-digest-web/docs/admin-data-flow.md).
 
 ## Post-Deploy Verification
 
