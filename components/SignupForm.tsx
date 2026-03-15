@@ -50,7 +50,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
   const t = useTranslations('form');
   const tEvents = useTranslations('events');
   const locale = useLocale();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [hasRestoredState, setHasRestoredState] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<null | 'ok' | 'error'>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -69,6 +69,20 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
 
   const [values, setValues] = useState<SignupFormValues>({ ...EMPTY_SIGNUP_FORM_VALUES });
 
+  const persistValues = useCallback((nextValues: SignupFormValues) => {
+    if (!hasRestoredState) {
+      return;
+    }
+
+    try {
+      const toSave = { ...nextValues };
+      delete toSave.website;
+      sessionStorage.setItem(storageKey, JSON.stringify(toSave));
+    } catch (error) {
+      console.warn('[signup] Failed to persist form state.', error);
+    }
+  }, [hasRestoredState, storageKey]);
+
   useEffect(() => {
     let restoredValues = { ...EMPTY_SIGNUP_FORM_VALUES };
 
@@ -79,20 +93,13 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
     }
 
     setValues(restoredValues);
-    setIsHydrated(true);
+    setHasRestoredState(true);
   }, [storageKey]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { website, ...toSave } = values;
-      sessionStorage.setItem(storageKey, JSON.stringify(toSave));
-    } catch (error) {
-      console.warn('[signup] Failed to persist form state.', error);
-    }
-  }, [isHydrated, values, storageKey]);
+    if (!hasRestoredState) return;
+    persistValues(values);
+  }, [hasRestoredState, persistValues, values]);
 
   useEffect(() => () => {
     if (submitRequestRef.current && typeof submitRequestRef.current.abort === 'function') {
@@ -106,7 +113,11 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
     const { name } = target;
     const isCheckbox = (target as HTMLInputElement).type === 'checkbox';
     const nextValue = isCheckbox ? (target as HTMLInputElement).checked : target.value;
-    setValues((v) => ({ ...v, [name]: nextValue }));
+    setValues((currentValues) => {
+      const nextValues = { ...currentValues, [name]: nextValue };
+      persistValues(nextValues);
+      return nextValues;
+    });
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
@@ -214,15 +225,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
       : location === 'EN'
         ? tEvents('english')
         : tEvents('detoxTitle');
-  const isInputDisabled = disabled || !isHydrated;
-
-  if (!isHydrated) {
-    return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/80" aria-busy="true">
-        {locale === 'zh' ? '載入表單中...' : 'Loading form...'}
-      </div>
-    );
-  }
+  const isInputDisabled = disabled;
 
   return (
     <div>
@@ -372,7 +375,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
         <div className="pt-4">
           <button
             type="submit"
-            disabled={submitting || disabled || !isHydrated}
+            disabled={submitting || disabled || !hasRestoredState}
             className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all disabled:opacity-60 ${locale === 'zh' ? 'tracking-widest' : ''}`}
           >
             {submitting ? t('submitting') : t('submit')}

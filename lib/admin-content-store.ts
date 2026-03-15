@@ -1,5 +1,6 @@
 import 'server-only';
 
+import path from 'node:path';
 import { statSync } from 'node:fs';
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { readJsonFile, resolveWorkspacePath, writeJsonFile } from '@/lib/json-store';
@@ -20,13 +21,49 @@ export class AdminDocumentConflictError extends Error {
 
 const SUPABASE_ADMIN_TABLE = process.env.SUPABASE_ADMIN_DOCUMENTS_TABLE || 'admin_documents';
 const ADMIN_DOCUMENTS_CACHE_TAG = 'admin-documents';
+const LOCAL_ADMIN_DOCUMENTS_ROOT = '.local/playwright-admin-documents';
+
+function shouldForceLocalPersistentStores(): boolean {
+  return process.env.FORCE_LOCAL_PERSISTENT_STORES === '1';
+}
 
 function getSupabaseUrl(): string | null {
+  if (shouldForceLocalPersistentStores()) {
+    return null;
+  }
+
   return process.env.SUPABASE_URL || null;
 }
 
 function getSupabaseServiceRoleKey(): string | null {
+  if (shouldForceLocalPersistentStores()) {
+    return null;
+  }
+
   return process.env.SUPABASE_SERVICE_ROLE_KEY || null;
+}
+
+function getEffectiveFallbackFile(fallbackFile: string): string {
+  if (!shouldForceLocalPersistentStores()) {
+    return fallbackFile;
+  }
+
+  return path.join(LOCAL_ADMIN_DOCUMENTS_ROOT, path.basename(fallbackFile));
+}
+
+function ensureEffectiveFallbackSeed(fallbackFile: string): string {
+  const effectiveFallbackFile = getEffectiveFallbackFile(fallbackFile);
+  if (effectiveFallbackFile === fallbackFile) {
+    return fallbackFile;
+  }
+
+  try {
+    statSync(resolveWorkspacePath(effectiveFallbackFile));
+    return effectiveFallbackFile;
+  } catch {
+    writeJsonFile(effectiveFallbackFile, readJsonFile(fallbackFile));
+    return effectiveFallbackFile;
+  }
 }
 
 export function isPersistentAdminStoreConfigured(): boolean {
@@ -117,20 +154,22 @@ type LoaderOptions<T> = {
 
 function getLocalDocumentUpdatedAt(fallbackFile: string): string | null {
   try {
-    return statSync(resolveWorkspacePath(fallbackFile)).mtime.toISOString();
+    return statSync(resolveWorkspacePath(ensureEffectiveFallbackSeed(fallbackFile))).mtime.toISOString();
   } catch {
     return null;
   }
 }
 
 async function loadDocumentUncached<T>({ key, fallbackFile, fallbackValue }: LoaderOptions<T>): Promise<AdminDocumentRecord<T>> {
+  const effectiveFallbackFile = ensureEffectiveFallbackSeed(fallbackFile);
+
   if (isPersistentAdminStoreConfigured()) {
     const remoteValue = await readFromSupabase<T>(key);
     if (remoteValue !== null) {
       return remoteValue;
     }
 
-    const fileValue = readJsonFile<T>(fallbackFile);
+    const fileValue = readJsonFile<T>(effectiveFallbackFile);
     return writeToSupabase(key, fileValue);
   }
 
@@ -138,7 +177,7 @@ async function loadDocumentUncached<T>({ key, fallbackFile, fallbackValue }: Loa
     return { value: fallbackValue, updatedAt: null };
   }
 
-  return { value: readJsonFile<T>(fallbackFile), updatedAt: getLocalDocumentUpdatedAt(fallbackFile) };
+  return { value: readJsonFile<T>(effectiveFallbackFile), updatedAt: getLocalDocumentUpdatedAt(effectiveFallbackFile) };
 }
 
 export async function loadAdminDocument<T>(options: LoaderOptions<T>): Promise<T> {
@@ -170,17 +209,18 @@ export async function saveAdminDocument<T>({ key, fallbackFile }: LoaderOptions<
 
 export async function saveAdminDocumentRecord<T>({ key, fallbackFile }: LoaderOptions<T>, value: T, expectedUpdatedAt?: string | null): Promise<AdminDocumentRecord<T>> {
   let savedRecord: AdminDocumentRecord<T>;
+  const effectiveFallbackFile = ensureEffectiveFallbackSeed(fallbackFile);
 
   if (isPersistentAdminStoreConfigured()) {
     savedRecord = await writeToSupabase(key, value, expectedUpdatedAt);
   } else {
-    const currentUpdatedAt = getLocalDocumentUpdatedAt(fallbackFile);
+    const currentUpdatedAt = getLocalDocumentUpdatedAt(effectiveFallbackFile);
     if (expectedUpdatedAt !== undefined && expectedUpdatedAt !== (currentUpdatedAt || null)) {
       throw new AdminDocumentConflictError(`The ${key} document changed on the server. Refresh before saving again.`);
     }
 
-    writeJsonFile(fallbackFile, value);
-    savedRecord = { value, updatedAt: getLocalDocumentUpdatedAt(fallbackFile) || new Date().toISOString() };
+    writeJsonFile(effectiveFallbackFile, value);
+    savedRecord = { value, updatedAt: getLocalDocumentUpdatedAt(effectiveFallbackFile) || new Date().toISOString() };
   }
 
   revalidateTag(ADMIN_DOCUMENTS_CACHE_TAG);

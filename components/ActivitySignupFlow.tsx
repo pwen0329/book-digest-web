@@ -249,21 +249,22 @@ export default function ActivitySignupFlow({
                           {blockReason === 'full' ? tSignup('fullBody') : tSignup('closedBody')}
                         </p>
                       </div>
-                    ) : checkingSlot ? (
-                      <div className="text-white/80">{tSignup('checkingAvailability')}</div>
                     ) : slotError ? (
                       <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-6 text-red-100">
                         {slotError}
                       </div>
                     ) : (
-                      <SignupForm
-                        key={location}
-                        location={location}
-                        onComplete={(vals) => {
-                          setFormValues(vals);
-                          setStep(1);
-                        }}
-                      />
+                      <div className="space-y-4">
+                        {checkingSlot ? <div className="text-sm text-white/70">{tSignup('checkingAvailability')}</div> : null}
+                        <SignupForm
+                          key={location}
+                          location={location}
+                          onComplete={(vals) => {
+                            setFormValues(vals);
+                            setStep(1);
+                          }}
+                        />
+                      </div>
                     )
                   )}
 

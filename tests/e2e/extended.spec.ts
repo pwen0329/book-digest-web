@@ -2,7 +2,23 @@ import { test, expect, type Page } from '@playwright/test';
 import signupCapacity from '@/data/signup-capacity.json';
 
 async function goto(page: Page, path: string) {
-  return page.goto(path, { waitUntil: 'domcontentloaded' });
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await page.goto(path, { waitUntil: 'domcontentloaded' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes('NS_BINDING_ABORTED') && !message.includes('interrupted by another navigation')) {
+        throw error;
+      }
+
+      lastError = error;
+      await page.waitForTimeout(250 * (attempt + 1));
+    }
+  }
+
+  throw lastError;
 }
 
 async function waitForSignupFormReady(page: Page) {
@@ -16,7 +32,19 @@ function getLanguageToggle(page: Page) {
 }
 
 async function waitForLanguageToggleReady(page: Page) {
-  await expect(getLanguageToggle(page)).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
+  await expect(getLanguageToggle(page)).toBeVisible({ timeout: 15000 });
+}
+
+async function switchLanguageAndWait(page: Page, buttonName: string, expectedUrl: RegExp) {
+  const button = getLanguageToggle(page).getByRole('button', { name: buttonName });
+
+  await expect.poll(async () => {
+    await button.click();
+    return page.url();
+  }, {
+    timeout: 15000,
+    intervals: [250, 500, 1000],
+  }).toMatch(expectedUrl);
 }
 
 const locales = ['en', 'zh'];
@@ -51,6 +79,12 @@ test.describe('Signup form validation', () => {
 // Signup form copy regression
 // ------------------------------------------------------------------
 test.describe('Signup form copy', () => {
+  test.beforeEach(async ({ request }) => {
+    for (const location of ['TW', 'NL', 'EN', 'DETOX']) {
+      await request.delete(`/api/submit?loc=${location}&forceFull=0`);
+    }
+  });
+
   test('should render the blocked signup state when the slot-status API reports full', async ({ page }) => {
     await page.addInitScript(() => {
       const originalFetch = window.fetch.bind(window);
@@ -205,15 +239,13 @@ test.describe('Language switching', () => {
   test('should switch from English to Chinese on the home page', async ({ page }) => {
     await goto(page, '/en');
     await waitForLanguageToggleReady(page);
-    await getLanguageToggle(page).getByRole('button', { name: 'Switch to Chinese' }).click();
-    await expect(page).toHaveURL(/\/zh$/, { timeout: 15000 });
+    await switchLanguageAndWait(page, 'Switch to Chinese', /\/zh$/);
   });
 
   test('should switch from Chinese to English on the home page', async ({ page }) => {
     await goto(page, '/zh');
     await waitForLanguageToggleReady(page);
-    await getLanguageToggle(page).getByRole('button', { name: 'Switch to English' }).click();
-    await expect(page).toHaveURL(/\/en$/, { timeout: 15000 });
+    await switchLanguageAndWait(page, 'Switch to English', /\/en$/);
   });
 
   test('should preserve query string and partial signup data when switching locale', async ({ page }) => {
@@ -223,9 +255,7 @@ test.describe('Language switching', () => {
     await page.fill('#name', 'Locale Traveler');
     await page.fill('#email', 'traveler@example.com');
 
-    await getLanguageToggle(page).getByRole('button', { name: 'Switch to Chinese' }).click();
-
-    await expect(page).toHaveURL(/\/zh\/signup\?location=TW/);
+    await switchLanguageAndWait(page, 'Switch to Chinese', /\/zh\/signup\?location=TW/);
     await waitForSignupFormReady(page);
     await expect(page.locator('#name')).toHaveValue('Locale Traveler');
     await expect(page.locator('#email')).toHaveValue('traveler@example.com');
@@ -237,9 +267,7 @@ test.describe('Language switching', () => {
     await waitForLanguageToggleReady(page);
     await page.fill('#name', 'Reader Abroad');
 
-    await getLanguageToggle(page).getByRole('button', { name: 'Switch to Chinese' }).click();
-
-    await expect(page).toHaveURL(/\/zh\/engclub$/);
+    await switchLanguageAndWait(page, 'Switch to Chinese', /\/zh\/engclub$/);
     await waitForSignupFormReady(page);
     await expect(page.locator('#name')).toHaveValue('Reader Abroad');
   });

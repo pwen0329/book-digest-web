@@ -7,7 +7,15 @@ import { resolveWorkspacePath } from '@/lib/json-store';
 const SUPABASE_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'admin-assets';
 const LOCAL_UPLOAD_ROOT = path.join('.local', 'uploads', 'admin');
 
+function shouldForceLocalPersistentStores(): boolean {
+  return process.env.FORCE_LOCAL_PERSISTENT_STORES === '1';
+}
+
 export function isPersistentUploadStoreConfigured(): boolean {
+  if (shouldForceLocalPersistentStores()) {
+    return false;
+  }
+
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 

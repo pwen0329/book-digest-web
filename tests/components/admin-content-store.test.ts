@@ -12,6 +12,8 @@ describe('admin content store', () => {
   });
 
   it('falls back to the local JSON document when Supabase is not configured', async () => {
+    vi.stubEnv('FORCE_LOCAL_PERSISTENT_STORES', '1');
+
     const settings = await loadAdminDocument<RegistrationSuccessEmailSettings>({
       key: 'registration-success-email',
       fallbackFile: 'data/registration-success-email.json',
@@ -21,6 +23,7 @@ describe('admin content store', () => {
   });
 
   it('prefers the remote Supabase document when persistent storage is configured', async () => {
+    vi.stubEnv('FORCE_LOCAL_PERSISTENT_STORES', '0');
     vi.stubEnv('SUPABASE_URL', 'https://example.supabase.co');
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
 

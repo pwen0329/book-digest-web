@@ -123,9 +123,15 @@ type SupabaseRegistrationRow = {
   updated_at: string;
 };
 
-const REGISTRATIONS_FALLBACK_FILE = '.local/registrations.json';
+const REGISTRATIONS_FALLBACK_FILE = process.env.FORCE_LOCAL_PERSISTENT_STORES === '1'
+  ? '.local/playwright-registrations.json'
+  : '.local/registrations.json';
 const SUPABASE_REGISTRATIONS_TABLE = process.env.SUPABASE_REGISTRATIONS_TABLE || 'registrations';
 const PENDING_TTL_MS = 30 * 60 * 1000;
+
+function shouldForceLocalPersistentStores(): boolean {
+  return process.env.FORCE_LOCAL_PERSISTENT_STORES === '1';
+}
 
 function createDefaultMirrorState(): RegistrationMirrorState {
   return {
@@ -221,10 +227,18 @@ function fromSupabaseRow(row: SupabaseRegistrationRow): RegistrationRecord {
 }
 
 function getSupabaseUrl(): string | null {
+  if (shouldForceLocalPersistentStores()) {
+    return null;
+  }
+
   return process.env.SUPABASE_URL || null;
 }
 
 function getSupabaseServiceRoleKey(): string | null {
+  if (shouldForceLocalPersistentStores()) {
+    return null;
+  }
+
   return process.env.SUPABASE_SERVICE_ROLE_KEY || null;
 }
 

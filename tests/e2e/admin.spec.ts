@@ -94,6 +94,8 @@ async function withPreviewPage(page: Page, callback: (previewPage: Page) => Prom
 }
 
 test.describe.serial('admin dashboard', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'Admin mutation tests run once to avoid shared-state conflicts across browser projects.');
+
   let originalBooks: BookRecord[];
   let originalEvents: EventContentMap;
   let originalCapacity: CapacityConfigFile;
