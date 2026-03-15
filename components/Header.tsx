@@ -73,6 +73,10 @@ export default function Header() {
     setIsReady(true);
   }, []);
 
+  const matchesPath = useCallback((targetPath: string) => {
+    return pathname === targetPath || pathname.startsWith(`${targetPath}/`);
+  }, [pathname]);
+
   // Helper to check if link is active
   const isActive = useCallback((href: string) => {
     // Support both localized (/zh/books) and non-localized (/books) paths
@@ -81,17 +85,15 @@ export default function Header() {
     if (href === '/') {
       return (
         pathname === `/${locale}` ||
-        pathname === '/' ||
-        pathname.startsWith(localized)
+        pathname === '/'
       );
     }
 
     return (
-      pathname.startsWith(localized) ||
-      pathname === href ||
-      pathname.startsWith(`${href}/`)
+      matchesPath(localized) ||
+      matchesPath(href)
     );
-  }, [pathname, locale]);
+  }, [locale, matchesPath, pathname]);
 
   const toggleMobileMenu = useCallback(() => {
     setMobileMenuOpen(prev => !prev);
@@ -123,9 +125,9 @@ export default function Header() {
 
   return (
     <header data-ready={isReady ? 'true' : 'false'} className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-60 border-b border-white/10 py-3 md:py-4">
-      <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative md:pr-44 lg:pr-36">
+      <div data-testid="header-shell" className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
         {/* Desktop/tablet: grid layout with equal width nav items */}
-        <nav aria-label="Primary" className="hidden md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)] items-center h-full gap-4 lg:gap-6">
+        <nav data-testid="header-primary-nav" aria-label="Primary" className="hidden md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)] items-center h-full gap-4 lg:gap-6">
           <NavLink href={`/${locale}/books`} isActive={isActive('/books')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('books')}</NavLink>
           <NavLink href={`/${locale}/events`} isActive={isActive('/events')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('events')}</NavLink>
           <Link href={`/${locale}`} className="flex items-center justify-center" aria-label="Home" prefetch={true}>

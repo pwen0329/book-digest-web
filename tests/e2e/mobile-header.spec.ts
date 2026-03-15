@@ -64,8 +64,10 @@ test.describe('Mobile header', () => {
       const aboutLabel = locale === 'zh' ? '關於我們' : 'About Us';
       const aboutLink = page.getByRole('link', { name: aboutLabel });
       await expect(aboutLink).toBeVisible();
-      await aboutLink.click();
-      await expect(page).toHaveURL(new RegExp(`/${locale}/about$`));
+      await Promise.all([
+        page.waitForURL(new RegExp(`/${locale}/about$`), { timeout: 15000 }),
+        aboutLink.click(),
+      ]);
     });
 
     test(`should navigate back home from a secondary page via the mobile logo for /${locale}`, async ({ page }) => {

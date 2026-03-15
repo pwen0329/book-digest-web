@@ -9,35 +9,39 @@ test.describe('Header utilities', () => {
 
     const metrics = await page.evaluate(() => {
       const header = document.querySelector('header');
+      const shell = document.querySelector('[data-testid="header-shell"]');
+      const nav = document.querySelector('[data-testid="header-primary-nav"]');
       const langToggle = document.querySelector('[data-testid="floating-lang-toggle"] [aria-label="Language selector"]');
       const instagram = document.querySelector('[aria-label="Follow us on Instagram"]');
       const joinUsLink = document.querySelector('nav[aria-label="Primary"] a[href$="/joinus"]');
 
-      if (!header || !langToggle || !instagram || !joinUsLink) {
+      if (!header || !shell || !nav || !langToggle || !instagram || !joinUsLink) {
         return null;
       }
 
       const headerRect = header.getBoundingClientRect();
+      const shellRect = shell.getBoundingClientRect();
+      const shellStyles = window.getComputedStyle(shell);
+      const navRect = nav.getBoundingClientRect();
       const langRect = langToggle.getBoundingClientRect();
       const instagramRect = instagram.getBoundingClientRect();
-      const joinUsRect = joinUsLink.getBoundingClientRect();
 
       return {
         headerTop: headerRect.top,
+        shellInnerWidth: shellRect.width - parseFloat(shellStyles.paddingLeft) - parseFloat(shellStyles.paddingRight),
+        navWidth: navRect.width,
         langTop: langRect.top,
         langRightGap: window.innerWidth - langRect.right,
         langWidth: langRect.width,
-        navGap: langRect.left - joinUsRect.right,
         instagramTopRatio: instagramRect.top / window.innerHeight,
       };
     });
 
     expect(metrics).not.toBeNull();
     expect(metrics!.langTop).toBeGreaterThanOrEqual(metrics!.headerTop);
-    expect(metrics!.langRightGap).toBeGreaterThanOrEqual(8);
-    expect(metrics!.langRightGap).toBeLessThanOrEqual(20);
+    expect(Math.abs(metrics!.navWidth - metrics!.shellInnerWidth)).toBeLessThanOrEqual(1);
+    expect(metrics!.langRightGap).toBeGreaterThanOrEqual(120);
     expect(metrics!.langWidth).toBeGreaterThan(110);
-    expect(metrics!.navGap).toBeGreaterThan(12);
     expect(metrics!.instagramTopRatio).toBeGreaterThan(0.2);
     expect(metrics!.instagramTopRatio).toBeLessThan(0.4);
 
@@ -57,32 +61,36 @@ test.describe('Header utilities', () => {
 
     const metrics = await page.evaluate(() => {
       const header = document.querySelector('header');
+      const shell = document.querySelector('[data-testid="header-shell"]');
+      const nav = document.querySelector('[data-testid="header-primary-nav"]');
       const langToggle = document.querySelector('[data-testid="floating-lang-toggle"] [aria-label="Language selector"]');
-      const joinUsLink = document.querySelector('nav[aria-label="Primary"] a[href$="/joinus"]');
 
-      if (!header || !langToggle || !joinUsLink) {
+      if (!header || !shell || !nav || !langToggle) {
         return null;
       }
 
       const headerRect = header.getBoundingClientRect();
+      const shellRect = shell.getBoundingClientRect();
+      const shellStyles = window.getComputedStyle(shell);
+      const navRect = nav.getBoundingClientRect();
       const langRect = langToggle.getBoundingClientRect();
-      const joinUsRect = joinUsLink.getBoundingClientRect();
 
       return {
         langTop: langRect.top,
         headerTop: headerRect.top,
+        shellInnerWidth: shellRect.width - parseFloat(shellStyles.paddingLeft) - parseFloat(shellStyles.paddingRight),
+        navWidth: navRect.width,
         langRightGap: window.innerWidth - langRect.right,
         langWidth: langRect.width,
-        navGap: langRect.left - joinUsRect.right,
       };
     });
 
     expect(metrics).not.toBeNull();
     expect(metrics!.langTop).toBeGreaterThanOrEqual(metrics!.headerTop);
+    expect(Math.abs(metrics!.navWidth - metrics!.shellInnerWidth)).toBeLessThanOrEqual(1);
     expect(metrics!.langRightGap).toBeGreaterThanOrEqual(8);
     expect(metrics!.langRightGap).toBeLessThanOrEqual(20);
     expect(metrics!.langWidth).toBeGreaterThan(110);
-    expect(metrics!.navGap).toBeGreaterThan(12);
   });
 
   test('keeps the mobile Instagram button closer to the lower third', async ({ page }) => {

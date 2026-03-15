@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import LangToggle from '@/components/LangToggle';
 
 const DESKTOP_BREAKPOINT = 768;
+const HEADER_SHELL_MAX_WIDTH = 1152;
+const HEADER_SHELL_HORIZONTAL_PADDING = 48;
 const TOP_GAP = 12;
 const RIGHT_GAP = 12;
 
@@ -24,10 +26,13 @@ function getFloatingLangTogglePosition(width: number): FloatingPosition {
     };
   }
 
+  const desktopShellWidth = HEADER_SHELL_MAX_WIDTH + HEADER_SHELL_HORIZONTAL_PADDING;
+  const gutterRight = Math.max(0, Math.floor((width - desktopShellWidth) / 2));
+
   return {
     mode: 'desktop-fixed',
     top: TOP_GAP,
-    right: RIGHT_GAP,
+    right: gutterRight + RIGHT_GAP,
   };
 }
 

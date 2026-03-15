@@ -34,7 +34,7 @@ describe('FloatingLangToggle', () => {
     render(<FloatingLangToggle />);
 
     await waitFor(() => expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-floating-mode', 'desktop-fixed'));
-    expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-right', '12');
+    expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-right', '132');
     expect(screen.getByTestId('floating-lang-toggle')).toHaveAttribute('data-top', '12');
   });
 
