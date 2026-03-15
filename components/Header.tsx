@@ -129,7 +129,7 @@ export default function Header() {
     <header data-ready={isReady ? 'true' : 'false'} className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-60 border-b border-white/10 py-3 md:py-4">
       <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
         {/* Desktop/tablet: grid layout with equal width nav items */}
-        <nav aria-label="Primary" className="hidden md:grid grid-cols-5 items-center h-full pr-28 lg:pr-32">
+        <nav aria-label="Primary" className="hidden md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)] items-center h-full gap-4 lg:gap-6">
           <NavLink href={`/${locale}/books`} isActive={isActive('/books')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('books')}</NavLink>
           <NavLink href={`/${locale}/events`} isActive={isActive('/events')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('events')}</NavLink>
           <Link href={`/${locale}`} className="flex items-center justify-center" aria-label="Home" prefetch={true}>

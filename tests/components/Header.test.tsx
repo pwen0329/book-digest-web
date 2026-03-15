@@ -36,7 +36,7 @@ vi.mock('@/components/LangToggle', () => ({
 }));
 
 describe('Header', () => {
-  it('keeps the centered mobile home link and desktop nav width stable without embedding the language toggle in the header', () => {
+  it('keeps the centered mobile home link and desktop nav centered without embedding the language toggle in the header', () => {
     render(<Header />);
 
     const header = screen.getByRole('banner');
@@ -46,7 +46,7 @@ describe('Header', () => {
     expect(mobileHomeLink).toBeInTheDocument();
 
     const desktopNav = within(header).getByRole('navigation', { name: 'Primary' });
-    expect(desktopNav.className).toContain('pr-28');
-    expect(desktopNav.className).toContain('lg:pr-32');
+    expect(desktopNav.className).toContain('md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)]');
+    expect(desktopNav.className).not.toContain('pr-28');
   });
 });
