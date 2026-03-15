@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Script from 'next/script';
+import FloatingInstagram from '@/components/FloatingInstagram';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { defaultViewport, getLocaleMetadata } from '@/lib/seo';
@@ -11,8 +12,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { Outfit } from 'next/font/google';
 import { locales, type Locale, setRequestLocale } from '@/lib/i18n';
 
-// Lazy-load non-critical floating UI (not needed for first paint)
-const FloatingInstagram = dynamic(() => import('@/components/FloatingInstagram'), { ssr: false });
+// Keep the Instagram button in the initial DOM so layout-sensitive clients can measure it reliably.
 const FloatingLangToggle = dynamic(() => import('@/components/FloatingLangToggle'), { ssr: false });
 
 const outfit = Outfit({

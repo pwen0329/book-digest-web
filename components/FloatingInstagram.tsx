@@ -70,7 +70,7 @@ export default function FloatingInstagram() {
     }
   }, []);
 
-  if (topPx === null) return null;
+  const inlineStyle = topPx === null ? undefined : { top: topPx };
 
   return (
     <a
@@ -78,8 +78,8 @@ export default function FloatingInstagram() {
       href="https://www.instagram.com/bookdigest_tw/"
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed right-3 md:right-5 z-30 flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-full bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] shadow-lg hover:shadow-xl hover:scale-110 transition-shadow cursor-grab active:cursor-grabbing select-none touch-none"
-      style={{ top: topPx }}
+      className="fixed right-3 top-[68vh] md:right-5 md:top-[31vh] z-30 flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-full bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] shadow-lg hover:shadow-xl hover:scale-110 transition-shadow cursor-grab active:cursor-grabbing select-none touch-none"
+      style={inlineStyle}
       aria-label="Follow us on Instagram"
       data-top={topPx}
       onPointerDown={onPointerDown}

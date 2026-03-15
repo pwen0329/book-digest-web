@@ -37,13 +37,11 @@ const MobileNavLink = memo(function MobileNavLink({
   href,
   isActive,
   children,
-  onClick,
   tracking = '',
 }: {
   href: string;
   isActive: boolean;
   children: React.ReactNode;
-  onClick: () => void;
   tracking?: string;
 }) {
   const mobileLinkClass = `py-2 px-3 rounded-lg font-outfit transition-colors ${tracking} ${
@@ -56,7 +54,6 @@ const MobileNavLink = memo(function MobileNavLink({
     <Link 
       href={href} 
       className={mobileLinkClass}
-      onClick={onClick}
       prefetch={false}
     >
       {children}
@@ -96,14 +93,13 @@ export default function Header() {
     );
   }, [pathname, locale]);
 
-  // Optimize close menu function with useCallback
-  const closeMobileMenu = useCallback(() => {
-    setMobileMenuOpen(false);
-  }, []);
-
   const toggleMobileMenu = useCallback(() => {
     setMobileMenuOpen(prev => !prev);
   }, []);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!mobileMenuOpen) {
@@ -127,7 +123,7 @@ export default function Header() {
 
   return (
     <header data-ready={isReady ? 'true' : 'false'} className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-60 border-b border-white/10 py-3 md:py-4">
-      <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
+      <div className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative md:pr-44 lg:pr-36">
         {/* Desktop/tablet: grid layout with equal width nav items */}
         <nav aria-label="Primary" className="hidden md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)] items-center h-full gap-4 lg:gap-6">
           <NavLink href={`/${locale}/books`} isActive={isActive('/books')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('books')}</NavLink>
@@ -174,16 +170,16 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden z-50 border-t border-white/10 bg-brand-navy/98 backdrop-blur">
           <nav aria-label="Primary mobile" className="mx-auto max-w-6xl px-6 py-4 flex flex-col gap-3">
-            <MobileNavLink href={`/${locale}/books`} isActive={isActive('/books')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
+            <MobileNavLink href={`/${locale}/books`} isActive={isActive('/books')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('books')}
             </MobileNavLink>
-            <MobileNavLink href={`/${locale}/events`} isActive={isActive('/events')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
+            <MobileNavLink href={`/${locale}/events`} isActive={isActive('/events')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('events')}
             </MobileNavLink>
-            <MobileNavLink href={`/${locale}/about`} isActive={isActive('/about')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
+            <MobileNavLink href={`/${locale}/about`} isActive={isActive('/about')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('about')}
             </MobileNavLink>
-            <MobileNavLink href={`/${locale}/joinus`} isActive={isActive('/joinus')} onClick={closeMobileMenu} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
+            <MobileNavLink href={`/${locale}/joinus`} isActive={isActive('/joinus')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('joinUs')}
             </MobileNavLink>
           </nav>

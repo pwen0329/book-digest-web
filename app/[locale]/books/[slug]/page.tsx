@@ -147,7 +147,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
             </div>
 
             {/* Book Info */}
-            <div className="max-w-2xl text-left text-white">
+            <div className="max-w-2xl text-left md:text-left text-white">
               <h1 className="text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
                 {book.displayTitle}
               </h1>
