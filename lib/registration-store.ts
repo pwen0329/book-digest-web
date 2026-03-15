@@ -27,6 +27,21 @@ export type RegistrationRecord = {
   updatedAt: string;
 };
 
+export type RegistrationListFilters = {
+  limit: number;
+  location?: SignupLocation;
+  status?: RegistrationRecordStatus;
+  source?: RegistrationRecord['source'];
+  search?: string;
+};
+
+export type RegistrationAuditSummary = {
+  total: number;
+  byStatus: Record<RegistrationRecordStatus, number>;
+  byLocation: Record<SignupLocation, Record<RegistrationRecordStatus, number> & { total: number }>;
+  notionMirrored: number;
+};
+
 type CreateRegistrationInput = Omit<RegistrationRecord, 'id' | 'createdAt' | 'updatedAt'> & {
   id?: string;
 };
@@ -95,6 +110,29 @@ function isActiveRegistration(record: RegistrationRecord): boolean {
 
   const updatedAt = new Date(record.updatedAt).getTime();
   return Number.isFinite(updatedAt) && Date.now() - updatedAt <= PENDING_TTL_MS;
+}
+
+function filterRegistrations(records: RegistrationRecord[], filters: Omit<RegistrationListFilters, 'limit'>): RegistrationRecord[] {
+  const searchTerm = filters.search?.trim().toLowerCase();
+
+  return records.filter((record) => {
+    if (filters.location && record.location !== filters.location) {
+      return false;
+    }
+    if (filters.status && record.status !== filters.status) {
+      return false;
+    }
+    if (filters.source && record.source !== filters.source) {
+      return false;
+    }
+    if (!searchTerm) {
+      return true;
+    }
+
+    return [record.name, record.email, record.profession, record.instagram, record.externalId]
+      .filter((value): value is string => Boolean(value))
+      .some((value) => value.toLowerCase().includes(searchTerm));
+  });
 }
 
 export async function createRegistrationReservation(input: CreateRegistrationInput): Promise<RegistrationRecord> {
@@ -191,16 +229,29 @@ export async function countActiveRegistrations(location: SignupLocation): Promis
   return readFallbackRegistrations().filter((record) => record.location === location && isActiveRegistration(record)).length;
 }
 
-export async function listStoredRegistrations(limit: number, location?: SignupLocation): Promise<RegistrationRecord[]> {
+export async function listStoredRegistrations(filters: RegistrationListFilters): Promise<RegistrationRecord[]> {
   if (isPersistentRegistrationStoreConfigured()) {
-    const filters = [
+    const queryParts = [
       'select=*',
       'order=createdAt.desc',
-      `limit=${limit}`,
-      ...(location ? [`location=eq.${encodeURIComponent(location)}`] : []),
+      `limit=${filters.limit}`,
     ];
 
-    const response = await fetch(`${getSupabaseTableUrl()}?${filters.join('&')}`, {
+    if (filters.location) {
+      queryParts.push(`location=eq.${encodeURIComponent(filters.location)}`);
+    }
+    if (filters.status) {
+      queryParts.push(`status=eq.${encodeURIComponent(filters.status)}`);
+    }
+    if (filters.source) {
+      queryParts.push(`source=eq.${encodeURIComponent(filters.source)}`);
+    }
+    if (filters.search?.trim()) {
+      const token = `*${filters.search.trim()}*`;
+      queryParts.push(`or=${encodeURIComponent(`name.ilike.${token},email.ilike.${token},profession.ilike.${token}`)}`);
+    }
+
+    const response = await fetch(`${getSupabaseTableUrl()}?${queryParts.join('&')}`, {
       method: 'GET',
       headers: getSupabaseHeaders(),
       cache: 'no-store',
@@ -214,10 +265,76 @@ export async function listStoredRegistrations(limit: number, location?: SignupLo
     return await response.json() as RegistrationRecord[];
   }
 
-  const records = readFallbackRegistrations()
-    .filter((record) => (location ? record.location === location : true))
+  const records = filterRegistrations(readFallbackRegistrations(), filters)
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-  return records.slice(0, limit);
+  return records.slice(0, filters.limit);
+}
+
+async function countStoredRegistrations(filters: Omit<RegistrationListFilters, 'limit' | 'search'>): Promise<number> {
+  if (isPersistentRegistrationStoreConfigured()) {
+    const queryParts = ['select=id'];
+    if (filters.location) {
+      queryParts.push(`location=eq.${encodeURIComponent(filters.location)}`);
+    }
+    if (filters.status) {
+      queryParts.push(`status=eq.${encodeURIComponent(filters.status)}`);
+    }
+    if (filters.source) {
+      queryParts.push(`source=eq.${encodeURIComponent(filters.source)}`);
+    }
+
+    const response = await fetch(`${getSupabaseTableUrl()}?${queryParts.join('&')}`, {
+      method: 'GET',
+      headers: getSupabaseHeaders({ Prefer: 'count=exact' }),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const reason = await response.text().catch(() => 'unknown');
+      throw new Error(`Supabase registration count failed: ${response.status} ${reason}`);
+    }
+
+    const countHeader = response.headers.get('content-range');
+    if (countHeader?.includes('/')) {
+      const total = Number(countHeader.split('/').pop());
+      if (Number.isFinite(total)) {
+        return total;
+      }
+    }
+
+    const rows = await response.json() as Array<{ id: string }>;
+    return rows.length;
+  }
+
+  return filterRegistrations(readFallbackRegistrations(), filters).length;
+}
+
+export async function summarizeStoredRegistrations(): Promise<RegistrationAuditSummary> {
+  const locations: SignupLocation[] = ['TW', 'NL', 'EN', 'DETOX'];
+  const statuses: RegistrationRecordStatus[] = ['pending', 'confirmed', 'cancelled'];
+
+  const byLocation = Object.fromEntries(locations.map((location) => [
+    location,
+    { total: 0, pending: 0, confirmed: 0, cancelled: 0 },
+  ])) as RegistrationAuditSummary['byLocation'];
+
+  const byStatus = { pending: 0, confirmed: 0, cancelled: 0 } satisfies RegistrationAuditSummary['byStatus'];
+
+  await Promise.all(locations.flatMap((location) => statuses.map(async (status) => {
+    const count = await countStoredRegistrations({ location, status });
+    byLocation[location][status] = count;
+    byLocation[location].total += count;
+    byStatus[status] += count;
+  })));
+
+  const notionMirrored = await countStoredRegistrations({ source: 'notion' });
+
+  return {
+    total: byStatus.pending + byStatus.confirmed + byStatus.cancelled,
+    byStatus,
+    byLocation,
+    notionMirrored,
+  };
 }
 
 export async function resetRegistrationsForTesting(location: SignupLocation): Promise<void> {

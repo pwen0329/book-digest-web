@@ -12,6 +12,7 @@ function EngClubContent({ events }: { events: LocalizedEventContentMap }) {
       translationNamespace="signupFlow"
       endpoint={process.env.NEXT_PUBLIC_FORMS_ENDPOINT_EN || '/api/submit?loc=EN'}
       posterSrc={event.posterSrc}
+      posterBlurDataURL={event.posterBlurDataURL}
       posterAlt={event.posterAlt}
       posterPriority
     />

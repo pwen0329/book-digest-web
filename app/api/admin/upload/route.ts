@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { processAdminImageUpload } from '@/lib/admin-image-processing';
 import { saveAdminUpload } from '@/lib/admin-upload-storage';
+import { logServerError } from '@/lib/observability';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
   try {
     processedImage = await processAdminImageUpload(buffer);
   } catch (error) {
-    console.error('[api/admin/upload] Image processing failed', { scope, fileName: file.name, error });
+    await logServerError('admin.upload.processing_failed', error, { scope, fileName: file.name });
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Unable to process this image.',
     }, { status: 400 });
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
   try {
     src = await saveAdminUpload(scope, fileName, processedImage.contentType, processedImage.buffer);
   } catch (error) {
-    console.error('[api/admin/upload] Image storage failed', { scope, fileName, error });
+    await logServerError('admin.upload.storage_failed', error, { scope, fileName });
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Unable to store this image.',
     }, { status: 500 });
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
     src,
     width: processedImage.width,
     height: processedImage.height,
+    blurDataURL: processedImage.blurDataURL,
     format: 'webp',
   }, { status: 201 });
 }

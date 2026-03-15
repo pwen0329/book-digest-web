@@ -31,6 +31,7 @@ export async function getLocalizedEventsContent(locale: string): Promise<Localiz
       const localizedRecord: LocalizedEventContentRecord = {
         id: eventId,
         posterSrc: event.posterSrc,
+        posterBlurDataURL: event.posterBlurDataURL,
         posterAlt: event.posterAlt[language],
         title: event.title[language],
         description: event.description[language],

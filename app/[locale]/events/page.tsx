@@ -28,6 +28,7 @@ export function generateStaticParams() {
 // Event Section Component - Server Component
 function EventSection({
   image,
+  imageBlurDataURL,
   title,
   description,
   signupUrl,
@@ -37,6 +38,7 @@ function EventSection({
   ctaClass,
 }: {
   image: string;
+  imageBlurDataURL?: string;
   title: string;
   description: string;
   signupUrl?: string;
@@ -59,7 +61,7 @@ function EventSection({
           className="object-cover"
           loading={priority ? 'eager' : 'lazy'}
           placeholder="blur"
-          blurDataURL={BLUR_POSTER}
+          blurDataURL={imageBlurDataURL || BLUR_POSTER}
         />
       </div>
     </div>
@@ -182,6 +184,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
         <div className="py-12">
           <EventSection
             image={events.TW.posterSrc}
+            imageBlurDataURL={events.TW.posterBlurDataURL}
             title={events.TW.title}
             description={events.TW.description}
             signupUrl={`/${locale}${events.TW.signupPath}`}
@@ -198,6 +201,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
         <div className="py-12">
           <EventSection
             image={events.EN.posterSrc}
+            imageBlurDataURL={events.EN.posterBlurDataURL}
             title={events.EN.title}
             description={events.EN.description}
             signupUrl={`/${locale}${events.EN.signupPath}`}
@@ -213,6 +217,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
         <div className="py-12">
           <EventSection
             image={events.NL.posterSrc}
+            imageBlurDataURL={events.NL.posterBlurDataURL}
             title={events.NL.title}
             description={events.NL.description}
             signupUrl={`/${locale}${events.NL.signupPath}`}
@@ -228,6 +233,7 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
         <div id="detox" className="py-12">
           <EventSection
             image={events.DETOX.posterSrc}
+            imageBlurDataURL={events.DETOX.posterBlurDataURL}
             title={events.DETOX.title}
             description={events.DETOX.description}
             signupUrl={`/${locale}${events.DETOX.signupPath}`}

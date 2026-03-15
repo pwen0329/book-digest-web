@@ -25,6 +25,7 @@ type ActivitySignupFlowProps = {
   activeTab: ActivityTab;
   location: SignupLocation;
   posterSrc: string;
+  posterBlurDataURL?: string;
   posterAlt: string;
   tabLabels?: Partial<Record<ActivityTab, string>>;
   translationNamespace: 'signupFlow' | 'detoxSignupFlow';
@@ -41,6 +42,7 @@ export default function ActivitySignupFlow({
   activeTab,
   location,
   posterSrc,
+  posterBlurDataURL,
   posterAlt,
   tabLabels,
   translationNamespace,
@@ -221,7 +223,7 @@ export default function ActivitySignupFlow({
                 className="object-cover"
                 priority={posterPriority}
                 placeholder="blur"
-                blurDataURL={BLUR_POSTER}
+                blurDataURL={posterBlurDataURL || BLUR_POSTER}
               />
             </div>
           </div>

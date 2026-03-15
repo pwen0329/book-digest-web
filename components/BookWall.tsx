@@ -37,7 +37,7 @@ export default async function BookWall() {
                     loading={index < 6 ? 'eager' : 'lazy'}
                     fetchPriority={index < 6 ? 'high' : undefined}
                     placeholder="blur"
-                    blurDataURL={BLUR_BOOK_COVER}
+                    blurDataURL={book.displayCoverBlurDataURL || BLUR_BOOK_COVER}
                   />
                   {/* Hover overlay with book info */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-2 md:p-3">

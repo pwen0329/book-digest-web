@@ -2,13 +2,18 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
-import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
+import { AdminDocumentConflictError, loadAdminDocument, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
+import { normalizeBookSortOrder, sortBooksDescending } from '@/lib/book-order';
+import { cleanupRemovedAdminAssets } from '@/lib/admin-asset-manager';
+import { logServerError, logServerWarning } from '@/lib/observability';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import type { Book } from '@/types/book';
+import type { EventContentMap } from '@/types/event-content';
 
 export const dynamic = 'force-dynamic';
 
 const optionalString = z.string().max(50000).optional().nullable();
+const optionalDataUrl = z.union([z.string().max(20_000).regex(/^data:image\//), z.literal(''), z.null()]).optional();
 const urlOrPath = z.string().min(1).max(500).refine((value) => value.startsWith('/') || /^https?:\/\//.test(value), {
   message: 'Expected an absolute URL or a site-relative path.',
 });
@@ -17,6 +22,7 @@ const optionalUrlOrPath = z.union([urlOrPath, z.literal(''), z.null()]).optional
 
 const bookSchema = z.object({
   id: z.union([z.string().min(1), z.number()]),
+  sortOrder: z.number().int().nonnegative().optional(),
   slug: z.string().min(1).max(160),
   title: z.string().min(1).max(200),
   titleEn: optionalString,
@@ -24,6 +30,8 @@ const bookSchema = z.object({
   authorEn: optionalString,
   coverUrl: optionalUrlOrPath,
   coverUrlEn: optionalUrlOrPath,
+  coverBlurDataURL: optionalDataUrl,
+  coverBlurDataURLEn: optionalDataUrl,
   coverUrls: z.array(urlOrPath).optional(),
   coverUrlsEn: z.array(urlOrPath).optional(),
   readDate: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(''), z.null()]).optional(),
@@ -41,7 +49,7 @@ const bookSchema = z.object({
 });
 
 const requestSchema = z.object({
-  books: z.array(bookSchema).min(1),
+  books: z.array(bookSchema),
   expectedUpdatedAt: z.string().datetime().nullable().optional(),
 });
 
@@ -59,8 +67,9 @@ function cleanOptionalPath(value?: string | null): string | undefined {
 }
 
 function normalizeBooks(books: z.infer<typeof bookSchema>[]): Book[] {
-  return books.map((book) => ({
+  return normalizeBookSortOrder(books.map((book) => ({
     id: book.id,
+    sortOrder: book.sortOrder,
     slug: book.slug.trim(),
     title: book.title.trim(),
     titleEn: cleanOptional(book.titleEn),
@@ -68,6 +77,8 @@ function normalizeBooks(books: z.infer<typeof bookSchema>[]): Book[] {
     authorEn: cleanOptional(book.authorEn),
     coverUrl: cleanOptionalPath(book.coverUrl),
     coverUrlEn: cleanOptionalPath(book.coverUrlEn),
+    coverBlurDataURL: cleanOptional(book.coverBlurDataURL),
+    coverBlurDataURLEn: cleanOptional(book.coverBlurDataURLEn),
     coverUrls: book.coverUrls?.filter(Boolean),
     coverUrlsEn: book.coverUrlsEn?.filter(Boolean),
     readDate: cleanOptional(book.readDate),
@@ -84,7 +95,7 @@ function normalizeBooks(books: z.infer<typeof bookSchema>[]): Book[] {
           notes: cleanOptionalPath(book.links.notes),
         }
       : undefined,
-  }));
+  })));
 }
 
 function revalidateBookRoutes(books: Book[]) {
@@ -107,7 +118,7 @@ export async function GET(request: NextRequest) {
   }
 
   const record = await loadAdminDocumentRecord<Book[]>({ key: 'books', fallbackFile: 'data/books.json' });
-  return NextResponse.json({ books: record.value, updatedAt: record.updatedAt }, { status: 200 });
+  return NextResponse.json({ books: sortBooksDescending(record.value), updatedAt: record.updatedAt }, { status: 200 });
 }
 
 export async function PUT(request: NextRequest) {
@@ -133,6 +144,9 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Book slugs must be unique.' }, { status: 400 });
   }
 
+  const previousBooks = await loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' });
+  const currentEvents = await loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' });
+
   let savedRecord;
   try {
     savedRecord = await saveAdminDocumentRecord(
@@ -142,12 +156,15 @@ export async function PUT(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof AdminDocumentConflictError) {
+      await logServerWarning('admin.books.save_conflict', { expectedUpdatedAt: parsedBody.expectedUpdatedAt });
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
 
+    await logServerError('admin.books.save_failed', error, { count: normalizedBooks.length });
     throw error;
   }
+  await cleanupRemovedAdminAssets({ previousBooks, nextBooks: savedRecord.value, previousEvents: currentEvents, nextEvents: currentEvents });
   revalidateBookRoutes(normalizedBooks);
 
-  return NextResponse.json({ ok: true, books: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });
+  return NextResponse.json({ ok: true, books: sortBooksDescending(savedRecord.value), updatedAt: savedRecord.updatedAt }, { status: 200 });
 }

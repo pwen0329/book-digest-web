@@ -1,7 +1,8 @@
 import 'server-only';
 
+import { statSync } from 'node:fs';
 import { revalidateTag, unstable_cache } from 'next/cache';
-import { readJsonFile, writeJsonFile } from '@/lib/json-store';
+import { readJsonFile, resolveWorkspacePath, writeJsonFile } from '@/lib/json-store';
 
 export type AdminDocumentKey = 'books' | 'events' | 'capacity' | 'registration-success-email';
 
@@ -114,6 +115,14 @@ type LoaderOptions<T> = {
   fallbackValue?: T;
 };
 
+function getLocalDocumentUpdatedAt(fallbackFile: string): string | null {
+  try {
+    return statSync(resolveWorkspacePath(fallbackFile)).mtime.toISOString();
+  } catch {
+    return null;
+  }
+}
+
 async function loadDocumentUncached<T>({ key, fallbackFile, fallbackValue }: LoaderOptions<T>): Promise<AdminDocumentRecord<T>> {
   if (isPersistentAdminStoreConfigured()) {
     const remoteValue = await readFromSupabase<T>(key);
@@ -129,7 +138,7 @@ async function loadDocumentUncached<T>({ key, fallbackFile, fallbackValue }: Loa
     return { value: fallbackValue, updatedAt: null };
   }
 
-  return { value: readJsonFile<T>(fallbackFile), updatedAt: null };
+  return { value: readJsonFile<T>(fallbackFile), updatedAt: getLocalDocumentUpdatedAt(fallbackFile) };
 }
 
 export async function loadAdminDocument<T>(options: LoaderOptions<T>): Promise<T> {
@@ -160,12 +169,13 @@ export async function saveAdminDocumentRecord<T>({ key, fallbackFile }: LoaderOp
   if (isPersistentAdminStoreConfigured()) {
     savedRecord = await writeToSupabase(key, value, expectedUpdatedAt);
   } else {
-    if (expectedUpdatedAt !== undefined && expectedUpdatedAt !== null) {
+    const currentUpdatedAt = getLocalDocumentUpdatedAt(fallbackFile);
+    if (expectedUpdatedAt !== undefined && expectedUpdatedAt !== (currentUpdatedAt || null)) {
       throw new AdminDocumentConflictError(`The ${key} document changed on the server. Refresh before saving again.`);
     }
 
     writeJsonFile(fallbackFile, value);
-    savedRecord = { value, updatedAt: new Date().toISOString() };
+    savedRecord = { value, updatedAt: getLocalDocumentUpdatedAt(fallbackFile) || new Date().toISOString() };
   }
 
   revalidateTag(ADMIN_DOCUMENTS_CACHE_TAG);

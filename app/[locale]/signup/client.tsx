@@ -21,6 +21,7 @@ function SignupContent({ initialLocation, events }: { initialLocation?: string; 
           : process.env.NEXT_PUBLIC_FORMS_ENDPOINT_NL || '/api/submit?loc=NL'
       }
       posterSrc={activeEvent.posterSrc}
+      posterBlurDataURL={activeEvent.posterBlurDataURL}
       posterAlt={activeEvent.posterAlt}
       comingSoon={activeEvent.comingSoon ? { title: activeEvent.title, body: activeEvent.comingSoonBody } : undefined}
       renderIntro={(step) => !locationLocked && step === 0 ? (

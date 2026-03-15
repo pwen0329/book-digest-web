@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
+import { logServerError, logServerWarning } from '@/lib/observability';
 import type { CapacityConfigFile, SignupLocation } from '@/lib/signup-capacity-config';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 
@@ -89,9 +90,11 @@ export async function PUT(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof AdminDocumentConflictError) {
+      await logServerWarning('admin.capacity.save_conflict', { expectedUpdatedAt: payload.expectedUpdatedAt });
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
 
+    await logServerError('admin.capacity.save_failed', error, { locations: Object.keys(nextCapacity) });
     throw error;
   }
   revalidateCapacityRoutes();

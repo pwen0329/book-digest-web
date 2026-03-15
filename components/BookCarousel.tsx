@@ -11,6 +11,8 @@ type Book = {
   title: string;
   author: string;
   coverUrl?: string;
+  coverBlurDataURL?: string;
+  sortOrder?: number;
   readDate?: string;
 };
 
@@ -48,7 +50,7 @@ const BookCard = memo(function BookCard({
           className="object-cover"
           loading={idx < 3 ? 'eager' : 'lazy'}
           placeholder="blur"
-          blurDataURL={BLUR_BOOK_CAROUSEL}
+          blurDataURL={book.coverBlurDataURL || BLUR_BOOK_CAROUSEL}
         />
       </div>
       <div className="mt-2 text-center">
@@ -70,6 +72,9 @@ export default function BookCarousel({
   // Cache sorted results with useMemo, avoid re-sorting on each render
   const sortedBooks = useMemo(() => 
     [...books].sort((a, b) => {
+      const leftOrder = typeof a.sortOrder === 'number' ? a.sortOrder : 0;
+      const rightOrder = typeof b.sortOrder === 'number' ? b.sortOrder : 0;
+      if (rightOrder !== leftOrder) return rightOrder - leftOrder;
       if (!a.readDate && !b.readDate) return 0;
       if (!a.readDate) return 1;
       if (!b.readDate) return -1;

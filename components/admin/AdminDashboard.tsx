@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition, useCallback } from 'react';
+import { getNextBookSortOrder, sortBooksDescending } from '@/lib/book-order';
 import type { Book } from '@/types/book';
 import type { EventContentId, EventContentMap } from '@/types/event-content';
 import type { RegistrationEmailLocale, RegistrationSuccessEmailSettings } from '@/lib/registration-success-email-config';
 import type { CapacityConfigFile, SignupLocation } from '@/lib/signup-capacity-config';
+import type { RegistrationAuditSummary, RegistrationRecord, RegistrationRecordStatus } from '@/lib/registration-store';
 
 type AdminDashboardProps = {
   initialBooks: Book[];
@@ -19,7 +21,7 @@ type AdminDashboardProps = {
   };
 };
 
-type DashboardTab = 'books' | 'events' | 'capacity' | 'emails';
+type DashboardTab = 'books' | 'events' | 'capacity' | 'emails' | 'registrations';
 
 type CapacityLiveStatus = {
   enabled: boolean;
@@ -32,6 +34,7 @@ type CapacityLiveStatus = {
 
 const EVENT_IDS: EventContentId[] = ['TW', 'EN', 'NL', 'DETOX'];
 const CAPACITY_IDS: SignupLocation[] = ['TW', 'EN', 'NL', 'DETOX'];
+const REGISTRATION_SOURCES = ['pending', 'simulated', 'tally', 'notion'] as const;
 
 function linesToArray(value: string): string[] | undefined {
   const items = value.split('\n').map((item) => item.trim()).filter(Boolean);
@@ -79,6 +82,14 @@ type UploadedAsset = {
   width?: number;
   height?: number;
   format?: string;
+  blurDataURL?: string;
+};
+
+type RegistrationsResponse = {
+  items: RegistrationRecord[];
+  summary: RegistrationAuditSummary;
+  viewerSource: string;
+  notionMirrorEnabled: boolean;
 };
 
 async function uploadAsset(scope: 'books' | 'events', file: File): Promise<UploadedAsset> {
@@ -107,6 +118,7 @@ function createDraftBook(existingBooks: Book[]): Book {
 
   return {
     id: `draft-${Date.now()}`,
+    sortOrder: getNextBookSortOrder(existingBooks),
     slug,
     title: '新書籍',
     titleEn: 'New Book',
@@ -127,18 +139,28 @@ function createDraftBook(existingBooks: Book[]): Book {
 export default function AdminDashboard({ initialBooks, initialEvents, initialCapacity, initialRegistrationEmails, initialDocumentVersions }: AdminDashboardProps) {
   const [hydrated, setHydrated] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('books');
-  const [books, setBooks] = useState<Book[]>(initialBooks);
+  const [books, setBooks] = useState<Book[]>(() => sortBooksDescending(initialBooks));
   const [events, setEvents] = useState<EventContentMap>(initialEvents);
   const [capacity, setCapacity] = useState<CapacityConfigFile>(initialCapacity);
   const [registrationEmails, setRegistrationEmails] = useState<RegistrationSuccessEmailSettings>(initialRegistrationEmails);
   const [documentVersions, setDocumentVersions] = useState(initialDocumentVersions);
+  const documentVersionsRef = useRef(initialDocumentVersions);
   const [capacityStatus, setCapacityStatus] = useState<Partial<Record<SignupLocation, CapacityLiveStatus>>>({});
   const [capacityStatusLoading, setCapacityStatusLoading] = useState(false);
-  const [selectedBookSlug, setSelectedBookSlug] = useState(initialBooks[0]?.slug || '');
+  const [selectedBookId, setSelectedBookId] = useState<string | number | null>(initialBooks[0]?.id ?? null);
   const [visibleBookCount, setVisibleBookCount] = useState(10);
-  const [draggedBookSlug, setDraggedBookSlug] = useState<string | null>(null);
+  const [draggedBookId, setDraggedBookId] = useState<string | number | null>(null);
   const [uploadingAssetKey, setUploadingAssetKey] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<EventContentId>('TW');
+  const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
+  const [registrationsSummary, setRegistrationsSummary] = useState<RegistrationAuditSummary | null>(null);
+  const [registrationsLoading, setRegistrationsLoading] = useState(false);
+  const [registrationsViewerSource, setRegistrationsViewerSource] = useState<string>('registration-store');
+  const [registrationsMirrorEnabled, setRegistrationsMirrorEnabled] = useState(false);
+  const [registrationLocationFilter, setRegistrationLocationFilter] = useState<'ALL' | SignupLocation>('ALL');
+  const [registrationStatusFilter, setRegistrationStatusFilter] = useState<'ALL' | RegistrationRecordStatus>('ALL');
+  const [registrationSourceFilter, setRegistrationSourceFilter] = useState<'ALL' | RegistrationRecord['source']>('ALL');
+  const [registrationSearch, setRegistrationSearch] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -147,6 +169,10 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    documentVersionsRef.current = documentVersions;
+  }, [documentVersions]);
 
   useEffect(() => {
     if (activeTab !== 'capacity') {
@@ -195,9 +221,22 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     };
   }, [activeTab]);
 
-  const selectedBookIndex = books.findIndex((book) => book.slug === selectedBookSlug);
+  const selectedBookIndex = books.findIndex((book) => book.id === selectedBookId);
   const selectedBook = selectedBookIndex >= 0 ? books[selectedBookIndex] : books[0];
   const visibleBooks = useMemo(() => books.slice(0, visibleBookCount), [books, visibleBookCount]);
+
+  useEffect(() => {
+    if (!books.length) {
+      if (selectedBookId !== null) {
+        setSelectedBookId(null);
+      }
+      return;
+    }
+
+    if (!books.some((book) => book.id === selectedBookId)) {
+      setSelectedBookId(books[0].id);
+    }
+  }, [books, selectedBookId]);
 
   useEffect(() => {
     if (selectedBookIndex >= visibleBookCount && selectedBookIndex !== -1) {
@@ -280,11 +319,76 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       const nextBooks = [...currentBooks];
       const [movedBook] = nextBooks.splice(fromIndex, 1);
       nextBooks.splice(toIndex, 0, movedBook);
-      return nextBooks;
+      return normalizeLocalBookOrder(nextBooks);
     });
     setMessage('Book order updated locally. Save books to publish the new order.');
     setError(null);
   }
+
+  function normalizeLocalBookOrder(nextBooks: Book[]): Book[] {
+    const maxOrder = nextBooks.length;
+    return nextBooks.map((book, index) => ({
+      ...book,
+      sortOrder: maxOrder - index,
+    }));
+  }
+
+  function deleteSelectedBook() {
+    if (!selectedBook) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete "${selectedBook.title}"? This removes it from the public site after saving.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setBooks((currentBooks) => normalizeLocalBookOrder(currentBooks.filter((book) => book.id !== selectedBook.id)));
+    setMessage('Book removed locally. Save books to publish the deletion.');
+    setError(null);
+  }
+
+  const refreshRegistrations = useCallback(async () => {
+    setRegistrationsLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: '100' });
+      if (registrationLocationFilter !== 'ALL') {
+        params.set('location', registrationLocationFilter);
+      }
+      if (registrationStatusFilter !== 'ALL') {
+        params.set('status', registrationStatusFilter);
+      }
+      if (registrationSourceFilter !== 'ALL') {
+        params.set('source', registrationSourceFilter);
+      }
+      if (registrationSearch.trim()) {
+        params.set('search', registrationSearch.trim());
+      }
+
+      const response = await fetch(`/api/registrations?${params.toString()}`, { cache: 'no-store' });
+      const payload = await response.json().catch(() => null) as RegistrationsResponse | null;
+      if (!response.ok || !payload) {
+        throw new Error(payload && 'error' in payload ? String((payload as { error?: unknown }).error) : 'Unable to load registrations.');
+      }
+
+      setRegistrations(payload.items || []);
+      setRegistrationsSummary(payload.summary || null);
+      setRegistrationsViewerSource(payload.viewerSource || 'registration-store');
+      setRegistrationsMirrorEnabled(payload.notionMirrorEnabled === true);
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : 'Unable to load registrations.');
+    } finally {
+      setRegistrationsLoading(false);
+    }
+  }, [registrationLocationFilter, registrationSearch, registrationSourceFilter, registrationStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab !== 'registrations') {
+      return;
+    }
+
+    void refreshRegistrations();
+  }, [activeTab, refreshRegistrations]);
 
   async function saveBooks(nextBooksOverride?: Book[], successMessage = 'Books updated. Public pages were revalidated.') {
     resetFlash();
@@ -302,7 +406,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     const response = await fetch('/api/admin/books', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ books: payloadBooks, expectedUpdatedAt: documentVersions.books }),
+      body: JSON.stringify({ books: payloadBooks, expectedUpdatedAt: documentVersionsRef.current.books }),
     });
 
     const payload = await response.json().catch(() => ({ error: 'Unable to save books.' }));
@@ -310,8 +414,10 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       throw new Error(payload.error || 'Unable to save books.');
     }
 
-    setBooks(payload.books as Book[]);
-    setDocumentVersions((currentVersions) => ({ ...currentVersions, books: (payload.updatedAt as string | null | undefined) ?? currentVersions.books }));
+    const nextUpdatedAt = (payload.updatedAt as string | null | undefined) ?? documentVersionsRef.current.books;
+    setBooks(sortBooksDescending(payload.books as Book[]));
+    documentVersionsRef.current = { ...documentVersionsRef.current, books: nextUpdatedAt ?? null };
+    setDocumentVersions((currentVersions) => ({ ...currentVersions, books: nextUpdatedAt ?? currentVersions.books }));
     setMessage(successMessage);
   }
 
@@ -321,7 +427,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     const response = await fetch('/api/admin/events', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ events: nextEventsOverride || events, expectedUpdatedAt: documentVersions.events }),
+      body: JSON.stringify({ events: nextEventsOverride || events, expectedUpdatedAt: documentVersionsRef.current.events }),
     });
 
     const payload = await response.json().catch(() => ({ error: 'Unable to save events.' }));
@@ -329,8 +435,10 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       throw new Error(payload.error || 'Unable to save events.');
     }
 
+    const nextUpdatedAt = (payload.updatedAt as string | null | undefined) ?? documentVersionsRef.current.events;
     setEvents(payload.events as EventContentMap);
-    setDocumentVersions((currentVersions) => ({ ...currentVersions, events: (payload.updatedAt as string | null | undefined) ?? currentVersions.events }));
+    documentVersionsRef.current = { ...documentVersionsRef.current, events: nextUpdatedAt ?? null };
+    setDocumentVersions((currentVersions) => ({ ...currentVersions, events: nextUpdatedAt ?? currentVersions.events }));
     setMessage(successMessage);
   }
 
@@ -340,7 +448,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     const response = await fetch('/api/admin/capacity', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ capacity, expectedUpdatedAt: documentVersions.capacity }),
+      body: JSON.stringify({ capacity, expectedUpdatedAt: documentVersionsRef.current.capacity }),
     });
 
     const payload = await response.json().catch(() => ({ error: 'Unable to save capacity settings.' }));
@@ -348,8 +456,10 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       throw new Error(payload.error || 'Unable to save capacity settings.');
     }
 
+    const nextUpdatedAt = (payload.updatedAt as string | null | undefined) ?? documentVersionsRef.current.capacity;
     setCapacity(payload.capacity as CapacityConfigFile);
-    setDocumentVersions((currentVersions) => ({ ...currentVersions, capacity: (payload.updatedAt as string | null | undefined) ?? currentVersions.capacity }));
+    documentVersionsRef.current = { ...documentVersionsRef.current, capacity: nextUpdatedAt ?? null };
+    setDocumentVersions((currentVersions) => ({ ...currentVersions, capacity: nextUpdatedAt ?? currentVersions.capacity }));
     setMessage('Signup windows and capacity settings updated.');
 
     const refreshedStatus = await Promise.all(CAPACITY_IDS.map(async (location) => {
@@ -373,7 +483,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     const response = await fetch('/api/admin/email', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ settings: registrationEmails, expectedUpdatedAt: documentVersions.emails }),
+      body: JSON.stringify({ settings: registrationEmails, expectedUpdatedAt: documentVersionsRef.current.emails }),
     });
 
     const payload = await response.json().catch(() => ({ error: 'Unable to save registration email settings.' }));
@@ -381,8 +491,10 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       throw new Error(payload.error || 'Unable to save registration email settings.');
     }
 
+    const nextUpdatedAt = (payload.updatedAt as string | null | undefined) ?? documentVersionsRef.current.emails;
     setRegistrationEmails(payload.settings as RegistrationSuccessEmailSettings);
-    setDocumentVersions((currentVersions) => ({ ...currentVersions, emails: (payload.updatedAt as string | null | undefined) ?? currentVersions.emails }));
+    documentVersionsRef.current = { ...documentVersionsRef.current, emails: nextUpdatedAt ?? null };
+    setDocumentVersions((currentVersions) => ({ ...currentVersions, emails: nextUpdatedAt ?? currentVersions.emails }));
     setMessage('Registration success email settings updated.');
   }
 
@@ -409,8 +521,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
   function addBook() {
     const draft = createDraftBook(books);
-    setBooks((currentBooks) => [draft, ...currentBooks]);
-    setSelectedBookSlug(draft.slug);
+    setBooks((currentBooks) => normalizeLocalBookOrder([draft, ...currentBooks]));
+    setSelectedBookId(draft.id);
     setVisibleBookCount((currentCount) => Math.max(10, currentCount + 1));
     setActiveTab('books');
     setMessage('Draft book added. Fill in the fields and save books to publish it.');
@@ -431,7 +543,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {(['books', 'events', 'capacity', 'emails'] as DashboardTab[]).map((tab) => (
+              {(['books', 'events', 'capacity', 'emails', 'registrations'] as DashboardTab[]).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -440,14 +552,14 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                     activeTab === tab ? 'bg-brand-pink text-brand-navy' : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
                   }`}
                 >
-                  {tab === 'books' ? 'Books' : tab === 'events' ? 'Events' : tab === 'capacity' ? 'Capacity' : 'Emails'}
+                  {tab === 'books' ? 'Books' : tab === 'events' ? 'Events' : tab === 'capacity' ? 'Capacity' : tab === 'emails' ? 'Emails' : 'Registrations'}
                 </button>
               ))}
               <button
                 type="button"
                 onClick={() => void logout()}
                 disabled={loggingOut}
-                className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
+                className="rounded-full bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400 disabled:opacity-60"
               >
                 {loggingOut ? 'Signing out…' : 'Sign out'}
               </button>
@@ -458,7 +570,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
           {error ? <p className="mt-5 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</p> : null}
         </div>
 
-        {activeTab === 'books' && selectedBook ? (
+        {activeTab === 'books' ? (
           <div aria-label="Books editor" className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
             <aside className="rounded-[28px] border border-white/10 bg-white/10 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
@@ -474,28 +586,28 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
               <p className="mb-3 text-xs text-white/60">Newest books stay at the top. Drag to reorder. This order also controls the homepage and books listing pages.</p>
               <div className="space-y-2">
                 {visibleBooks.map((book) => {
-                  const absoluteIndex = books.findIndex((candidate) => candidate.slug === book.slug);
+                  const absoluteIndex = books.findIndex((candidate) => candidate.id === book.id);
                   return (
                   <button
-                    key={book.slug}
+                    key={String(book.id)}
                     type="button"
                     draggable
-                    onClick={() => setSelectedBookSlug(book.slug)}
-                    onDragStart={() => setDraggedBookSlug(book.slug)}
+                    onClick={() => setSelectedBookId(book.id)}
+                    onDragStart={() => setDraggedBookId(book.id)}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
                       event.preventDefault();
-                      if (!draggedBookSlug) {
+                      if (draggedBookId === null) {
                         return;
                       }
 
-                      const fromIndex = books.findIndex((candidate) => candidate.slug === draggedBookSlug);
+                      const fromIndex = books.findIndex((candidate) => candidate.id === draggedBookId);
                       moveBook(fromIndex, absoluteIndex);
-                      setDraggedBookSlug(null);
+                      setDraggedBookId(null);
                     }}
-                    onDragEnd={() => setDraggedBookSlug(null)}
+                    onDragEnd={() => setDraggedBookId(null)}
                     className={`w-full rounded-2xl px-4 py-3 text-left transition ${
-                      selectedBookSlug === book.slug ? 'bg-brand-pink text-brand-navy' : 'bg-black/10 text-white/85 hover:bg-white/10'
+                      selectedBookId === book.id ? 'bg-brand-pink text-brand-navy' : 'bg-black/10 text-white/85 hover:bg-white/10'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -520,6 +632,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
             </aside>
 
             <div className="rounded-[28px] border border-white/10 bg-white/10 p-6">
+              {selectedBook ? (
+                <>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block">
                   <span className="mb-2 block text-sm text-white/70">Title (ZH)</span>
@@ -542,9 +656,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                   <input
                     value={selectedBook.slug}
                     onChange={(event) => {
-                      const nextSlug = event.target.value;
-                      updateSelectedBook({ slug: nextSlug });
-                      setSelectedBookSlug(nextSlug);
+                      updateSelectedBook({ slug: event.target.value });
                     }}
                     className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
                   />
@@ -572,7 +684,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                             setUploadingAssetKey('book-cover-zh');
                             try {
                               const asset = await uploadAsset('books', file);
-                              const nextBooks = buildBooksWithSelectedPatch({ coverUrl: asset.src });
+                              const nextBooks = buildBooksWithSelectedPatch({ coverUrl: asset.src, coverBlurDataURL: asset.blurDataURL });
                               setBooks(nextBooks);
                               await saveBooks(nextBooks, `Cover uploaded, optimized to ${asset.format || 'webp'}, and published.`);
                             } finally {
@@ -601,7 +713,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                             setUploadingAssetKey('book-cover-en');
                             try {
                               const asset = await uploadAsset('books', file);
-                              const nextBooks = buildBooksWithSelectedPatch({ coverUrlEn: asset.src });
+                              const nextBooks = buildBooksWithSelectedPatch({ coverUrlEn: asset.src, coverBlurDataURLEn: asset.blurDataURL });
                               setBooks(nextBooks);
                               await saveBooks(nextBooks, `Cover uploaded, optimized to ${asset.format || 'webp'}, and published.`);
                             } finally {
@@ -673,10 +785,24 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
               </div>
 
               <div className="mt-8">
-                <button type="button" onClick={() => void handleAction(saveBooks)} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
-                  {isPending ? 'Saving…' : 'Save books'}
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" onClick={() => void handleAction(saveBooks)} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
+                    {isPending ? 'Saving…' : 'Save books'}
+                  </button>
+                  <button type="button" onClick={deleteSelectedBook} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full border border-rose-400/40 bg-rose-500/10 px-6 py-3 font-semibold text-rose-100 transition hover:bg-rose-500/20 disabled:opacity-60">
+                    Delete book
+                  </button>
+                </div>
               </div>
+                </>
+              ) : (
+                <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/10 text-center text-white/70">
+                  <div>
+                    <p className="text-lg font-semibold">No books yet</p>
+                    <p className="mt-2 text-sm">Add a draft book to start building the list.</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : null}
@@ -724,6 +850,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                               [selectedEventId]: {
                                 ...selectedEvent,
                                 posterSrc: asset.src,
+                                posterBlurDataURL: asset.blurDataURL,
                               },
                             };
                             setEvents(nextEvents);
@@ -835,7 +962,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
           <div aria-label="Capacity editor" className="rounded-[28px] border border-white/10 bg-white/10 p-6">
             <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/75 lg:flex-row lg:items-center lg:justify-between">
               <p>
-                Live counts come from the signup capacity store used by the public form: Upstash Redis when configured, otherwise the local in-memory fallback. They are not read from a registrations database table.
+                Live counts come from the shared registrations source of truth used by the public form. In persistent mode that is the Supabase registrations table; locally it falls back to the file-backed registrations store.
               </p>
               <p>{capacityStatusLoading ? 'Refreshing live counts…' : 'Live counts loaded.'}</p>
             </div>
@@ -962,6 +1089,103 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                 <button type="button" onClick={() => void handleAction(saveRegistrationEmails)} disabled={isPending} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
                   {isPending ? 'Saving…' : 'Save email settings'}
                 </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === 'registrations' ? (
+          <div aria-label="Registrations viewer" className="rounded-[28px] border border-white/10 bg-white/10 p-6">
+            <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-black/10 p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold font-outfit">Registrations audit</h2>
+                  <p className="mt-2 max-w-3xl text-sm text-white/70">
+                    This viewer reads from the app registration store used for capacity and confirmation flow. It does not query Notion directly. If Notion mirroring is enabled, rows with source <span className="font-mono text-white">notion</span> were mirrored successfully.
+                  </p>
+                </div>
+                <button type="button" onClick={() => void refreshRegistrations()} disabled={registrationsLoading} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
+                  {registrationsLoading ? 'Refreshing…' : 'Refresh'}
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm text-white/70">Location</span>
+                  <select value={registrationLocationFilter} onChange={(event) => setRegistrationLocationFilter(event.target.value as 'ALL' | SignupLocation)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
+                    <option value="ALL">All locations</option>
+                    {CAPACITY_IDS.map((location) => <option key={location} value={location}>{location}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-white/70">Status</span>
+                  <select value={registrationStatusFilter} onChange={(event) => setRegistrationStatusFilter(event.target.value as 'ALL' | RegistrationRecordStatus)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
+                    <option value="ALL">All statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-white/70">Source</span>
+                  <select value={registrationSourceFilter} onChange={(event) => setRegistrationSourceFilter(event.target.value as 'ALL' | RegistrationRecord['source'])} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
+                    <option value="ALL">All sources</option>
+                    {REGISTRATION_SOURCES.map((source) => <option key={source} value={source}>{source}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-white/70">Search</span>
+                  <input value={registrationSearch} onChange={(event) => setRegistrationSearch(event.target.value)} placeholder="Name, email, profession" className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
+                </label>
+              </div>
+
+              {registrationsSummary ? (
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Total</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.total}</p></div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Confirmed</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.byStatus.confirmed}</p></div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Pending</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.byStatus.pending}</p></div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Mirrored to Notion</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.notionMirrored}</p></div>
+                </div>
+              ) : null}
+
+              <div className="rounded-2xl border border-white/10 bg-brand-navy/50 p-4 text-sm text-white/70">
+                Viewer source: <span className="font-mono text-white">{registrationsViewerSource}</span>. Notion mirror: <span className="font-mono text-white">{registrationsMirrorEnabled ? 'enabled' : 'disabled'}</span>.
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-white/10">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-white/10 text-sm">
+                    <thead className="bg-white/5 text-left text-white/60">
+                      <tr>
+                        <th className="px-4 py-3 font-medium">Created</th>
+                        <th className="px-4 py-3 font-medium">Location</th>
+                        <th className="px-4 py-3 font-medium">Name</th>
+                        <th className="px-4 py-3 font-medium">Email</th>
+                        <th className="px-4 py-3 font-medium">Status</th>
+                        <th className="px-4 py-3 font-medium">Source</th>
+                        <th className="px-4 py-3 font-medium">Profession</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/10 bg-black/10">
+                      {registrations.map((registration) => (
+                        <tr key={registration.id}>
+                          <td className="px-4 py-3 text-white/75">{new Date(registration.createdAt).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-white">{registration.location}</td>
+                          <td className="px-4 py-3 text-white">{registration.name}</td>
+                          <td className="px-4 py-3 text-white/85">{registration.email}</td>
+                          <td className="px-4 py-3"><span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{registration.status}</span></td>
+                          <td className="px-4 py-3 text-white/85">{registration.source}</td>
+                          <td className="px-4 py-3 text-white/75">{registration.profession}</td>
+                        </tr>
+                      ))}
+                      {!registrations.length ? (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-8 text-center text-white/60">No registrations matched the current filters.</td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

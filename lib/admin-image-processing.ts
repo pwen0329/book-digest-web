@@ -8,6 +8,7 @@ export type ProcessedAdminImage = {
   extension: '.webp';
   width: number;
   height: number;
+  blurDataURL: string;
 };
 
 const MAX_IMAGE_DIMENSION = 1800;
@@ -29,6 +30,10 @@ export async function processAdminImageUpload(input: Buffer): Promise<ProcessedA
   });
 
   const output = await resized.webp({ quality: WEBP_QUALITY, effort: 5 }).toBuffer({ resolveWithObject: true });
+  const blurBuffer = await sharp(output.data)
+    .resize({ width: 24, withoutEnlargement: true })
+    .webp({ quality: 40, effort: 2 })
+    .toBuffer();
 
   return {
     buffer: output.data,
@@ -36,5 +41,6 @@ export async function processAdminImageUpload(input: Buffer): Promise<ProcessedA
     extension: '.webp',
     width: output.info.width,
     height: output.info.height,
+    blurDataURL: `data:image/webp;base64,${blurBuffer.toString('base64')}`,
   };
 }

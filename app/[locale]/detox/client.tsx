@@ -14,6 +14,7 @@ export default function DetoxClient({ events }: { events: LocalizedEventContentM
       translationNamespace="detoxSignupFlow"
       endpoint={process.env.NEXT_PUBLIC_FORMS_ENDPOINT_DETOX || '/api/submit?loc=DETOX'}
       posterSrc={event.posterSrc}
+      posterBlurDataURL={event.posterBlurDataURL}
       posterAlt={event.posterAlt}
       posterPriority
       renderIntro={() => (

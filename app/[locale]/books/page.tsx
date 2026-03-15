@@ -72,7 +72,7 @@ export default async function BooksPage({ params }: { params: Promise<{ locale: 
                     loading={index < 5 ? 'eager' : 'lazy'}
                     fetchPriority={index < 5 ? 'high' : undefined}
                     placeholder="blur"
-                    blurDataURL={BLUR_BOOK_COVER}
+                    blurDataURL={b.displayCoverBlurDataURL || BLUR_BOOK_COVER}
                   />
                   {/* Hover overlay with book summary */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3 md:p-4">

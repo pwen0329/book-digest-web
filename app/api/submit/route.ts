@@ -9,6 +9,7 @@ import { getCapacityStatus, releaseCapacity, reserveCapacity, _resetCountForTest
 import { getRetryAfterSeconds } from '@/lib/http-response';
 import { parseApiReferral } from '@/lib/signup';
 import { createRegistrationReservation, updateRegistrationReservation } from '@/lib/registration-store';
+import { logServerError } from '@/lib/observability';
 
 type Location = 'TW' | 'NL' | 'EN' | 'DETOX';
 
@@ -241,7 +242,7 @@ export async function POST(req: NextRequest) {
       });
       if (!forward.ok) {
         const forwardErr = await forward.text().catch(() => 'unknown');
-        console.error('[api/submit] Tally forward failed:', forward.status, forwardErr);
+        await logServerError('submit.tally_forward_failed', new Error(`Tally forward failed: ${forward.status} ${forwardErr}`), { loc, status: forward.status });
         await releaseCapacity(loc);
         return NextResponse.json({ error: 'Upstream processor error' }, { status: 502 });
       }
@@ -279,13 +280,7 @@ export async function POST(req: NextRequest) {
           email: payload.email,
         });
       } catch (emailError) {
-        console.error('[api/submit] Registration success email failed', {
-          error: emailError,
-          message: emailError instanceof Error ? emailError.message : String(emailError),
-          loc,
-          email: payload.email,
-          locale,
-        });
+        await logServerError('submit.registration_email_failed', emailError, { loc, email: payload.email, locale });
         emailResult = { status: 'skipped', reason: 'Registration succeeded but email delivery failed.' };
       }
 
@@ -307,13 +302,7 @@ export async function POST(req: NextRequest) {
           email: payload.email,
         });
       } catch (emailError) {
-        console.error('[api/submit] Registration success email failed', {
-          error: emailError,
-          message: emailError instanceof Error ? emailError.message : String(emailError),
-          loc,
-          email: payload.email,
-          locale,
-        });
+        await logServerError('submit.registration_email_failed', emailError, { loc, email: payload.email, locale });
         emailResult = { status: 'skipped', reason: 'Registration succeeded but email delivery failed.' };
       }
 
@@ -333,13 +322,7 @@ export async function POST(req: NextRequest) {
         email: payload.email,
       });
     } catch (emailError) {
-      console.error('[api/submit] Registration success email failed', {
-        error: emailError,
-        message: emailError instanceof Error ? emailError.message : String(emailError),
-        loc,
-        email: payload.email,
-        locale,
-      });
+      await logServerError('submit.registration_email_failed', emailError, { loc, email: payload.email, locale });
       emailResult = { status: 'skipped', reason: 'Registration succeeded but email delivery failed.' };
     }
 
@@ -351,8 +334,7 @@ export async function POST(req: NextRequest) {
     if (reservedLoc && !registrationStored && !tallySucceeded) {
       await releaseCapacity(reservedLoc);
     }
-    console.error('[api/submit] Submit error', {
-      error: err,
+    await logServerError('submit.request_failed', err, {
       reservedLoc,
       tallySucceeded,
       registrationStored,

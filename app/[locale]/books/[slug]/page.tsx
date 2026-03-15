@@ -140,7 +140,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
                     className="object-cover"
                     priority={idx === 0}
                     placeholder="blur"
-                    blurDataURL={BLUR_BOOK_COVER_LARGE}
+                    blurDataURL={book.displayCoverBlurDataURL || BLUR_BOOK_COVER_LARGE}
                   />
                 </div>
               ))}

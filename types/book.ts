@@ -1,5 +1,6 @@
 export type Book = {
   id: string | number;
+  sortOrder?: number;
   slug: string;
   title: string;
   titleEn?: string;
@@ -7,6 +8,8 @@ export type Book = {
   authorEn?: string;
   coverUrl?: string;
   coverUrlEn?: string;
+  coverBlurDataURL?: string;
+  coverBlurDataURLEn?: string;
   coverUrls?: string[];
   coverUrlsEn?: string[];
   readDate?: string;

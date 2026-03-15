@@ -2,6 +2,7 @@ import { loadAdminDocumentRecord } from '@/lib/admin-content-store';
 import { isAdminAuthenticated, isAdminConfigured } from '@/lib/admin-auth';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import AdminLogin from '@/components/admin/AdminLogin';
+import { sortBooksDescending } from '@/lib/book-order';
 import type { Book } from '@/types/book';
 import type { EventContentMap } from '@/types/event-content';
 import type { CapacityConfigFile } from '@/lib/signup-capacity-config';
@@ -31,7 +32,7 @@ export default async function AdminPage() {
 
   return (
     <AdminDashboard
-      initialBooks={booksRecord.value}
+      initialBooks={sortBooksDescending(booksRecord.value)}
       initialEvents={eventsRecord.value}
       initialCapacity={capacityRecord.value}
       initialRegistrationEmails={emailRecord.value}

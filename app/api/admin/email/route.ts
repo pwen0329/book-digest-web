@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
+import { logServerError, logServerWarning } from '@/lib/observability';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import {
   REGISTRATION_SUCCESS_EMAIL_FILE,
@@ -75,9 +76,11 @@ export async function PUT(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof AdminDocumentConflictError) {
+      await logServerWarning('admin.email.save_conflict', { expectedUpdatedAt: payload.expectedUpdatedAt });
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
 
+    await logServerError('admin.email.save_failed', error, { enabled: payload.settings.enabled });
     throw error;
   }
   return NextResponse.json({ ok: true, settings: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });
@@ -95,7 +98,7 @@ export async function DELETE(request: NextRequest) {
   try {
     clearEmailOutbox();
   } catch (error) {
-    console.error('[api/admin/email] Failed to clear email outbox', { error });
+    await logServerError('admin.email.clear_outbox_failed', error);
     return NextResponse.json({ error: 'Unable to clear the email outbox.' }, { status: 500 });
   }
 

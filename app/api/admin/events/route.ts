@@ -2,9 +2,12 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
-import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
+import { AdminDocumentConflictError, loadAdminDocument, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
+import { cleanupRemovedAdminAssets } from '@/lib/admin-asset-manager';
+import { logServerError, logServerWarning } from '@/lib/observability';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import type { EventContentId, EventContentMap } from '@/types/event-content';
+import type { Book } from '@/types/book';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,8 +16,11 @@ const localizedTextSchema = z.object({
   en: z.string().min(1).max(8000),
 });
 
+const optionalDataUrl = z.union([z.string().max(20_000).regex(/^data:image\//), z.literal(''), z.null()]).optional();
+
 const eventRecordSchema = z.object({
   posterSrc: z.string().min(1).max(500),
+  posterBlurDataURL: optionalDataUrl,
   posterAlt: localizedTextSchema,
   title: localizedTextSchema,
   description: localizedTextSchema,
@@ -81,6 +87,8 @@ export async function PUT(request: NextRequest) {
   }
 
   const nextEvents = payload.events as EventContentMap;
+  const previousEvents = await loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' });
+  const currentBooks = await loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' });
 
   for (const eventId of Object.keys(nextEvents) as EventContentId[]) {
     if (nextEvents[eventId].comingSoon && !nextEvents[eventId].comingSoonBody) {
@@ -97,11 +105,14 @@ export async function PUT(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof AdminDocumentConflictError) {
+      await logServerWarning('admin.events.save_conflict', { expectedUpdatedAt: payload.expectedUpdatedAt });
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
 
+    await logServerError('admin.events.save_failed', error, { eventIds: Object.keys(nextEvents) });
     throw error;
   }
+  await cleanupRemovedAdminAssets({ previousBooks: currentBooks, nextBooks: currentBooks, previousEvents, nextEvents: savedRecord.value });
   revalidateEventRoutes();
 
   return NextResponse.json({ ok: true, events: savedRecord.value, updatedAt: savedRecord.updatedAt }, { status: 200 });

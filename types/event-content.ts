@@ -7,6 +7,7 @@ export type EventContentId = 'TW' | 'NL' | 'EN' | 'DETOX';
 
 export type EventContentRecord = {
   posterSrc: string;
+  posterBlurDataURL?: string;
   posterAlt: AdminEditableLocaleText;
   title: AdminEditableLocaleText;
   description: AdminEditableLocaleText;
@@ -24,6 +25,7 @@ export type EventContentMap = Record<EventContentId, EventContentRecord>;
 export type LocalizedEventContentRecord = {
   id: EventContentId;
   posterSrc: string;
+  posterBlurDataURL?: string;
   posterAlt: string;
   title: string;
   description: string;

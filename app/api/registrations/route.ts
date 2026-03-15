@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { getRetryAfterSeconds } from '@/lib/http-response';
-import { listStoredRegistrations } from '@/lib/registration-store';
+import { listStoredRegistrations, summarizeStoredRegistrations } from '@/lib/registration-store';
+import { logServerError } from '@/lib/observability';
 
 // Force dynamic rendering (API routes are not suitable for static generation)
 export const dynamic = 'force-dynamic';
 
-// GET /api/registrations?limit=10
+// GET /api/registrations?limit=50&location=TW&status=confirmed&source=notion&search=alice
 export async function GET(req: NextRequest) {
   try {
     if (!(await isAuthorizedAdminRequest(req))) {
@@ -42,10 +43,30 @@ export async function GET(req: NextRequest) {
       ? locationParam
       : undefined;
 
-    const items = await listStoredRegistrations(limit, location);
-    return NextResponse.json({ items }, { status: 200 });
+    const statusParam = req.nextUrl.searchParams.get('status');
+    const status = statusParam === 'pending' || statusParam === 'confirmed' || statusParam === 'cancelled'
+      ? statusParam
+      : undefined;
+
+    const sourceParam = req.nextUrl.searchParams.get('source');
+    const source = sourceParam === 'pending' || sourceParam === 'simulated' || sourceParam === 'tally' || sourceParam === 'notion'
+      ? sourceParam
+      : undefined;
+
+    const search = req.nextUrl.searchParams.get('search') || undefined;
+
+    const [items, summary] = await Promise.all([
+      listStoredRegistrations({ limit, location, status, source, search }),
+      summarizeStoredRegistrations(),
+    ]);
+    return NextResponse.json({
+      items,
+      summary,
+      viewerSource: 'registration-store',
+      notionMirrorEnabled: process.env.SUBMIT_SAVE_TO_NOTION === '1' && Boolean(process.env.NOTION_DB_ID && process.env.NOTION_TOKEN),
+    }, { status: 200 });
   } catch (err) {
-    console.error('List registrations error', err);
+    await logServerError('registrations.list_failed', err, { url: req.url });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

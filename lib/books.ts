@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { loadAdminDocument } from '@/lib/admin-content-store';
+import { sortBooksDescending } from '@/lib/book-order';
 import type { Book } from '@/types/book';
 import { unstable_cache } from 'next/cache';
 
@@ -15,10 +16,12 @@ let booksStore: BooksStore | null = null;
 let booksSignature = '';
 
 async function loadBooks(): Promise<Book[]> {
-  return loadAdminDocument<Book[]>({
+  const books = await loadAdminDocument<Book[]>({
     key: 'books',
     fallbackFile: 'data/books.json',
   });
+
+  return sortBooksDescending(books);
 }
 
 async function getBooksStore(): Promise<BooksStore> {
@@ -98,6 +101,7 @@ export function getLocalizedBook(book: Book, locale: string) {
     displayAuthor: locale === 'en' && book.authorEn ? book.authorEn : book.author,
     displaySummary: locale === 'en' && book.summaryEn ? book.summaryEn : book.summary,
     displayCoverUrl: locale === 'en' && book.coverUrlEn ? book.coverUrlEn : book.coverUrl,
+    displayCoverBlurDataURL: locale === 'en' && book.coverBlurDataURLEn ? book.coverBlurDataURLEn : book.coverBlurDataURL,
     displayCoverUrls: locale === 'en' && book.coverUrlsEn ? book.coverUrlsEn : book.coverUrls,
   };
 }
