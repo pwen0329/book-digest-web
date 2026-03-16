@@ -77,7 +77,7 @@ async function restoreAdminState(request: APIRequestContext, path: string, data:
 
 async function signIn(page: Page) {
   await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('[data-ready="true"]')).toBeVisible();
+  await expect(page.getByLabel('Admin password')).toBeVisible({ timeout: 15000 });
   await page.getByLabel('Admin password').fill('test-admin');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('heading', { name: 'Content operations dashboard' })).toBeVisible({ timeout: 15000 });
@@ -94,7 +94,9 @@ async function withPreviewPage(page: Page, callback: (previewPage: Page) => Prom
 }
 
 test.describe.serial('admin dashboard', () => {
-  test.skip(({ browserName }) => browserName !== 'chromium', 'Admin mutation tests run once to avoid shared-state conflicts across browser projects.');
+  test.beforeEach(({ browserName, isMobile }) => {
+    test.skip(browserName !== 'chromium' || isMobile, 'Admin mutation tests run once on desktop Chromium to avoid shared-state conflicts across browser projects.');
+  });
 
   let originalBooks: BookRecord[];
   let originalEvents: EventContentMap;
@@ -108,7 +110,11 @@ test.describe.serial('admin dashboard', () => {
     originalEmailSettings = await readAdminState<RegistrationSuccessEmailSettings>(request, '/api/admin/email', 'settings');
   });
 
-  test.afterEach(async ({ request }) => {
+  test.afterEach(async ({ request, browserName, isMobile }) => {
+    if (browserName !== 'chromium' || isMobile) {
+      return;
+    }
+
     await restoreAdminState(request, '/api/admin/books', { books: originalBooks });
     await restoreAdminState(request, '/api/admin/events', { events: originalEvents });
     await restoreAdminState(request, '/api/admin/capacity', { capacity: originalCapacity });
@@ -244,8 +250,13 @@ test.describe.serial('admin dashboard', () => {
     });
 
     await withPreviewPage(page, async (previewPage) => {
-      await previewPage.goto('/en', { waitUntil: 'domcontentloaded' });
-      await expect(previewPage.locator('section[aria-labelledby="books-wall-heading"] li a').first()).toHaveAttribute('href', `/en/books/${originalSecond.slug}`);
+      await expect.poll(async () => {
+        await previewPage.goto(`/en?refresh=${Date.now()}`, { waitUntil: 'domcontentloaded' });
+        return previewPage.locator('section[aria-labelledby="books-wall-heading"] li a').first().getAttribute('href');
+      }, {
+        timeout: 15000,
+        intervals: [250, 500, 1000],
+      }).toBe(`/en/books/${originalSecond.slug}`);
     });
 
     expect(originalFirst.slug).not.toBe(originalSecond.slug);

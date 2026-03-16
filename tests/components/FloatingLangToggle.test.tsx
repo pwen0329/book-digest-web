@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import FloatingLangToggle from '@/components/FloatingLangToggle';
 
 const originalInnerWidth = window.innerWidth;
-const pushMock = vi.fn();
 
 function setViewport(width: number) {
   Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: width });
@@ -12,7 +11,7 @@ function setViewport(width: number) {
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/en/books',
-  useRouter: () => ({ push: pushMock }),
+  useSearchParams: () => new URLSearchParams('location=TW'),
 }));
 
 vi.mock('next-intl', () => ({
@@ -22,7 +21,6 @@ vi.mock('next-intl', () => ({
 describe('FloatingLangToggle', () => {
   beforeEach(() => {
     setViewport(1440);
-    pushMock.mockReset();
   });
 
   afterEach(() => {
@@ -59,9 +57,7 @@ describe('FloatingLangToggle', () => {
   it('switches locale through the floating toggle controls', async () => {
     render(<FloatingLangToggle />);
 
-    const chineseButton = await screen.findByRole('button', { name: 'Switch to Chinese' });
-    fireEvent.click(chineseButton);
-
-    expect(pushMock).toHaveBeenCalledWith('/zh/books', { scroll: false });
+    const chineseLink = await screen.findByRole('link', { name: 'Switch to Chinese' });
+    expect(chineseLink).toHaveAttribute('href', '/zh/books?location=TW');
   });
 });

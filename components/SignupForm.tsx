@@ -257,7 +257,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
         </div>
       ) : null}
 
-      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate data-form-ready={hasRestoredState ? 'true' : 'false'}>
         {/* Honeypot */}
         <input
           type="text"

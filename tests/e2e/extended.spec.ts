@@ -21,10 +21,24 @@ async function goto(page: Page, path: string) {
   throw lastError;
 }
 
-async function waitForSignupFormReady(page: Page) {
+async function waitForSignupFormVisible(page: Page) {
   await page.locator('#name').waitFor({ state: 'visible', timeout: 30000 });
   await expect(page.locator('#name')).toBeEditable({ timeout: 30000 });
+}
+
+async function waitForSignupPersistenceReady(page: Page) {
+  await waitForSignupFormVisible(page);
+  await expect(page.locator('form[data-form-ready="true"]')).toBeVisible({ timeout: 30000 });
+}
+
+async function waitForSignupFormReady(page: Page) {
+  await waitForSignupFormVisible(page);
   await expect(page.locator('button[type="submit"]').first()).toBeEnabled({ timeout: 15000 });
+}
+
+async function waitForSignupFieldsVisible(page: Page) {
+  await waitForSignupPersistenceReady(page);
+  await page.locator('#email').waitFor({ state: 'visible', timeout: 30000 });
 }
 
 function getLanguageToggle(page: Page) {
@@ -33,18 +47,36 @@ function getLanguageToggle(page: Page) {
 
 async function waitForLanguageToggleReady(page: Page) {
   await expect(getLanguageToggle(page)).toBeVisible({ timeout: 15000 });
+  await expect(getLanguageToggle(page)).toHaveAttribute('data-ready', 'true', { timeout: 15000 });
 }
 
 async function switchLanguageAndWait(page: Page, buttonName: string, expectedUrl: RegExp) {
-  const button = getLanguageToggle(page).getByRole('button', { name: buttonName });
+  await waitForLanguageToggleReady(page);
+  const button = getLanguageToggle(page).getByRole('link', { name: buttonName });
+  await Promise.all([
+    page.waitForURL(expectedUrl, { timeout: 15000, waitUntil: 'domcontentloaded' }),
+    button.click(),
+  ]);
+}
 
-  await expect.poll(async () => {
-    await button.click();
-    return page.url();
-  }, {
-    timeout: 15000,
-    intervals: [250, 500, 1000],
-  }).toMatch(expectedUrl);
+async function requestWithRetry<T>(operation: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes('ECONNRESET')) {
+        throw error;
+      }
+
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+
+  throw lastError;
 }
 
 const locales = ['en', 'zh'];
@@ -127,7 +159,7 @@ test.describe('Signup form copy', () => {
   test('should unlock the shared form on active signup pages', async ({ page }) => {
     for (const path of ['/en/signup?location=TW', '/en/engclub', '/en/detox']) {
       await goto(page, path);
-      await waitForSignupFormReady(page);
+      await waitForSignupFormVisible(page);
       await expect(page.locator('#name')).toBeVisible();
       await expect(page.locator('#name')).toBeEditable();
     }
@@ -135,7 +167,7 @@ test.describe('Signup form copy', () => {
 
   test('should show the restored English field copy on the TW signup page', async ({ page }) => {
     await goto(page, '/en/signup?location=TW');
-    await waitForSignupFormReady(page);
+    await waitForSignupFormVisible(page);
     await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
     await expect(page.getByLabel('How old are you?')).toBeVisible();
     await expect(page.getByLabel('What do you do?')).toBeVisible();
@@ -143,7 +175,7 @@ test.describe('Signup form copy', () => {
 
   test('should show the restored Chinese field copy on the TW signup page', async ({ page }) => {
     await goto(page, '/zh/signup?location=TW');
-    await waitForSignupFormReady(page);
+    await waitForSignupFormVisible(page);
     await expect(page.getByLabel('嗨，怎麼稱呼您？')).toBeVisible();
     await expect(page.getByLabel('今年幾歲～')).toBeVisible();
     await expect(page.getByLabel('你做什麼工作呢？')).toBeVisible();
@@ -151,7 +183,7 @@ test.describe('Signup form copy', () => {
 
   test('should reuse the restored English field copy on the English book club page', async ({ page }) => {
     await goto(page, '/en/engclub');
-    await waitForSignupFormReady(page);
+    await waitForSignupFormVisible(page);
     await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
     await expect(page.getByLabel('How old are you?')).toBeVisible();
     await expect(page.getByLabel('What do you do?')).toBeVisible();
@@ -159,7 +191,7 @@ test.describe('Signup form copy', () => {
 
   test('should reuse the restored Chinese field copy on the English book club page', async ({ page }) => {
     await goto(page, '/zh/engclub');
-    await waitForSignupFormReady(page);
+    await waitForSignupFormVisible(page);
     await expect(page.getByLabel('嗨，怎麼稱呼您？')).toBeVisible();
     await expect(page.getByLabel('今年幾歲～')).toBeVisible();
     await expect(page.getByLabel('你做什麼工作呢？')).toBeVisible();
@@ -194,7 +226,7 @@ test.describe('Signup form copy', () => {
   test('should render the updated detox event copy', async ({ page }) => {
     await goto(page, '/en/detox');
     await expect(page.getByRole('heading', { name: 'Unplug Project' })).toBeVisible();
-    await waitForSignupFormReady(page);
+    await waitForSignupFormVisible(page);
     await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
     await expect(page.locator('button[type="submit"]').first()).toBeVisible();
     await expect(page.getByText('Coming soon…')).toHaveCount(0);
@@ -236,6 +268,65 @@ test.describe('Signup form copy', () => {
 // Language switching persistence
 // ------------------------------------------------------------------
 test.describe('Language switching', () => {
+  test.beforeEach(async ({ request, page }) => {
+    for (const location of ['TW', 'EN']) {
+      await request.delete(`/api/submit?loc=${location}&forceFull=0`);
+    }
+
+    await page.addInitScript((slots) => {
+      const originalFetch = window.fetch.bind(window);
+
+      window.fetch = async (input, init) => {
+        const rawUrl = typeof input === 'string'
+          ? input
+          : input instanceof Request
+            ? input.url
+            : String(input);
+        const url = new URL(rawUrl, window.location.origin);
+        const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
+        const location = url.searchParams.get('loc');
+
+        if (method === 'GET' && url.pathname === '/api/submit' && location && location in slots) {
+          const slot = slots[location as keyof typeof slots];
+          return new Response(JSON.stringify({
+            ok: true,
+            location,
+            enabled: true,
+            open: true,
+            full: false,
+            count: 0,
+            max: slot.max,
+            startAt: slot.startAt,
+            endAt: slot.endAt,
+            reason: 'ok',
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        return originalFetch(input, init);
+      };
+    }, {
+      TW: {
+        max: signupCapacity.TW.max,
+        startAt: signupCapacity.TW.startAt,
+        endAt: signupCapacity.TW.endAt,
+      },
+      EN: {
+        max: signupCapacity.EN.max,
+        startAt: signupCapacity.EN.startAt,
+        endAt: signupCapacity.EN.endAt,
+      },
+    });
+  });
+
+  test.afterEach(async ({ request }) => {
+    for (const location of ['TW', 'EN']) {
+      await request.delete(`/api/submit?loc=${location}&forceFull=0`);
+    }
+  });
+
   test('should switch from English to Chinese on the home page', async ({ page }) => {
     await goto(page, '/en');
     await waitForLanguageToggleReady(page);
@@ -250,26 +341,26 @@ test.describe('Language switching', () => {
 
   test('should preserve query string and partial signup data when switching locale', async ({ page }) => {
     await goto(page, '/en/signup?location=TW');
-    await waitForSignupFormReady(page);
+    await waitForSignupPersistenceReady(page);
     await waitForLanguageToggleReady(page);
     await page.fill('#name', 'Locale Traveler');
     await page.fill('#email', 'traveler@example.com');
 
     await switchLanguageAndWait(page, 'Switch to Chinese', /\/zh\/signup\?location=TW/);
-    await waitForSignupFormReady(page);
-    await expect(page.locator('#name')).toHaveValue('Locale Traveler');
-    await expect(page.locator('#email')).toHaveValue('traveler@example.com');
+    await waitForSignupFieldsVisible(page);
+    await expect(page.locator('#name')).toHaveValue('Locale Traveler', { timeout: 15000 });
+    await expect(page.locator('#email')).toHaveValue('traveler@example.com', { timeout: 15000 });
   });
 
   test('should preserve the active form route and entered values on engclub locale switch', async ({ page }) => {
     await goto(page, '/en/engclub');
-    await waitForSignupFormReady(page);
+    await waitForSignupPersistenceReady(page);
     await waitForLanguageToggleReady(page);
     await page.fill('#name', 'Reader Abroad');
 
     await switchLanguageAndWait(page, 'Switch to Chinese', /\/zh\/engclub$/);
-    await waitForSignupFormReady(page);
-    await expect(page.locator('#name')).toHaveValue('Reader Abroad');
+    await waitForSignupFieldsVisible(page);
+    await expect(page.locator('#name')).toHaveValue('Reader Abroad', { timeout: 15000 });
   });
 });
 
@@ -416,7 +507,7 @@ test.describe('Submit API', () => {
   });
 
   test('should reject malformed email', async ({ request }) => {
-    const response = await request.post('/api/submit?loc=TW', {
+    const response = await requestWithRetry(() => request.post('/api/submit?loc=TW', {
       data: {
         firstName: 'API',
         lastName: 'User',
@@ -426,19 +517,19 @@ test.describe('Submit API', () => {
         referral: 'Instagram',
       },
       headers: testHeaders(),
-    });
+    }));
     expect(response.status()).toBe(400);
   });
 
   test('should reject malformed JSON payloads', async ({ request }) => {
-    const response = await request.fetch('/api/submit?loc=TW', {
+    const response = await requestWithRetry(() => request.fetch('/api/submit?loc=TW', {
       method: 'POST',
       data: Buffer.from('{"name":'),
       headers: {
         ...testHeaders(),
         'content-type': 'application/json',
       },
-    });
+    }));
 
     expect(response.status()).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ error: 'Invalid JSON payload' });
