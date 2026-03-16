@@ -35,6 +35,12 @@ type CapacityLiveStatus = {
 
 const EVENT_IDS: EventContentId[] = ['TW', 'EN', 'NL', 'DETOX'];
 const CAPACITY_IDS: SignupLocation[] = ['TW', 'EN', 'NL', 'DETOX'];
+
+function buildCapacityStatusUrl(location: SignupLocation): string {
+  const statusUrl = new URL(`/api/submit?loc=${location}`, window.location.origin);
+  statusUrl.searchParams.set('_', Date.now().toString());
+  return statusUrl.pathname + statusUrl.search;
+}
 const REGISTRATION_SOURCES = ['pending', 'simulated', 'tally', 'notion'] as const;
 
 function linesToArray(value: string): string[] | undefined {
@@ -263,7 +269,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       setCapacityStatusLoading(true);
       try {
         const entries = await Promise.all(CAPACITY_IDS.map(async (location) => {
-          const response = await fetch(`/api/submit?loc=${location}`, { cache: 'no-store' });
+          const response = await fetch(buildCapacityStatusUrl(location), { cache: 'no-store' });
           if (!response.ok) {
             throw new Error(`Unable to load capacity status for ${location}`);
           }
@@ -646,7 +652,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     setMessage('Signup windows and capacity settings updated.');
 
     const refreshedStatus = await Promise.all(CAPACITY_IDS.map(async (location) => {
-      const response = await fetch(`/api/submit?loc=${location}`, { cache: 'no-store' });
+      const response = await fetch(buildCapacityStatusUrl(location), { cache: 'no-store' });
       const payloadStatus = await response.json().catch(() => null);
       return [location, {
         enabled: payloadStatus?.enabled === true,

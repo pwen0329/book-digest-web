@@ -174,7 +174,11 @@ describe('ActivitySignupFlow', () => {
 
     expect(screen.getByText('Checking availability...')).toBeInTheDocument();
     await screen.findByLabelText("Hi, what's your name?");
-    expect(fetch).toHaveBeenCalledWith('/api/submit?loc=TW', expect.objectContaining({ method: 'GET' }));
+    const fetchMock = vi.mocked(fetch);
+    const [statusUrl, statusOptions] = fetchMock.mock.calls[0];
+    expect(String(statusUrl)).toContain('/api/submit?loc=TW');
+    expect(String(statusUrl)).toContain('&_=');
+    expect(statusOptions).toMatchObject({ method: 'GET' });
   });
 
   it('shows the blocked state when the session is full', async () => {

@@ -353,7 +353,7 @@ test.describe.serial('admin dashboard', () => {
     expect((await capacitySaveResponse).ok()).toBeTruthy();
     await expect(page.getByText('Signup windows and capacity settings updated.')).toBeVisible();
 
-    const resetResponse = await request.delete('/api/submit?loc=TW&tempMax=1&forceFull=0');
+    const resetResponse = await request.delete('/api/submit?loc=TW&forceFull=0');
     expect(resetResponse.ok()).toBeTruthy();
 
     const submitResponse = await request.post('/api/submit?loc=TW', {
@@ -368,8 +368,22 @@ test.describe.serial('admin dashboard', () => {
     });
     expect(submitResponse.status()).toBe(201);
 
-    await page.goto('/en/signup?location=TW', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByText('Registration Full')).toBeVisible({ timeout: 15000 });
+    await expect.poll(async () => {
+      const statusResponse = await request.get('/api/submit?loc=TW');
+      const statusBody = await statusResponse.json();
+      return statusBody.full === true;
+    }, {
+      timeout: 15000,
+      intervals: [250, 500, 1000],
+    }).toBe(true);
+
+    await expect.poll(async () => {
+      await page.goto(`/en/signup?location=TW&refresh=${Date.now()}`, { waitUntil: 'domcontentloaded' });
+      return page.getByText('Registration Full').isVisible().catch(() => false);
+    }, {
+      timeout: 15000,
+      intervals: [250, 500, 1000],
+    }).toBe(true);
   });
 
   test('shows live signup counts and remaining slots in the capacity editor', async ({ page, request }) => {
@@ -392,7 +406,7 @@ test.describe.serial('admin dashboard', () => {
     const capacityResponse = await request.put('/api/admin/capacity', { headers: adminHeaders, data: { capacity: nextCapacity } });
     expect(capacityResponse.ok()).toBeTruthy();
 
-    const resetResponse = await request.delete('/api/submit?loc=TW&tempMax=3&forceFull=0');
+    const resetResponse = await request.delete('/api/submit?loc=TW&forceFull=0');
     expect(resetResponse.ok()).toBeTruthy();
 
     const submitResponse = await request.post('/api/submit?loc=TW', {
@@ -438,7 +452,7 @@ test.describe.serial('admin dashboard', () => {
     };
     const capacityResponse = await request.put('/api/admin/capacity', { headers: adminHeaders, data: { capacity: nextCapacity } });
     expect(capacityResponse.ok()).toBeTruthy();
-    const resetResponse = await request.delete('/api/submit?loc=TW&tempMax=5&forceFull=0');
+    const resetResponse = await request.delete('/api/submit?loc=TW&forceFull=0');
     expect(resetResponse.ok()).toBeTruthy();
 
     await signIn(page);
@@ -487,7 +501,7 @@ test.describe.serial('admin dashboard', () => {
 
   test('shows the admin-specific favicon and the registrations audit viewer', async ({ page, request }) => {
     const now = Date.now();
-    const resetResponse = await request.delete('/api/submit?loc=EN&tempMax=3&forceFull=0');
+    const resetResponse = await request.delete('/api/submit?loc=EN&forceFull=0');
     expect(resetResponse.ok()).toBeTruthy();
 
     const submitResponse = await request.post('/api/submit?loc=EN', {

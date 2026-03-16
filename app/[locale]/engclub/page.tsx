@@ -1,8 +1,11 @@
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { getLocalizedEventContent, getLocalizedEventsContent } from '@/lib/events-content';
+import { getCapacityStatus } from '@/lib/signup-capacity';
 import { getLocaleAlternates } from '@/lib/seo';
 import type { Metadata } from 'next';
 import EngClubClient from './client';
+
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -22,5 +25,5 @@ export function generateStaticParams() {
 export default async function EngClubPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <EngClubClient events={await getLocalizedEventsContent(locale)} />;
+  return <EngClubClient events={await getLocalizedEventsContent(locale)} initialSlotStatus={await getCapacityStatus('EN')} />;
 }

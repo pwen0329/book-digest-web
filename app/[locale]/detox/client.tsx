@@ -1,9 +1,9 @@
 'use client';
 
-import ActivitySignupFlow from '@/components/ActivitySignupFlow';
+import ActivitySignupFlow, { type ActivitySignupSlotStatus } from '@/components/ActivitySignupFlow';
 import type { LocalizedEventContentMap } from '@/types/event-content';
 
-export default function DetoxClient({ events }: { events: LocalizedEventContentMap }) {
+export default function DetoxClient({ events, initialSlotStatus }: { events: LocalizedEventContentMap; initialSlotStatus: ActivitySignupSlotStatus }) {
   const event = events.DETOX;
 
   return (
@@ -12,6 +12,7 @@ export default function DetoxClient({ events }: { events: LocalizedEventContentM
       location="DETOX"
       tabLabels={{ TW: events.TW.title, EN: events.EN.title, NL: events.NL.title, DETOX: events.DETOX.title }}
       translationNamespace="detoxSignupFlow"
+      initialSlotStatus={initialSlotStatus}
       endpoint={process.env.NEXT_PUBLIC_FORMS_ENDPOINT_DETOX || '/api/submit?loc=DETOX'}
       posterSrc={event.posterSrc}
       posterBlurDataURL={event.posterBlurDataURL}

@@ -1,8 +1,8 @@
 'use client';
-import ActivitySignupFlow from '@/components/ActivitySignupFlow';
+import ActivitySignupFlow, { type ActivitySignupSlotStatus } from '@/components/ActivitySignupFlow';
 import type { LocalizedEventContentMap } from '@/types/event-content';
 
-function EngClubContent({ events }: { events: LocalizedEventContentMap }) {
+function EngClubContent({ events, initialSlotStatus }: { events: LocalizedEventContentMap; initialSlotStatus: ActivitySignupSlotStatus }) {
   const event = events.EN;
   return (
     <ActivitySignupFlow
@@ -10,6 +10,7 @@ function EngClubContent({ events }: { events: LocalizedEventContentMap }) {
       location="EN"
       tabLabels={{ TW: events.TW.title, EN: events.EN.title, NL: events.NL.title, DETOX: events.DETOX.title }}
       translationNamespace="signupFlow"
+      initialSlotStatus={initialSlotStatus}
       endpoint={process.env.NEXT_PUBLIC_FORMS_ENDPOINT_EN || '/api/submit?loc=EN'}
       posterSrc={event.posterSrc}
       posterBlurDataURL={event.posterBlurDataURL}
@@ -19,6 +20,6 @@ function EngClubContent({ events }: { events: LocalizedEventContentMap }) {
   );
 }
 
-export default function EngClubClient({ events }: { events: LocalizedEventContentMap }) {
-  return <EngClubContent events={events} />;
+export default function EngClubClient({ events, initialSlotStatus }: { events: LocalizedEventContentMap; initialSlotStatus: ActivitySignupSlotStatus }) {
+  return <EngClubContent events={events} initialSlotStatus={initialSlotStatus} />;
 }

@@ -197,6 +197,19 @@ test.describe('Signup form copy', () => {
     await expect(page.getByLabel('你做什麼工作呢？')).toBeVisible();
   });
 
+  test('should submit the English book club form successfully', async ({ page }) => {
+    await goto(page, '/en/engclub');
+    await waitForSignupFormReady(page);
+    await page.fill('#name', 'English Reader');
+    await page.fill('#age', '31');
+    await page.fill('#profession', 'Researcher');
+    await page.fill('#email', `engclub-${Date.now()}@example.com`);
+    await page.click('button[type="submit"]');
+
+    await expect(page.getByRole('heading', { name: 'THANKS FOR YOUR INTEREST!' })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: 'Next' })).toBeVisible({ timeout: 15000 });
+  });
+
   test('should show the activity tab switcher on signup-related pages', async ({ page }) => {
     await goto(page, '/zh/signup?location=TW');
     const signupTabs = page.getByLabel('Activity signup tabs');
@@ -270,7 +283,7 @@ test.describe('Signup form copy', () => {
 test.describe('Language switching', () => {
   test.beforeEach(async ({ request, page }) => {
     for (const location of ['TW', 'EN']) {
-      await request.delete(`/api/submit?loc=${location}&forceFull=0`);
+      await requestWithRetry(() => request.delete(`/api/submit?loc=${location}&forceFull=0`));
     }
 
     await page.addInitScript((slots) => {
@@ -323,7 +336,7 @@ test.describe('Language switching', () => {
 
   test.afterEach(async ({ request }) => {
     for (const location of ['TW', 'EN']) {
-      await request.delete(`/api/submit?loc=${location}&forceFull=0`);
+      await requestWithRetry(() => request.delete(`/api/submit?loc=${location}&forceFull=0`));
     }
   });
 

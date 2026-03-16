@@ -10,7 +10,7 @@ import ActivitySignupTabs from '@/components/ActivitySignupTabs';
 import { BLUR_POSTER } from '@/lib/constants';
 import { mapClientReferralToApi, type SignupFormValues, type SignupLocation } from '@/lib/signup';
 
-type SlotStatus = {
+export type ActivitySignupSlotStatus = {
   enabled: boolean;
   open: boolean;
   full: boolean;
@@ -30,6 +30,7 @@ type ActivitySignupFlowProps = {
   tabLabels?: Partial<Record<ActivityTab, string>>;
   translationNamespace: 'signupFlow' | 'detoxSignupFlow';
   endpoint?: string;
+  initialSlotStatus?: ActivitySignupSlotStatus | null;
   posterPriority?: boolean;
   renderIntro?: (step: 0 | 1 | 2 | 3) => ReactNode;
   comingSoon?: {
@@ -47,6 +48,7 @@ export default function ActivitySignupFlow({
   tabLabels,
   translationNamespace,
   endpoint,
+  initialSlotStatus = null,
   posterPriority = false,
   renderIntro,
   comingSoon,
@@ -60,7 +62,7 @@ export default function ActivitySignupFlow({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [slotStatus, setSlotStatus] = useState<SlotStatus | null>(null);
+  const [slotStatus, setSlotStatus] = useState<ActivitySignupSlotStatus | null>(initialSlotStatus);
   const [checkingSlot, setCheckingSlot] = useState(false);
   const [slotError, setSlotError] = useState<string | null>(null);
   const slotRequestRef = useRef<AbortController | null>(null);
@@ -83,7 +85,9 @@ export default function ActivitySignupFlow({
     setCheckingSlot(true);
     setSlotError(null);
     try {
-      const res = await fetch(`/api/submit?loc=${location}`, { method: 'GET', signal: controller.signal, cache: 'no-store' });
+      const statusUrl = new URL(`/api/submit?loc=${location}`, window.location.origin);
+      statusUrl.searchParams.set('_', Date.now().toString());
+      const res = await fetch(statusUrl.pathname + statusUrl.search, { method: 'GET', signal: controller.signal, cache: 'no-store' });
       if (!res.ok) {
         setSlotStatus(null);
         setSlotError(tSignup('slotCheckError'));
@@ -102,7 +106,7 @@ export default function ActivitySignupFlow({
         full: data.full === true,
         count: typeof data.count === 'number' ? data.count : 0,
         max: typeof data.max === 'number' ? data.max : null,
-        reason: (data.reason as SlotStatus['reason']) || 'ok',
+          reason: (data.reason as ActivitySignupSlotStatus['reason']) || 'ok',
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {

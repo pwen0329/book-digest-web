@@ -1,8 +1,11 @@
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { getLocalizedEventContent, getLocalizedEventsContent } from '@/lib/events-content';
+import { getCapacityStatus } from '@/lib/signup-capacity';
 import { getLocaleAlternates } from '@/lib/seo';
 import type { Metadata } from 'next';
 import DetoxClient from './client';
+
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -21,5 +24,5 @@ export function generateStaticParams() {
 export default async function DetoxPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <DetoxClient events={await getLocalizedEventsContent(locale)} />;
+  return <DetoxClient events={await getLocalizedEventsContent(locale)} initialSlotStatus={await getCapacityStatus('DETOX')} />;
 }

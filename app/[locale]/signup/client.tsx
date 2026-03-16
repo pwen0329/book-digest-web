@@ -1,9 +1,9 @@
 'use client';
 import { useTranslations } from 'next-intl';
-import ActivitySignupFlow from '@/components/ActivitySignupFlow';
+import ActivitySignupFlow, { type ActivitySignupSlotStatus } from '@/components/ActivitySignupFlow';
 import type { LocalizedEventContentMap } from '@/types/event-content';
 
-function SignupContent({ initialLocation, events }: { initialLocation?: string; events: LocalizedEventContentMap }) {
+function SignupContent({ initialLocation, events, initialSlotStatus }: { initialLocation?: string; events: LocalizedEventContentMap; initialSlotStatus: ActivitySignupSlotStatus }) {
   const t = useTranslations('events');
   const activeLocation: 'TW' | 'NL' = initialLocation === 'NL' ? 'NL' : 'TW';
   const activeEvent = events[activeLocation];
@@ -15,6 +15,7 @@ function SignupContent({ initialLocation, events }: { initialLocation?: string; 
       location={activeLocation}
       tabLabels={{ TW: events.TW.title, EN: events.EN.title, NL: events.NL.title, DETOX: events.DETOX.title }}
       translationNamespace="signupFlow"
+      initialSlotStatus={initialSlotStatus}
       endpoint={
         activeLocation === 'TW'
           ? process.env.NEXT_PUBLIC_FORMS_ENDPOINT_TW || '/api/submit?loc=TW'
@@ -38,6 +39,6 @@ function SignupContent({ initialLocation, events }: { initialLocation?: string; 
   );
 }
 
-export default function SignupClient({ initialLocation, events }: { initialLocation?: string; events: LocalizedEventContentMap }) {
-  return <SignupContent initialLocation={initialLocation} events={events} />;
+export default function SignupClient({ initialLocation, events, initialSlotStatus }: { initialLocation?: string; events: LocalizedEventContentMap; initialSlotStatus: ActivitySignupSlotStatus }) {
+  return <SignupContent initialLocation={initialLocation} events={events} initialSlotStatus={initialSlotStatus} />;
 }
