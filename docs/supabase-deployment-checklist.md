@@ -49,6 +49,19 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 9. Spot-check `public.admin_documents.value` for `books` and `events`:
    - `books` should be a non-empty JSON array of book objects
    - `events` should be a JSON object with `TW`, `NL`, `EN`, and `DETOX`
+10. Production data checklist: these are the persisted payloads you should verify one by one.
+   - `public.admin_documents.key = 'books'`
+   - `public.admin_documents.key = 'events'`
+   - `public.admin_documents.key = 'capacity'`
+   - `public.admin_documents.key = 'registration-success-email'`
+   - `public.registrations` rows for signup reservations and admin reporting
+   - storage bucket `admin-assets` only if you uploaded admin-managed book covers or event posters
+11. These repo files are seed fallbacks and should not be copied manually into Supabase as standalone files:
+   - `data/books.json`
+   - `data/events-content.json`
+   - `data/signup-capacity.json`
+   - `data/registration-success-email.json`
+   - `messages/*.json`
 
 ## RLS Model
 
@@ -150,9 +163,11 @@ limit 20;
 
 12. If Supabase SQL editor says `column "id" does not exist` while inspecting `admin_documents`, the query is using the wrong schema assumption. `public.admin_documents` is key-value storage, so inspect `key`, `value`, and `updated_at`, not `id`.
 13. If Vercel logs show `ENOENT` for `/var/task/data/books.json` or `/var/task/data/events-content.json`, the deployed server is still evaluating a runtime filesystem fallback somewhere in the request path. Rebuild after confirming the app uses bundled JSON fallbacks or Supabase-backed loaders instead of unconditional `fs` reads.
-14. Fast production debug sequence when `/`, `/books`, or `/events` fail only on Vercel:
+14. If Vercel logs mention missing columns such as `registrations.createdAt`, `registrations.updatedAt`, or malformed filters such as `registrations.orstatus`, the bug is in the server-side Supabase registrations query builder, not in missing seed data.
+15. Fast production debug sequence when `/`, `/books`, `/events`, `/api/submit`, or `/api/registrations` fail only on Vercel:
    - open Vercel function logs for the failing request and note the first server-side stack frame
    - run the SQL block above for `public.admin_documents`
+   - run `select created_at, updated_at, status, source, request_id from public.registrations order by updated_at desc limit 20;`
    - confirm `books` is a non-empty JSON array and `events` is a JSON object with `TW`, `NL`, `EN`, and `DETOX`
    - confirm `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ADMIN_DOCUMENTS_TABLE`, and `SUPABASE_REGISTRATIONS_TABLE` are set on the same Vercel environment as the deployment
    - redeploy after clearing any remaining runtime file reads in server utilities

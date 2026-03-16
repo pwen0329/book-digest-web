@@ -121,4 +121,58 @@ describe('registration store', () => {
     expect(csv).toContain('req-newer');
     expect(csv).toContain('reservation_confirmed');
   });
+
+  it('uses snake_case Supabase fields for active registration counts', async () => {
+    vi.stubEnv('FORCE_LOCAL_PERSISTENT_STORES', '0');
+    vi.stubEnv('SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => '0-0/2' },
+      json: async () => [{ id: 'reg-1' }, { id: 'reg-2' }],
+      text: async () => '',
+    }));
+
+    const count = await countActiveRegistrations('DETOX');
+
+    expect(count).toBe(2);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain('location=eq.DETOX');
+    expect(String(url)).toContain('or=%28status.eq.confirmed%2Cand%28status.eq.pending%2Cupdated_at.gte.');
+    expect(String(url)).not.toContain('updatedAt');
+    expect(String(url)).not.toContain('orstatus');
+  });
+
+  it('orders Supabase registration lists by created_at and searches snake_case fields', async () => {
+    vi.stubEnv('FORCE_LOCAL_PERSISTENT_STORES', '0');
+    vi.stubEnv('SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+      text: async () => '',
+    }));
+
+    await listStoredRegistrations({
+      limit: 25,
+      location: 'EN',
+      status: 'confirmed',
+      search: 'alice',
+      createdAfter: '2026-03-01T00:00:00.000Z',
+      createdBefore: '2026-03-31T23:59:59.000Z',
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain('order=created_at.desc');
+    expect(String(url)).toContain('location=eq.EN');
+    expect(String(url)).toContain('status=eq.confirmed');
+    expect(String(url)).toContain('timestamp=gte.2026-03-01T00%3A00%3A00.000Z');
+    expect(String(url)).toContain('timestamp=lte.2026-03-31T23%3A59%3A59.000Z');
+    expect(String(url)).toContain('or=%28name.ilike.');
+    expect(String(url)).toContain('external_id.ilike');
+    expect(String(url)).toContain('request_id.ilike');
+    expect(String(url)).not.toContain('createdAt');
+  });
 });

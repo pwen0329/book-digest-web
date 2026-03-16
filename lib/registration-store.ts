@@ -265,6 +265,27 @@ function getSupabaseTableUrl(): string {
   return `${url}/rest/v1/${SUPABASE_REGISTRATIONS_TABLE}`;
 }
 
+function buildSupabaseQuery(params: Record<string, string | number | Array<string | number> | undefined>): string {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) {
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        query.append(key, String(entry));
+      }
+      continue;
+    }
+
+    query.set(key, String(value));
+  }
+
+  return `${getSupabaseTableUrl()}?${query.toString()}`;
+}
+
 export function isPersistentRegistrationStoreConfigured(): boolean {
   return Boolean(getSupabaseUrl() && getSupabaseServiceRoleKey());
 }
@@ -452,7 +473,11 @@ export async function updateRegistrationReservation(id: string, patch: UpdateReg
 export async function countActiveRegistrations(location: SignupLocation): Promise<number> {
   if (isPersistentRegistrationStoreConfigured()) {
     const pendingCutoff = new Date(Date.now() - PENDING_TTL_MS).toISOString();
-    const query = `${getSupabaseTableUrl()}?select=id&location=eq.${encodeURIComponent(location)}&or=${encodeURIComponent(`status.eq.confirmed,and(status.eq.pending,updatedAt.gte.${pendingCutoff})`)}`;
+    const query = buildSupabaseQuery({
+      select: 'id',
+      location: `eq.${location}`,
+      or: `(status.eq.confirmed,and(status.eq.pending,updated_at.gte.${pendingCutoff}))`,
+    });
     const response = await fetch(query, {
       method: 'GET',
       headers: getSupabaseHeaders({ Prefer: 'count=exact' }),
@@ -481,33 +506,27 @@ export async function countActiveRegistrations(location: SignupLocation): Promis
 
 export async function listStoredRegistrations(filters: RegistrationListFilters): Promise<RegistrationRecord[]> {
   if (isPersistentRegistrationStoreConfigured()) {
-    const queryParts = [
-      'select=*',
-      'order=createdAt.desc',
-      `limit=${filters.limit}`,
-    ];
+    const timestampFilters = [
+      filters.createdAfter ? `gte.${filters.createdAfter}` : undefined,
+      filters.createdBefore ? `lte.${filters.createdBefore}` : undefined,
+    ].filter((value): value is string => Boolean(value));
 
-    if (filters.location) {
-      queryParts.push(`location=eq.${encodeURIComponent(filters.location)}`);
-    }
-    if (filters.status) {
-      queryParts.push(`status=eq.${encodeURIComponent(filters.status)}`);
-    }
-    if (filters.source) {
-      queryParts.push(`source=eq.${encodeURIComponent(filters.source)}`);
-    }
-    if (filters.createdAfter) {
-      queryParts.push(`timestamp=gte.${encodeURIComponent(filters.createdAfter)}`);
-    }
-    if (filters.createdBefore) {
-      queryParts.push(`timestamp=lte.${encodeURIComponent(filters.createdBefore)}`);
-    }
+    const queryParams: Record<string, string | number | Array<string | number> | undefined> = {
+      select: '*',
+      order: 'created_at.desc',
+      limit: filters.limit,
+      location: filters.location ? `eq.${filters.location}` : undefined,
+      status: filters.status ? `eq.${filters.status}` : undefined,
+      source: filters.source ? `eq.${filters.source}` : undefined,
+      timestamp: timestampFilters.length ? timestampFilters : undefined,
+    };
+
     if (filters.search?.trim()) {
       const token = `*${filters.search.trim()}*`;
-      queryParts.push(`or=${encodeURIComponent(`name.ilike.${token},email.ilike.${token},profession.ilike.${token},external_id.ilike.${token},request_id.ilike.${token}`)}`);
+      queryParams.or = `(name.ilike.${token},email.ilike.${token},profession.ilike.${token},external_id.ilike.${token},request_id.ilike.${token})`;
     }
 
-    const response = await fetch(`${getSupabaseTableUrl()}?${queryParts.join('&')}`, {
+    const response = await fetch(buildSupabaseQuery(queryParams), {
       method: 'GET',
       headers: getSupabaseHeaders(),
       cache: 'no-store',
@@ -529,24 +548,20 @@ export async function listStoredRegistrations(filters: RegistrationListFilters):
 
 async function countStoredRegistrations(filters: Omit<RegistrationListFilters, 'limit' | 'search'>): Promise<number> {
   if (isPersistentRegistrationStoreConfigured()) {
-    const queryParts = ['select=id'];
-    if (filters.location) {
-      queryParts.push(`location=eq.${encodeURIComponent(filters.location)}`);
-    }
-    if (filters.status) {
-      queryParts.push(`status=eq.${encodeURIComponent(filters.status)}`);
-    }
-    if (filters.source) {
-      queryParts.push(`source=eq.${encodeURIComponent(filters.source)}`);
-    }
-    if (filters.createdAfter) {
-      queryParts.push(`timestamp=gte.${encodeURIComponent(filters.createdAfter)}`);
-    }
-    if (filters.createdBefore) {
-      queryParts.push(`timestamp=lte.${encodeURIComponent(filters.createdBefore)}`);
-    }
+    const timestampFilters = [
+      filters.createdAfter ? `gte.${filters.createdAfter}` : undefined,
+      filters.createdBefore ? `lte.${filters.createdBefore}` : undefined,
+    ].filter((value): value is string => Boolean(value));
 
-    const response = await fetch(`${getSupabaseTableUrl()}?${queryParts.join('&')}`, {
+    const queryParams: Record<string, string | Array<string> | undefined> = {
+      select: 'id',
+      location: filters.location ? `eq.${filters.location}` : undefined,
+      status: filters.status ? `eq.${filters.status}` : undefined,
+      source: filters.source ? `eq.${filters.source}` : undefined,
+      timestamp: timestampFilters.length ? timestampFilters : undefined,
+    };
+
+    const response = await fetch(buildSupabaseQuery(queryParams), {
       method: 'GET',
       headers: getSupabaseHeaders({ Prefer: 'count=exact' }),
       cache: 'no-store',

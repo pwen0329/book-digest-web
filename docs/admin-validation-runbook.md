@@ -180,6 +180,8 @@ Run these only when Supabase mode is active.
 5. Open `public.admin_documents` and confirm:
    - `books.value` is a populated JSON array
    - `events.value` contains `TW`, `NL`, `EN`, and `DETOX`
+   - `capacity.value` contains `TW`, `NL`, `EN`, and `DETOX`
+   - `registration-success-email.value` contains `enabled`, `templates.zh`, and `templates.en`
 6. Run this query to inspect the key-value admin store correctly:
 
 ```sql
@@ -190,10 +192,12 @@ order by key;
 
 7. If Vercel shows an empty homepage or books page, compare `books.value` against the repo seed in `data/books.json`.
 8. If Vercel shows an error on `/events`, compare `events.value` against the repo seed in `data/events-content.json` and verify every event still has localized `title` and `description` fields.
-9. If Vercel logs mention `/var/task/data/books.json` or `/var/task/data/events-content.json`, treat that as a deployment bug in the server fallback path rather than a missing Supabase row.
-10. Open two admin tabs that both edit the same document, such as `Books`.
-11. Save a change in the first tab.
-12. Save a different change in the second tab without refreshing.
+9. Run `select created_at, updated_at, status, source, request_id from public.registrations order by updated_at desc limit 20;` and confirm the table uses snake_case audit columns.
+10. If Vercel logs mention `/var/task/data/books.json` or `/var/task/data/events-content.json`, treat that as a deployment bug in the server fallback path rather than a missing Supabase row.
+11. If Vercel logs mention missing columns such as `registrations.createdAt` or malformed filters such as `registrations.orstatus`, treat that as a server query bug in the Supabase registrations adapter.
+12. Open two admin tabs that both edit the same document, such as `Books`.
+13. Save a change in the first tab.
+14. Save a different change in the second tab without refreshing.
 
 Expected result:
 
