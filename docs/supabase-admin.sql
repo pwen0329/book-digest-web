@@ -29,8 +29,14 @@ create table if not exists public.registrations (
 );
 
 alter table public.registrations add column if not exists request_id text;
+alter table public.registrations add column if not exists external_id text;
+alter table public.registrations add column if not exists referral_other text;
+alter table public.registrations add column if not exists bank_account text;
+alter table public.registrations add column if not exists visitor_id text;
 alter table public.registrations add column if not exists mirror_state jsonb not null default '{"notion":{"enabled":false,"status":"not_configured"},"tally":{"enabled":false,"status":"not_configured"},"email":{"enabled":false,"status":"not_configured"}}'::jsonb;
 alter table public.registrations add column if not exists audit_trail jsonb not null default '[]'::jsonb;
+alter table public.registrations add column if not exists created_at timestamptz not null default now();
+alter table public.registrations add column if not exists updated_at timestamptz not null default now();
 
 create or replace function public.set_admin_documents_updated_at()
 returns trigger
@@ -74,6 +80,8 @@ on public.registrations (external_id);
 create index if not exists registrations_request_id_idx
 on public.registrations (request_id);
 
+notify pgrst, 'reload schema';
+
 alter table public.admin_documents enable row level security;
 alter table public.registrations enable row level security;
 
@@ -85,7 +93,7 @@ values
   ('books', '[]'::jsonb),
   ('events', '{}'::jsonb),
   ('capacity', '{}'::jsonb),
-  ('registration-success-email', '{"enabled": false, "templates": {"zh": {"subject": "", "body": ""}, "en": {"subject": "", "body": ""}}}'::jsonb)
+  ('registration-success-email', '{"enabled": false, "templates": {"zh": {"subject": "Book Digest 報名成功｜{{eventTitle}}", "body": "嗨 {{name}}，\n\n你已成功完成 {{eventTitle}} 的報名。\n\n我們會以這個信箱 {{email}} 與你保持聯繫；若活動細節有更新，也會透過這裡通知你。\n\n活動類型：{{location}}\n官網：{{siteUrl}}\n\n期待在線下或線上和你見面。\nBook Digest"}, "en": {"subject": "Book Digest registration confirmed | {{eventTitle}}", "body": "Hi {{name}},\n\nYour registration for {{eventTitle}} is confirmed.\n\nWe will keep in touch through {{email}} if any event details change.\n\nActivity: {{location}}\nSite: {{siteUrl}}\n\nSee you soon,\nBook Digest"}}}'::jsonb)
 on conflict (key) do nothing;
 
 insert into storage.buckets (id, name, public)

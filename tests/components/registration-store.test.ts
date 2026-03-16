@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { countActiveRegistrations, createRegistrationReservation, listStoredRegistrations, resetRegistrationsForTesting, serializeRegistrationsCsv, updateRegistrationReservation } from '@/lib/registration-store';
+import { countActiveRegistrations, createRegistrationReservation, listStoredRegistrations, resetRegistrationStoreSchemaFallbacksForTesting, resetRegistrationsForTesting, serializeRegistrationsCsv, updateRegistrationReservation } from '@/lib/registration-store';
 
 describe('registration store', () => {
   afterEach(async () => {
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
+    resetRegistrationStoreSchemaFallbacksForTesting();
     process.env.ALLOW_CAPACITY_RESET = '1';
     await resetRegistrationsForTesting('TW');
     await resetRegistrationsForTesting('EN');
@@ -174,5 +175,136 @@ describe('registration store', () => {
     expect(String(url)).toContain('external_id.ilike');
     expect(String(url)).toContain('request_id.ilike');
     expect(String(url)).not.toContain('createdAt');
+  });
+
+  it('retries Supabase inserts without optional columns missing from older schema caches', async () => {
+    vi.stubEnv('FORCE_LOCAL_PERSISTENT_STORES', '0');
+    vi.stubEnv('SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => '{"code":"PGRST204","message":"Could not find the \'audit_trail\' column of \'registrations\' in the schema cache"}',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => '{"code":"PGRST204","message":"Could not find the \'mirror_state\' column of \'registrations\' in the schema cache"}',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{
+          id: 'legacy-reg',
+          location: 'EN',
+          locale: 'en',
+          name: 'Legacy Reader',
+          age: 33,
+          profession: 'Engineer',
+          email: 'legacy@example.com',
+          referral: 'Instagram',
+          timestamp: '2026-03-16T11:00:00.000Z',
+          status: 'pending',
+          source: 'pending',
+          created_at: '2026-03-16T11:00:00.000Z',
+          updated_at: '2026-03-16T11:00:00.000Z',
+        }],
+      }));
+
+    const created = await createRegistrationReservation({
+      location: 'EN',
+      locale: 'en',
+      name: 'Legacy Reader',
+      age: 33,
+      profession: 'Engineer',
+      email: 'legacy@example.com',
+      referral: 'Instagram',
+      timestamp: '2026-03-16T11:00:00.000Z',
+      status: 'pending',
+      source: 'pending',
+    });
+
+    expect(created.id).toBe('legacy-reg');
+    expect(fetch).toHaveBeenCalledTimes(3);
+
+    const firstBody = JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body));
+    const secondBody = JSON.parse(String(vi.mocked(fetch).mock.calls[1]?.[1]?.body));
+    const thirdBody = JSON.parse(String(vi.mocked(fetch).mock.calls[2]?.[1]?.body));
+
+    expect(firstBody[0]).toHaveProperty('audit_trail');
+    expect(firstBody[0]).toHaveProperty('mirror_state');
+    expect(secondBody[0]).not.toHaveProperty('audit_trail');
+    expect(secondBody[0]).toHaveProperty('mirror_state');
+    expect(thirdBody[0]).not.toHaveProperty('audit_trail');
+    expect(thirdBody[0]).not.toHaveProperty('mirror_state');
+  });
+
+  it('retries Supabase updates without optional columns missing from older schema caches', async () => {
+    vi.stubEnv('FORCE_LOCAL_PERSISTENT_STORES', '0');
+    vi.stubEnv('SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{
+          id: 'legacy-reg',
+          location: 'EN',
+          locale: 'en',
+          name: 'Legacy Reader',
+          age: 33,
+          profession: 'Engineer',
+          email: 'legacy@example.com',
+          referral: 'Instagram',
+          timestamp: '2026-03-16T11:00:00.000Z',
+          status: 'pending',
+          source: 'pending',
+          created_at: '2026-03-16T11:00:00.000Z',
+          updated_at: '2026-03-16T11:00:00.000Z',
+        }],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => '{"code":"PGRST204","message":"Could not find the \'request_id\' column of \'registrations\' in the schema cache"}',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{
+          id: 'legacy-reg',
+          location: 'EN',
+          locale: 'en',
+          name: 'Legacy Reader',
+          age: 33,
+          profession: 'Engineer',
+          email: 'legacy@example.com',
+          referral: 'Instagram',
+          timestamp: '2026-03-16T11:00:00.000Z',
+          status: 'confirmed',
+          source: 'simulated',
+          created_at: '2026-03-16T11:00:00.000Z',
+          updated_at: '2026-03-16T11:05:00.000Z',
+        }],
+      }));
+
+    const updated = await updateRegistrationReservation('legacy-reg', {
+      status: 'confirmed',
+      source: 'simulated',
+      requestId: 'req-legacy',
+      auditEntry: {
+        at: '2026-03-16T11:05:00.000Z',
+        event: 'reservation_confirmed',
+        actor: 'system',
+        summary: 'Confirmed on legacy schema.',
+      },
+    });
+
+    expect(updated?.status).toBe('confirmed');
+    expect(fetch).toHaveBeenCalledTimes(3);
+
+    const firstPatchBody = JSON.parse(String(vi.mocked(fetch).mock.calls[1]?.[1]?.body));
+    const secondPatchBody = JSON.parse(String(vi.mocked(fetch).mock.calls[2]?.[1]?.body));
+
+    expect(firstPatchBody).toHaveProperty('request_id');
+    expect(secondPatchBody).not.toHaveProperty('request_id');
   });
 });

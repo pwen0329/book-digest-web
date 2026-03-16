@@ -128,6 +128,20 @@ const REGISTRATIONS_FALLBACK_FILE = process.env.FORCE_LOCAL_PERSISTENT_STORES ==
   : '.local/registrations.json';
 const SUPABASE_REGISTRATIONS_TABLE = process.env.SUPABASE_REGISTRATIONS_TABLE || 'registrations';
 const PENDING_TTL_MS = 30 * 60 * 1000;
+const OPTIONAL_SUPABASE_MUTATION_COLUMNS = new Set([
+  'instagram',
+  'referral_other',
+  'bank_account',
+  'visitor_id',
+  'request_id',
+  'external_id',
+  'mirror_state',
+  'audit_trail',
+  'created_at',
+  'updated_at',
+]);
+
+const unsupportedSupabaseMutationColumns = new Set<string>();
 
 function shouldForceLocalPersistentStores(): boolean {
   return process.env.FORCE_LOCAL_PERSISTENT_STORES === '1';
@@ -172,10 +186,16 @@ function normalizeRecord(record: RegistrationRecord): RegistrationRecord {
   };
 }
 
-function toSupabaseRow(record: RegistrationRecord): SupabaseRegistrationRow {
-  const normalized = normalizeRecord(record);
+function getSupportedSupabaseMutationColumns(): Set<string> {
+  return new Set(
+    [...OPTIONAL_SUPABASE_MUTATION_COLUMNS].filter((column) => !unsupportedSupabaseMutationColumns.has(column))
+  );
+}
 
-  return {
+function buildSupabaseInsertPayload(record: RegistrationRecord): Record<string, unknown> {
+  const normalized = normalizeRecord(record);
+  const supported = getSupportedSupabaseMutationColumns();
+  const payload: Record<string, unknown> = {
     id: normalized.id,
     location: normalized.location,
     locale: normalized.locale,
@@ -183,21 +203,66 @@ function toSupabaseRow(record: RegistrationRecord): SupabaseRegistrationRow {
     age: normalized.age,
     profession: normalized.profession,
     email: normalized.email,
-    instagram: normalized.instagram || null,
     referral: normalized.referral,
-    referral_other: normalized.referralOther || null,
-    bank_account: normalized.bankAccount || null,
-    visitor_id: normalized.visitorId || null,
-    request_id: normalized.requestId || null,
     timestamp: normalized.timestamp,
     status: normalized.status,
     source: normalized.source,
-    external_id: normalized.externalId || null,
-    mirror_state: normalized.mirrorState || createDefaultMirrorState(),
-    audit_trail: normalized.auditTrail || [],
-    created_at: normalized.createdAt,
-    updated_at: normalized.updatedAt,
   };
+
+  if (supported.has('instagram') && normalized.instagram) payload.instagram = normalized.instagram;
+  if (supported.has('referral_other') && normalized.referralOther) payload.referral_other = normalized.referralOther;
+  if (supported.has('bank_account') && normalized.bankAccount) payload.bank_account = normalized.bankAccount;
+  if (supported.has('visitor_id') && normalized.visitorId) payload.visitor_id = normalized.visitorId;
+  if (supported.has('request_id') && normalized.requestId) payload.request_id = normalized.requestId;
+  if (supported.has('external_id') && normalized.externalId) payload.external_id = normalized.externalId;
+  if (supported.has('mirror_state')) payload.mirror_state = normalized.mirrorState || createDefaultMirrorState();
+  if (supported.has('audit_trail')) payload.audit_trail = normalized.auditTrail || [];
+  if (supported.has('created_at')) payload.created_at = normalized.createdAt;
+  if (supported.has('updated_at')) payload.updated_at = normalized.updatedAt;
+
+  return payload;
+}
+
+function buildSupabaseUpdatePayload(record: RegistrationRecord): Record<string, unknown> {
+  const supported = getSupportedSupabaseMutationColumns();
+  const payload: Record<string, unknown> = {
+    status: record.status,
+    source: record.source,
+  };
+
+  if (supported.has('external_id')) payload.external_id = record.externalId || null;
+  if (supported.has('bank_account')) payload.bank_account = record.bankAccount || null;
+  if (supported.has('visitor_id')) payload.visitor_id = record.visitorId || null;
+  if (supported.has('request_id')) payload.request_id = record.requestId || null;
+  if (supported.has('mirror_state')) payload.mirror_state = record.mirrorState || createDefaultMirrorState();
+  if (supported.has('audit_trail')) payload.audit_trail = record.auditTrail || [];
+  if (supported.has('updated_at')) payload.updated_at = record.updatedAt;
+
+  return payload;
+}
+
+function extractMissingSupabaseColumn(reason: string): string | null {
+  const schemaCacheMatch = reason.match(/Could not find the '([a-z_]+)' column/i);
+  if (schemaCacheMatch?.[1]) {
+    return schemaCacheMatch[1];
+  }
+
+  const missingColumnMatch = reason.match(/column (?:[a-z_]+\.)?([a-z_]+) does not exist/i);
+  if (missingColumnMatch?.[1]) {
+    return missingColumnMatch[1];
+  }
+
+  return null;
+}
+
+function markUnsupportedSupabaseMutationColumn(reason: string): boolean {
+  const missingColumn = extractMissingSupabaseColumn(reason);
+  if (!missingColumn || !OPTIONAL_SUPABASE_MUTATION_COLUMNS.has(missingColumn) || unsupportedSupabaseMutationColumns.has(missingColumn)) {
+    return false;
+  }
+
+  unsupportedSupabaseMutationColumns.add(missingColumn);
+  return true;
 }
 
 function fromSupabaseRow(row: SupabaseRegistrationRow): RegistrationRecord {
@@ -288,6 +353,10 @@ function buildSupabaseQuery(params: Record<string, string | number | Array<strin
 
 export function isPersistentRegistrationStoreConfigured(): boolean {
   return Boolean(getSupabaseUrl() && getSupabaseServiceRoleKey());
+}
+
+export function resetRegistrationStoreSchemaFallbacksForTesting(): void {
+  unsupportedSupabaseMutationColumns.clear();
 }
 
 function readFallbackRegistrations(): RegistrationRecord[] {
@@ -388,20 +457,28 @@ export async function createRegistrationReservation(input: CreateRegistrationInp
   });
 
   if (isPersistentRegistrationStoreConfigured()) {
-    const response = await fetch(getSupabaseTableUrl(), {
-      method: 'POST',
-      headers: getSupabaseHeaders({ Prefer: 'return=representation' }),
-      body: JSON.stringify([toSupabaseRow(record)]),
-      cache: 'no-store',
-    });
+    for (let attempt = 0; attempt <= OPTIONAL_SUPABASE_MUTATION_COLUMNS.size; attempt += 1) {
+      const response = await fetch(getSupabaseTableUrl(), {
+        method: 'POST',
+        headers: getSupabaseHeaders({ Prefer: 'return=representation' }),
+        body: JSON.stringify([buildSupabaseInsertPayload(record)]),
+        cache: 'no-store',
+      });
 
-    if (!response.ok) {
+      if (response.ok) {
+        const rows = await response.json() as SupabaseRegistrationRow[];
+        return rows[0] ? fromSupabaseRow(rows[0]) : record;
+      }
+
       const reason = await response.text().catch(() => 'unknown');
+      if (response.status === 400 && markUnsupportedSupabaseMutationColumn(reason)) {
+        continue;
+      }
+
       throw new Error(`Supabase registration insert failed: ${response.status} ${reason}`);
     }
 
-    const rows = await response.json() as SupabaseRegistrationRow[];
-    return rows[0] ? fromSupabaseRow(rows[0]) : record;
+    throw new Error('Supabase registration insert failed after exhausting schema fallbacks.');
   }
 
   const records = readFallbackRegistrations();
@@ -433,30 +510,28 @@ export async function updateRegistrationReservation(id: string, patch: UpdateReg
   });
 
   if (isPersistentRegistrationStoreConfigured()) {
-    const response = await fetch(`${getSupabaseTableUrl()}?id=eq.${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: getSupabaseHeaders({ Prefer: 'return=representation' }),
-      body: JSON.stringify({
-        status: updated.status,
-        source: updated.source,
-        external_id: updated.externalId || null,
-        bank_account: updated.bankAccount || null,
-        visitor_id: updated.visitorId || null,
-        request_id: updated.requestId || null,
-        mirror_state: updated.mirrorState || createDefaultMirrorState(),
-        audit_trail: updated.auditTrail || [],
-        updated_at: updated.updatedAt,
-      }),
-      cache: 'no-store',
-    });
+    for (let attempt = 0; attempt <= OPTIONAL_SUPABASE_MUTATION_COLUMNS.size; attempt += 1) {
+      const response = await fetch(`${getSupabaseTableUrl()}?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: getSupabaseHeaders({ Prefer: 'return=representation' }),
+        body: JSON.stringify(buildSupabaseUpdatePayload(updated)),
+        cache: 'no-store',
+      });
 
-    if (!response.ok) {
+      if (response.ok) {
+        const rows = await response.json() as SupabaseRegistrationRow[];
+        return rows[0] ? fromSupabaseRow(rows[0]) : null;
+      }
+
       const reason = await response.text().catch(() => 'unknown');
+      if (response.status === 400 && markUnsupportedSupabaseMutationColumn(reason)) {
+        continue;
+      }
+
       throw new Error(`Supabase registration update failed: ${response.status} ${reason}`);
     }
 
-    const rows = await response.json() as SupabaseRegistrationRow[];
-    return rows[0] ? fromSupabaseRow(rows[0]) : null;
+    throw new Error('Supabase registration update failed after exhausting schema fallbacks.');
   }
 
   const records = readFallbackRegistrations();
