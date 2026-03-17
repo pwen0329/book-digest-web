@@ -260,6 +260,12 @@ export default function ActivitySignupFlow({
                     ) : (
                       <div className="space-y-4">
                         {checkingSlot ? <div className="text-sm text-white/70">{tSignup('checkingAvailability')}</div> : null}
+                        {slotStatus?.enabled && slotStatus.max ? (
+                          <div className="rounded-xl border border-white/10 bg-black/15 px-4 py-3 text-sm text-white/85">
+                            <p>{tSignup('slotStats', { count: String(slotStatus.count), max: String(slotStatus.max) })}</p>
+                            <p className="mt-1 text-white/65">{tSignup('remainingSlots', { remaining: String(Math.max(slotStatus.max - slotStatus.count, 0)) })}</p>
+                          </div>
+                        ) : null}
                         <SignupForm
                           key={location}
                           location={location}

@@ -50,14 +50,21 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 10. Spot-check `public.admin_documents.value` for `books` and `events`:
    - `books` should be a non-empty JSON array of book objects
    - `events` should be a JSON object with `TW`, `NL`, `EN`, and `DETOX`
-11. Production data checklist: these are the persisted payloads you should verify one by one.
+11. Persisted Supabase payload inventory for this codebase:
+   - `public.admin_documents.key = 'books'`: localized book metadata, sort order, notes, tags, links, and cover asset URLs
+   - `public.admin_documents.key = 'events'`: TW / NL / EN / DETOX poster paths, localized titles, descriptions, signup paths, and coming-soon content
+   - `public.admin_documents.key = 'capacity'`: TW / NL / EN / DETOX signup windows with `enabled`, `forceFull`, `startAt`, `endAt`, and `max`
+   - `public.admin_documents.key = 'registration-success-email'`: the `enabled` flag plus localized `subject` and `body` templates
+   - `public.registrations`: all signup submissions, reconciliation fields, mirror state, and audit trail entries
+   - `storage.objects` in bucket `admin-assets`: uploaded admin-managed book covers and event posters
+12. Production data checklist: these are the persisted payloads you should verify one by one.
    - `public.admin_documents.key = 'books'`
    - `public.admin_documents.key = 'events'`
    - `public.admin_documents.key = 'capacity'`
    - `public.admin_documents.key = 'registration-success-email'`
    - `public.registrations` rows for signup reservations and admin reporting
    - storage bucket `admin-assets` only if you uploaded admin-managed book covers or event posters
-12. These repo files are seed fallbacks and should not be copied manually into Supabase as standalone files:
+13. These repo files are seed fallbacks and should not be copied manually into Supabase as standalone files:
    - `data/books.json`
    - `data/events-content.json`
    - `data/signup-capacity.json`
@@ -120,6 +127,17 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 5. For the integration logic and decision tree, read [docs/admin-data-flow.md](/data/yy/book-digest-web/docs/admin-data-flow.md).
 6. For manual verification after deploy, read [docs/admin-validation-runbook.md](/data/yy/book-digest-web/docs/admin-validation-runbook.md).
 
+## Release Gate
+
+1. The repository now includes [/.github/workflows/ci.yml](/data/yy/book-digest-web/.github/workflows/ci.yml) for PR and main-branch quality checks, plus [/.github/workflows/release-checks.yml](/data/yy/book-digest-web/.github/workflows/release-checks.yml) for full release-grade validation across lint, typecheck, build, component tests, and all Playwright browser profiles.
+2. To make GitHub truly block bad releases before Vercel deploys them, enable branch protection on `main` and require these status checks before merge:
+   - `Lint and Typecheck`
+   - `Build`
+   - `Playwright E2E (Chromium)`
+   - `Release Quality Gate`
+3. In Vercel Project Settings, keep GitHub connected to this repository and enable deployment protection so production deploys wait for the required GitHub checks to finish successfully.
+4. The repository can ship the workflows, but branch protection rules and Vercel deployment protection must still be turned on in GitHub and Vercel settings manually.
+
 ## Post-Deploy Verification
 
 1. Log into `/admin` on Vercel.
@@ -173,6 +191,7 @@ limit 20;
    - confirm `books` is a non-empty JSON array and `events` is a JSON object with `TW`, `NL`, `EN`, and `DETOX`
    - confirm `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ADMIN_DOCUMENTS_TABLE`, and `SUPABASE_REGISTRATIONS_TABLE` are set on the same Vercel environment as the deployment
    - redeploy after clearing any remaining runtime file reads in server utilities
+17. If `/api/admin/books`, `/api/admin/events`, `/api/admin/capacity`, or `/api/admin/email` return `400` only on Vercel while `/admin` still loads, suspect an older `public.admin_documents` schema cache. Rerun [docs/supabase-admin.sql](/data/yy/book-digest-web/docs/supabase-admin.sql) so `updated_at` is backfilled and PostgREST reloads the admin document schema.
 
 ## Operational Notes
 

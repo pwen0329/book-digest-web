@@ -78,8 +78,10 @@ const messages = {
     closedTitle: 'Registration Closed',
     closedBody: 'Registration is currently closed.',
     slotCheckError: 'Could not check availability.',
+    slotStats: 'Registered: {count}/{max}',
     successTitle: 'Registration Successful!',
     successBody: 'Confirmation is on the way.',
+    remainingSlots: 'Remaining spots: {remaining}',
     cancelTitle: '',
     cancelBody: '',
     contact: '',
@@ -106,8 +108,10 @@ const messages = {
     closedTitle: 'Registration Closed',
     closedBody: 'Registration is currently closed for this time slot.',
     slotCheckError: 'We could not check availability right now.',
+    slotStats: 'Registered: {count}/{max}',
     successTitle: 'Registration Successful!',
     successBody: "We'll see you at the dungeon gate!",
+    remainingSlots: 'Remaining spots: {remaining}',
     cancelTitle: '',
     cancelBody: '',
     contact: '',
@@ -128,9 +132,24 @@ const translators: { [Key in keyof MessageNamespaces]: (key: string) => string }
   detoxSignupFlow: createTranslator('detoxSignupFlow'),
 };
 
+const interpolatedTranslators = Object.fromEntries(
+  Object.entries(translators).map(([namespace, translate]) => [
+    namespace,
+    (key: string, values?: Record<string, string>) => {
+      let result = translate(key);
+      if (values) {
+        for (const [token, value] of Object.entries(values)) {
+          result = result.replace(`{${token}}`, value);
+        }
+      }
+      return result;
+    },
+  ])
+) as { [Key in keyof MessageNamespaces]: (key: string, values?: Record<string, string>) => string };
+
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
-  useTranslations: (namespace: keyof typeof messages) => translators[namespace],
+  useTranslations: (namespace: keyof typeof messages) => interpolatedTranslators[namespace],
 }));
 
 function createJsonResponse(payload: unknown, ok = true, status = 200) {
@@ -179,6 +198,8 @@ describe('ActivitySignupFlow', () => {
     expect(String(statusUrl)).toContain('/api/submit?loc=TW');
     expect(String(statusUrl)).toContain('&_=');
     expect(statusOptions).toMatchObject({ method: 'GET' });
+    expect(screen.getByText('Registered: 3/18')).toBeInTheDocument();
+    expect(screen.getByText('Remaining spots: 15')).toBeInTheDocument();
   });
 
   it('shows the blocked state when the session is full', async () => {

@@ -4,6 +4,8 @@ create table if not exists public.admin_documents (
   updated_at timestamptz not null default now()
 );
 
+alter table public.admin_documents add column if not exists updated_at timestamptz not null default now();
+
 create table if not exists public.registrations (
   id text primary key,
   location text not null check (location in ('TW', 'NL', 'EN', 'DETOX')),

@@ -171,6 +171,7 @@ test.describe('Signup form copy', () => {
     await expect(page.getByLabel("Hi, what's your name?")).toBeVisible();
     await expect(page.getByLabel('How old are you?')).toBeVisible();
     await expect(page.getByLabel('What do you do?')).toBeVisible();
+    await expect(page.getByText(/Remaining spots:/)).toBeVisible();
   });
 
   test('should show the restored Chinese field copy on the TW signup page', async ({ page }) => {

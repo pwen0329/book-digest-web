@@ -22,6 +22,7 @@ export class AdminDocumentConflictError extends Error {
 const SUPABASE_ADMIN_TABLE = process.env.SUPABASE_ADMIN_DOCUMENTS_TABLE || 'admin_documents';
 const ADMIN_DOCUMENTS_CACHE_TAG = 'admin-documents';
 const LOCAL_ADMIN_DOCUMENTS_ROOT = '.local/playwright-admin-documents';
+const unsupportedAdminDocumentColumns = new Set<string>();
 
 function shouldForceLocalPersistentStores(): boolean {
   return process.env.FORCE_LOCAL_PERSISTENT_STORES === '1';
@@ -70,13 +71,18 @@ export function isPersistentAdminStoreConfigured(): boolean {
   return Boolean(getSupabaseUrl() && getSupabaseServiceRoleKey());
 }
 
-function getDocumentUrl(key: AdminDocumentKey): string {
+export function resetAdminDocumentSchemaFallbacksForTesting(): void {
+  unsupportedAdminDocumentColumns.clear();
+}
+
+function getDocumentUrl(key: AdminDocumentKey, includeUpdatedAt = true): string {
   const url = getSupabaseUrl();
   if (!url) {
     throw new Error('SUPABASE_URL is not configured.');
   }
 
-  return `${url}/rest/v1/${SUPABASE_ADMIN_TABLE}?select=value,updated_at&key=eq.${encodeURIComponent(key)}`;
+  const select = includeUpdatedAt ? 'value,updated_at' : 'value';
+  return `${url}/rest/v1/${SUPABASE_ADMIN_TABLE}?select=${select}&key=eq.${encodeURIComponent(key)}`;
 }
 
 function getTableUrl(): string {
@@ -103,20 +109,30 @@ function getSupabaseHeaders(extraHeaders?: Record<string, string>): HeadersInit 
 }
 
 async function readFromSupabase<T>(key: AdminDocumentKey): Promise<AdminDocumentRecord<T> | null> {
-  const response = await fetch(getDocumentUrl(key), {
-    method: 'GET',
-    headers: getSupabaseHeaders(),
-    cache: 'no-store',
-  });
+  let includeUpdatedAt = !unsupportedAdminDocumentColumns.has('updated_at');
 
-  if (!response.ok) {
-    const reason = await response.text().catch(() => 'unknown');
-    throw new Error(`Supabase document read failed for ${key}: ${response.status} ${reason}`);
+  while (true) {
+    const response = await fetch(getDocumentUrl(key, includeUpdatedAt), {
+      method: 'GET',
+      headers: getSupabaseHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const reason = await response.text().catch(() => 'unknown');
+      if (includeUpdatedAt && response.status === 400 && /Could not find the 'updated_at' column|column .*updated_at does not exist/i.test(reason)) {
+        unsupportedAdminDocumentColumns.add('updated_at');
+        includeUpdatedAt = false;
+        continue;
+      }
+
+      throw new Error(`Supabase document read failed for ${key}: ${response.status} ${reason}`);
+    }
+
+    const rows = await response.json() as Array<{ value: T; updated_at?: string | null }>;
+    const row = rows[0];
+    return row ? { value: row.value, updatedAt: row.updated_at || null } : null;
   }
-
-  const rows = await response.json() as Array<{ value: T; updated_at?: string | null }>;
-  const row = rows[0];
-  return row ? { value: row.value, updatedAt: row.updated_at || null } : null;
 }
 
 async function writeToSupabase<T>(key: AdminDocumentKey, value: T, expectedUpdatedAt?: string | null): Promise<AdminDocumentRecord<T>> {
@@ -129,7 +145,7 @@ async function writeToSupabase<T>(key: AdminDocumentKey, value: T, expectedUpdat
 
   const response = await fetch(getTableUrl(), {
     method: 'POST',
-    headers: getSupabaseHeaders({ Prefer: 'resolution=merge-duplicates,return=representation' }),
+    headers: getSupabaseHeaders({ Prefer: 'resolution=merge-duplicates' }),
     body: JSON.stringify([{ key, value }]),
     cache: 'no-store',
   });
@@ -139,11 +155,8 @@ async function writeToSupabase<T>(key: AdminDocumentKey, value: T, expectedUpdat
     throw new Error(`Supabase document write failed for ${key}: ${response.status} ${reason}`);
   }
 
-  const rows = await response.json() as Array<{ value: T; updated_at?: string | null }>;
-  return {
-    value: rows[0]?.value ?? value,
-    updatedAt: rows[0]?.updated_at || new Date().toISOString(),
-  };
+  const savedRecord = await readFromSupabase<T>(key);
+  return savedRecord ?? { value, updatedAt: null };
 }
 
 type LoaderOptions<T> = {
