@@ -6,6 +6,7 @@ import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentR
 import { logServerError, logServerWarning, runWithRequestTrace } from '@/lib/observability';
 import type { CapacityConfigFile, SignupLocation } from '@/lib/signup-capacity-config';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
+import { adminDocumentVersionSchema } from '@/lib/admin-document-version';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ const requestSchema = z.object({
     EN: slotSchema,
     DETOX: slotSchema,
   }),
-  expectedUpdatedAt: z.string().datetime().nullable().optional(),
+  expectedUpdatedAt: adminDocumentVersionSchema,
 });
 
 function revalidateCapacityRoutes() {

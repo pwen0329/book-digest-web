@@ -7,6 +7,7 @@ import { normalizeBookSortOrder, sortBooksDescending } from '@/lib/book-order';
 import { cleanupRemovedAdminAssets } from '@/lib/admin-asset-manager';
 import { logServerError, logServerWarning, runWithRequestTrace } from '@/lib/observability';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
+import { adminDocumentVersionSchema } from '@/lib/admin-document-version';
 import type { Book } from '@/types/book';
 import type { EventContentMap } from '@/types/event-content';
 
@@ -50,7 +51,7 @@ const bookSchema = z.object({
 
 const requestSchema = z.object({
   books: z.array(bookSchema),
-  expectedUpdatedAt: z.string().datetime().nullable().optional(),
+  expectedUpdatedAt: adminDocumentVersionSchema,
 });
 
 function cleanOptional(value?: string | null): string | undefined {

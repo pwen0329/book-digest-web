@@ -4,6 +4,7 @@ import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { AdminDocumentConflictError, loadAdminDocumentRecord, saveAdminDocumentRecord } from '@/lib/admin-content-store';
 import { logServerError, logServerWarning, runWithRequestTrace } from '@/lib/observability';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
+import { adminDocumentVersionSchema } from '@/lib/admin-document-version';
 import {
   REGISTRATION_SUCCESS_EMAIL_FILE,
   type RegistrationSuccessEmailSettings,
@@ -25,7 +26,7 @@ const requestSchema = z.object({
       en: templateSchema,
     }),
   }),
-  expectedUpdatedAt: z.string().datetime().nullable().optional(),
+  expectedUpdatedAt: adminDocumentVersionSchema,
 });
 
 export async function GET(request: NextRequest) {

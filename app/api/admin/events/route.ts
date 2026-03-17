@@ -6,6 +6,7 @@ import { AdminDocumentConflictError, loadAdminDocument, loadAdminDocumentRecord,
 import { cleanupRemovedAdminAssets } from '@/lib/admin-asset-manager';
 import { logServerError, logServerWarning, runWithRequestTrace } from '@/lib/observability';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
+import { adminDocumentVersionSchema } from '@/lib/admin-document-version';
 import type { EventContentId, EventContentMap } from '@/types/event-content';
 import type { Book } from '@/types/book';
 
@@ -40,7 +41,7 @@ const requestSchema = z.object({
     EN: eventRecordSchema,
     DETOX: eventRecordSchema,
   }),
-  expectedUpdatedAt: z.string().datetime().nullable().optional(),
+  expectedUpdatedAt: adminDocumentVersionSchema,
 });
 
 function revalidateEventRoutes() {
