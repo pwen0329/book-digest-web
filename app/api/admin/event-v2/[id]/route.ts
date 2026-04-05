@@ -21,8 +21,8 @@ const eventSchema = z.object({
   eventDate: z.string().datetime(),
   registrationOpensAt: z.string().datetime(),
   registrationClosesAt: z.string().datetime(),
-  coverUrl: z.string().min(1).max(500).optional().nullable(),
-  coverUrlEn: z.string().min(1).max(500).optional().nullable(),
+  coverUrl: z.string().max(500).optional().nullable().transform(val => val === '' ? null : val),
+  coverUrlEn: z.string().max(500).optional().nullable().transform(val => val === '' ? null : val),
   isPublished: z.boolean(),
 }).partial();
 
