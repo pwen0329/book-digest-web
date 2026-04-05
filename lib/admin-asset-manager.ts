@@ -3,8 +3,9 @@ import 'server-only';
 import path from 'node:path';
 import { readdir, stat, unlink } from 'node:fs/promises';
 import type { Book } from '@/types/book';
-import type { EventContentMap } from '@/types/event-content';
-import { loadAdminDocument } from '@/lib/admin-content-store';
+import type { Event } from '@/types/event';
+import { getAllBooksFromDB } from '@/lib/books-db';
+import { getEvents } from '@/lib/events';
 import { isPersistentUploadStoreConfigured, resolveLocalAdminUploadPath } from '@/lib/admin-upload-storage';
 
 type UploadScope = 'books' | 'events';
@@ -93,11 +94,14 @@ function extractBookAssetUrls(books: Book[]): Set<string> {
   return urls;
 }
 
-function extractEventAssetUrls(events: EventContentMap): Set<string> {
+function extractEventAssetUrls(events: Event[]): Set<string> {
   const urls = new Set<string>();
-  for (const event of Object.values(events)) {
-    if (event.posterSrc) {
-      urls.add(event.posterSrc);
+  for (const event of events) {
+    if (event.coverUrl) {
+      urls.add(event.coverUrl);
+    }
+    if (event.coverUrlEn) {
+      urls.add(event.coverUrlEn);
     }
   }
   return urls;
@@ -228,7 +232,7 @@ async function listStoredAssets(): Promise<ManagedAssetRecord[]> {
   return [...bookAssets, ...eventAssets];
 }
 
-function getReferencedAssets(books: Book[], events: EventContentMap): ManagedAssetRecord[] {
+function getReferencedAssets(books: Book[], events: Event[]): ManagedAssetRecord[] {
   const urls = [
     ...extractBookAssetUrls(books),
     ...extractEventAssetUrls(events),
@@ -253,8 +257,8 @@ function getReferencedAssets(books: Book[], events: EventContentMap): ManagedAss
 
 export async function buildManagedAssetReport(gracePeriodHours = 168): Promise<ManagedAssetReport> {
   const [books, events, storedAssets] = await Promise.all([
-    loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' }),
-    loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' }),
+    getAllBooksFromDB(),
+    getEvents(),
     listStoredAssets(),
   ]);
 

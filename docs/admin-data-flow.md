@@ -22,13 +22,14 @@ Tally     = optional outbound copy for legacy/external flows
 
 ```mermaid
 flowchart TD
-  User[Reader submits form] --> Api[/api/submit]
+  User[Reader submits form] --> Api[/api/event/slug/register]
   Api --> Truth[(Supabase registrations or fallback store)]
   Api -. optional mirror .-> Notion[(Notion database)]
-  Api -. optional forward .-> Tally[Tally endpoint]
   Admin[/admin] --> Truth
   Admin --> Docs[(Supabase admin_documents or JSON fallback)]
+  Admin --> Events[(Supabase events table or data/events.json)]
   Public[Public pages] --> Docs
+  Public --> Events
   Assets[Uploaded covers and posters] --> Storage[(Supabase Storage or local uploads)]
   Admin --> Storage
 ```
@@ -60,34 +61,23 @@ Do not use Notion as the operational source of truth for capacity, registration 
 
 ## Do I Still Need Tally?
 
-No, not if you are happy with the built-in `/api/submit` flow.
+No. Tally integration has been removed in favor of direct event-based registrations through `/api/event/[slug]/register`.
 
-Keep Tally only if you still need:
-
-1. an external webhook destination
-2. compatibility with an older ops process
-3. a third-party form pipeline outside the app
-
-If you want Supabase-first behavior, keep frontend forms on `/api/submit` and leave `NEXT_PUBLIC_FORMS_ENDPOINT_*` empty.
+If you want Supabase-first behavior, frontend forms post directly to the event registration endpoint.
 
 ## Registration Lifecycle
 
 ```mermaid
 sequenceDiagram
   participant Browser as Browser
-  participant API as /api/submit
+  participant API as /api/event/[slug]/register
   participant Truth as Registration store
   participant Notion as Notion mirror
-  participant Tally as Tally endpoint
   participant Email as Email transport
 
-  Browser->>API: POST registration
-  API->>Truth: create pending reservation
+  Browser->>API: POST registration for event
+  API->>Truth: create pending reservation with eventId
   API->>Truth: append requestId + audit trail
-  alt Tally enabled
-    API->>Tally: forward payload
-    API->>Truth: store tally sync state
-  end
   alt Notion mirror enabled
     API->>Notion: mirror payload
     API->>Truth: store notion sync state
@@ -124,8 +114,7 @@ sequenceDiagram
 
 1. Simplest production stack: Supabase only.
 2. Need human-friendly mirror: add Notion.
-3. Need external forwarding: add Tally.
-4. Need deterministic capacity, audit history, and reconciliation: never bypass `/api/submit`.
+3. Event-based registration system with per-event capacity tracking.
 
 ## Secret Placement
 
@@ -152,6 +141,8 @@ SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
 SUPABASE_ADMIN_DOCUMENTS_TABLE=admin_documents
 SUPABASE_REGISTRATIONS_TABLE=registrations
+SUPABASE_EVENTS_TABLE=events
+SUPABASE_VENUES_TABLE=venues
 SUPABASE_STORAGE_BUCKET=admin-assets
 ```
 
@@ -161,11 +152,6 @@ SUPABASE_STORAGE_BUCKET=admin-assets
 SUBMIT_SAVE_TO_NOTION=1
 NOTION_TOKEN=...
 NOTION_DB_ID=...
-
-TALLY_ENDPOINT_TW=...
-TALLY_ENDPOINT_NL=...
-TALLY_ENDPOINT_EN=...
-TALLY_ENDPOINT_DETOX=...
 
 NEXT_PUBLIC_SENTRY_DSN=...
 SENTRY_AUTH_TOKEN=...

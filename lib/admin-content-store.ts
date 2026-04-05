@@ -5,7 +5,7 @@ import { statSync } from 'node:fs';
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { readJsonFile, resolveWorkspacePath, writeJsonFile } from '@/lib/json-store';
 
-export type AdminDocumentKey = 'books' | 'events' | 'capacity' | 'registration-success-email';
+export type AdminDocumentKey = 'registration-success-email';
 
 export type AdminDocumentRecord<T> = {
   value: T;
