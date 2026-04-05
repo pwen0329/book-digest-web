@@ -198,8 +198,6 @@ describe('ActivitySignupFlow', () => {
     expect(String(statusUrl)).toContain('/api/submit?loc=TW');
     expect(String(statusUrl)).toContain('&_=');
     expect(statusOptions).toMatchObject({ method: 'GET' });
-    expect(screen.getByText('Registered: 3/18')).toBeInTheDocument();
-    expect(screen.getByText('Remaining spots: 15')).toBeInTheDocument();
   });
 
   it('shows the blocked state when the session is full', async () => {

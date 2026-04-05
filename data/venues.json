@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "name": "Taipei Office",
+    "location": "TW",
+    "address": "Taipei, Taiwan",
+    "maxCapacity": 20,
+    "isVirtual": false,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "name": "Netherlands Office",
+    "location": "NL",
+    "address": "Netherlands",
+    "maxCapacity": 15,
+    "isVirtual": false,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "name": "Online Virtual Space",
+    "location": "ONLINE",
+    "address": null,
+    "maxCapacity": 50,
+    "isVirtual": true,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": 4,
+    "name": "Digital Detox Space",
+    "location": "TW",
+    "address": "Physical Event Location",
+    "maxCapacity": 12,
+    "isVirtual": false,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  }
+]

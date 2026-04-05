@@ -1,11 +1,11 @@
-import { loadAdminDocumentRecord } from '@/lib/admin-content-store';
+import { getAllBooksFromDB } from '@/lib/books-db';
+import { getAllEvents } from '@/lib/events';
+import { getAllVenues } from '@/lib/venues';
 import { isAdminAuthenticated, isAdminConfigured } from '@/lib/admin-auth';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import AdminLogin from '@/components/admin/AdminLogin';
 import { sortBooksDescending } from '@/lib/book-order';
-import type { Book } from '@/types/book';
-import type { EventContentMap } from '@/types/event-content';
-import type { CapacityConfigFile } from '@/lib/signup-capacity-config';
+import { loadAdminDocumentRecord } from '@/lib/admin-content-store';
 import type { RegistrationSuccessEmailSettings } from '@/lib/registration-success-email-config';
 
 export const dynamic = 'force-dynamic';
@@ -23,23 +23,23 @@ export default async function AdminPage() {
     return <AdminLogin configured={true} />;
   }
 
-  const [booksRecord, eventsRecord, capacityRecord, emailRecord] = await Promise.all([
-    loadAdminDocumentRecord<Book[]>({ key: 'books', fallbackFile: 'data/books.json' }),
-    loadAdminDocumentRecord<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' }),
-    loadAdminDocumentRecord<CapacityConfigFile>({ key: 'capacity', fallbackFile: 'data/signup-capacity.json' }),
+  const [books, events, venues, emailRecord] = await Promise.all([
+    getAllBooksFromDB(), // Load from database
+    getAllEvents({ includeVenue: true, includeBook: true }), // Load from database with joins
+    getAllVenues(), // Load from database
     loadAdminDocumentRecord<RegistrationSuccessEmailSettings>({ key: 'registration-success-email', fallbackFile: 'data/registration-success-email.json' }),
   ]);
 
   return (
     <AdminDashboard
-      initialBooks={sortBooksDescending(booksRecord.value)}
-      initialEvents={eventsRecord.value}
-      initialCapacity={capacityRecord.value}
+      initialBooks={sortBooksDescending(books)}
+      initialEvents={events}
+      initialVenues={venues}
       initialRegistrationEmails={emailRecord.value}
       initialDocumentVersions={{
-        books: booksRecord.updatedAt,
-        events: eventsRecord.updatedAt,
-        capacity: capacityRecord.updatedAt,
+        books: null, // No version tracking for database
+        events: null, // No version tracking for database
+        venues: null, // No version tracking for database
         emails: emailRecord.updatedAt,
       }}
     />

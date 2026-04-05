@@ -1,0 +1,11 @@
+[
+  {
+    "to": "detox@example.com",
+    "subject": "Book Digest registration confirmed | Unplug Project",
+    "text": "Hi Detox Adventurer,\n\nYour registration for Unplug Project is confirmed.\n\nWe will keep in touch through detox@example.com if any event details change.\n\nActivity: DETOX\nSite: https://bookdigest.test\n\nSee you soon,\nBook Digest",
+    "locale": "en",
+    "location": "DETOX",
+    "transport": "file",
+    "createdAt": "2026-04-04T22:56:32.286Z"
+  }
+]

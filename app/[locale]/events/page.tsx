@@ -1,12 +1,10 @@
 import { getTranslations } from 'next-intl/server';
-import Link from 'next/link';
-import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { BLUR_POSTER } from '@/lib/constants';
-import { getLocalizedEventsContent } from '@/lib/events-content';
+import { getLocalizedEventsContent } from '@/lib/events';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { pageSEO, getLocaleAlternates } from '@/lib/seo';
 import type { Metadata } from 'next';
+import EventsClient from './client';
 
 // Counter is a client component below the fold; lazy-load it
 const Counter = dynamic(() => import('@/components/Counter'), { ssr: false });
@@ -25,150 +23,26 @@ export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
 
-// Event Section Component - Server Component
-function EventSection({
-  image,
-  imageBlurDataURL,
-  title,
-  description,
-  signupUrl,
-  signupText = 'Sign Up',
-  imagePosition = 'left',
-  priority = false,
-  ctaClass,
-}: {
-  image: string;
-  imageBlurDataURL?: string;
-  title: string;
-  description: string;
-  signupUrl?: string;
-  signupText?: string;
-  imagePosition?: 'left' | 'right';
-  priority?: boolean;
-  ctaClass?: string;
-}) {
-  const imageOrderClass = imagePosition === 'left' ? 'order-1 lg:order-1' : 'order-1 lg:order-2';
-  const contentOrderClass = imagePosition === 'left' ? 'order-2 lg:order-2' : 'order-2 lg:order-1';
-
-  const imageBlock = (
-    <div className={`w-full lg:w-5/12 flex justify-center ${imageOrderClass}`}>
-      <div className="relative w-full max-w-[360px] sm:max-w-[400px] lg:max-w-none rounded-xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
-        <Image
-          src={image}
-          alt={title}
-          fill
-          sizes="(max-width: 1024px) 100vw, 50vw"
-          className="object-cover"
-          loading={priority ? 'eager' : 'lazy'}
-          placeholder="blur"
-          blurDataURL={imageBlurDataURL || BLUR_POSTER}
-        />
-      </div>
-    </div>
-  );
-
-  const contentBlock = (
-    <div className={`w-full lg:flex-1 flex flex-col justify-center ${contentOrderClass}`}>
-      <h3 className="text-2xl md:text-3xl font-bold text-white font-outfit">
-        {title}
-      </h3>
-      <p className="mt-6 text-white/80 leading-relaxed whitespace-pre-line text-lg font-outfit">
-        {description}
-      </p>
-      {signupUrl && (
-        <div className="mt-8">
-          <Link
-            href={signupUrl}
-            className={ctaClass || "inline-flex items-center px-8 py-3 rounded-full bg-brand-pink text-white font-semibold hover:brightness-110 transition-all uppercase tracking-wider text-[15px] md:text-base"}
-            prefetch={false}
-          >
-            {signupText}
-          </Link>
-        </div>
-      )}
-    </div>
-  );
-
-  return (
-    <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-center lg:justify-center">
-      {imagePosition === 'left' ? (
-        <>
-          {imageBlock}
-          {contentBlock}
-        </>
-      ) : (
-        <>
-          {contentBlock}
-          {imageBlock}
-        </>
-      )}
-    </div>
-  );
-}
-
 export default async function EventsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('events');
-  const events = await getLocalizedEventsContent(locale);
+  const eventsMap = await getLocalizedEventsContent(locale);
   const ctaClass = locale === 'en' ? "inline-flex min-h-11 items-center justify-center rounded-full bg-brand-pink px-5 sm:px-7 py-2.5 sm:py-3 font-semibold text-white shadow font-outfit transition-all text-sm sm:text-base uppercase tracking-wider hover:brightness-110" : "inline-flex min-h-11 items-center justify-center rounded-full bg-brand-pink px-8 sm:px-9 py-2.5 sm:py-3 font-semibold text-white shadow transition-all text-base sm:text-lg tracking-[0.24em] sm:tracking-[0.3em] hover:brightness-110";
-
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
-  const eventsJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: 'Book Digest Events',
-    itemListElement: [
-      {
-        '@type': 'Event',
-        name: events.TW.title,
-        description: events.TW.description,
-        eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-        eventSchedule: { '@type': 'Schedule', repeatFrequency: 'P1M', byDay: 'https://schema.org/Saturday' },
-        location: { '@type': 'Place', name: events.TW.locationName, address: { '@type': 'PostalAddress', addressLocality: 'Taipei', addressCountry: events.TW.addressCountry || 'TW' } },
-        organizer: { '@type': 'Organization', name: 'Book Digest', url: siteUrl },
-        url: `${siteUrl}/${locale}${events.TW.signupPath}`,
-      },
-      {
-        '@type': 'Event',
-        name: events.NL.title,
-        description: events.NL.description,
-        eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-        eventSchedule: { '@type': 'Schedule', repeatFrequency: 'P1M', byDay: 'https://schema.org/Saturday' },
-        location: { '@type': 'Place', name: events.NL.locationName, address: { '@type': 'PostalAddress', addressCountry: events.NL.addressCountry || 'NL' } },
-        organizer: { '@type': 'Organization', name: 'Book Digest', url: siteUrl },
-        url: `${siteUrl}/${locale}${events.NL.signupPath}`,
-      },
-      {
-        '@type': 'Event',
-        name: events.EN.title,
-        description: events.EN.description,
-        eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
-        eventSchedule: { '@type': 'Schedule', repeatFrequency: 'P1M' },
-        location: { '@type': 'VirtualLocation', url: `${siteUrl}/${locale}${events.EN.signupPath}` },
-        organizer: { '@type': 'Organization', name: 'Book Digest', url: siteUrl },
-        url: `${siteUrl}/${locale}${events.EN.signupPath}`,
-      },
-    ],
-  };
 
   return (
     <section className="bg-brand-navy text-white min-h-screen">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventsJsonLd).replace(/<\/script>/gi, '<\\/script>') }}
-      />
       <div className="mx-auto max-w-5xl px-6 lg:px-16 py-16">
         {/* Stats Counters - Client Component for animation */}
         {(() => {
           const startDate = new Date('2020-07-31');
           const now = new Date();
           const readingDays = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-          
+
           const baseDate = new Date('2026-03-01');
           const monthsDiff = (now.getFullYear() - baseDate.getFullYear()) * 12 + (now.getMonth() - baseDate.getMonth());
           const safeMonthsDiff = Math.max(0, monthsDiff);
-          
+
           const clubsHeld = 78 + safeMonthsDiff * 2;
           const readersJoined = 300 + safeMonthsDiff * 15;
           return (
@@ -180,68 +54,13 @@ export default async function EventsPage({ params }: { params: Promise<{ locale:
           );
         })()}
 
-        {/* Taiwan Book Club */}
-        <div className="py-12">
-          <EventSection
-            image={events.TW.posterSrc}
-            imageBlurDataURL={events.TW.posterBlurDataURL}
-            title={events.TW.title}
-            description={events.TW.description}
-            signupUrl={`/${locale}${events.TW.signupPath}`}
-            signupText={t('signUp')}
-            imagePosition={events.TW.imagePosition}
-            priority={true}
-            ctaClass={ctaClass}
-          />
-        </div>
-
-        <div className="my-4 h-px bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
-
-        {/* Online English Book Club */}
-        <div className="py-12">
-          <EventSection
-            image={events.EN.posterSrc}
-            imageBlurDataURL={events.EN.posterBlurDataURL}
-            title={events.EN.title}
-            description={events.EN.description}
-            signupUrl={`/${locale}${events.EN.signupPath}`}
-            signupText={t('signUp')}
-            imagePosition={events.EN.imagePosition}
-            ctaClass={ctaClass}
-          />
-        </div>
-
-        <div className="my-4 h-px bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
-
-        {/* Netherlands Book Club */}
-        <div className="py-12">
-          <EventSection
-            image={events.NL.posterSrc}
-            imageBlurDataURL={events.NL.posterBlurDataURL}
-            title={events.NL.title}
-            description={events.NL.description}
-            signupUrl={`/${locale}${events.NL.signupPath}`}
-            signupText={t('signUp')}
-            imagePosition={events.NL.imagePosition}
-            ctaClass={ctaClass}
-          />
-        </div>
-
-        <div className="my-4 h-px bg-gradient-to-r from-transparent via-brand-pink/50 to-transparent" />
-
-        {/* Digital Detox */}
-        <div id="detox" className="py-12">
-          <EventSection
-            image={events.DETOX.posterSrc}
-            imageBlurDataURL={events.DETOX.posterBlurDataURL}
-            title={events.DETOX.title}
-            description={events.DETOX.description}
-            signupUrl={`/${locale}${events.DETOX.signupPath}`}
-            signupText={t('signUp')}
-            imagePosition={events.DETOX.imagePosition}
-            ctaClass={ctaClass}
-          />
-        </div>
+        {/* Events with Tabbed Navigation */}
+        <EventsClient
+          locale={locale}
+          eventsMap={eventsMap}
+          signUpText={t('signUp')}
+          ctaClass={ctaClass}
+        />
       </div>
     </section>
   );

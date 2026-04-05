@@ -130,7 +130,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
               {(book.displayCoverUrls && book.displayCoverUrls.length > 0
                 ? book.displayCoverUrls
                 : [book.displayCoverUrl || book.coverUrl || '/images/placeholder-cover.svg']
-              ).map((url, idx) => (
+              ).map((url: string, idx: number) => (
                 <div key={idx} className="relative w-48 md:w-56 aspect-[2/3] flex-shrink-0 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/20 snap-center">
                   <Image
                     src={url}

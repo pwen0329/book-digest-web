@@ -10,15 +10,6 @@ import ActivitySignupTabs from '@/components/ActivitySignupTabs';
 import { BLUR_POSTER } from '@/lib/constants';
 import { mapClientReferralToApi, type SignupFormValues, type SignupLocation } from '@/lib/signup';
 
-export type ActivitySignupSlotStatus = {
-  enabled: boolean;
-  open: boolean;
-  full: boolean;
-  count: number;
-  max: number | null;
-  reason: 'ok' | 'closed' | 'full';
-};
-
 type ActivityTab = 'TW' | 'EN' | 'NL' | 'DETOX';
 
 type ActivitySignupFlowProps = {
@@ -29,14 +20,14 @@ type ActivitySignupFlowProps = {
   posterAlt: string;
   tabLabels?: Partial<Record<ActivityTab, string>>;
   translationNamespace: 'signupFlow' | 'detoxSignupFlow';
-  endpoint?: string;
-  initialSlotStatus?: ActivitySignupSlotStatus | null;
+  endpoint: string;
   posterPriority?: boolean;
   renderIntro?: (step: 0 | 1 | 2 | 3) => ReactNode;
   comingSoon?: {
     title: string;
     body?: string;
   };
+  showTabs?: boolean;
 };
 
 export default function ActivitySignupFlow({
@@ -48,10 +39,10 @@ export default function ActivitySignupFlow({
   tabLabels,
   translationNamespace,
   endpoint,
-  initialSlotStatus = null,
   posterPriority = false,
   renderIntro,
   comingSoon,
+  showTabs = true,
 }: ActivitySignupFlowProps) {
   const tEvents = useTranslations('events');
   const tSignup = useTranslations(translationNamespace);
@@ -62,10 +53,6 @@ export default function ActivitySignupFlow({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [slotStatus, setSlotStatus] = useState<ActivitySignupSlotStatus | null>(initialSlotStatus);
-  const [checkingSlot, setCheckingSlot] = useState(false);
-  const [slotError, setSlotError] = useState<string | null>(null);
-  const slotRequestRef = useRef<AbortController | null>(null);
   const submitRequestRef = useRef<AbortController | null>(null);
 
   const handleTurnstileVerify = useCallback((token: string) => {
@@ -76,64 +63,12 @@ export default function ActivitySignupFlow({
     setTurnstileToken(null);
   }, []);
 
-  const submitEndpoint = endpoint || `/api/submit?loc=${location}`;
-
-  const refreshSlotStatus = useCallback(async () => {
-    slotRequestRef.current?.abort();
-    const controller = new AbortController();
-    slotRequestRef.current = controller;
-    setCheckingSlot(true);
-    setSlotError(null);
-    try {
-      const statusUrl = new URL(`/api/submit?loc=${location}`, window.location.origin);
-      statusUrl.searchParams.set('_', Date.now().toString());
-      const res = await fetch(statusUrl.pathname + statusUrl.search, { method: 'GET', signal: controller.signal, cache: 'no-store' });
-      if (!res.ok) {
-        setSlotStatus(null);
-        setSlotError(tSignup('slotCheckError'));
-        return;
-      }
-      const data = await res.json().catch(() => null);
-      if (!data || typeof data !== 'object') {
-        setSlotStatus(null);
-        setSlotError(tSignup('slotCheckError'));
-        return;
-      }
-
-      setSlotStatus({
-        enabled: data.enabled === true,
-        open: data.open !== false,
-        full: data.full === true,
-        count: typeof data.count === 'number' ? data.count : 0,
-        max: typeof data.max === 'number' ? data.max : null,
-          reason: (data.reason as ActivitySignupSlotStatus['reason']) || 'ok',
-      });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return;
-      }
-      setSlotStatus(null);
-      setSlotError(tSignup('slotCheckError'));
-    } finally {
-      if (slotRequestRef.current === controller) {
-        slotRequestRef.current = null;
-        setCheckingSlot(false);
-      }
-    }
-  }, [location, tSignup]);
-
-  useEffect(() => {
-    if (comingSoon) return;
-    void refreshSlotStatus();
-  }, [comingSoon, refreshSlotStatus]);
+  const submitEndpoint = endpoint;
 
   useEffect(() => () => {
-    slotRequestRef.current?.abort();
     submitRequestRef.current?.abort();
   }, []);
 
-  const isSlotBlocked = Boolean(slotStatus?.enabled && (slotStatus.full || !slotStatus.open));
-  const blockReason = slotStatus?.reason === 'full' ? 'full' : 'closed';
   const formBgClass = 'bg-white/20 backdrop-blur-xl rounded-2xl';
   const cancelTitle = tSignup('cancelTitle');
   const cancelBody = tSignup('cancelBody');
@@ -177,7 +112,6 @@ export default function ActivitySignupFlow({
 
       if (resp.status === 409) {
         const conflict = await resp.json().catch(() => ({ reason: 'full' }));
-        await refreshSlotStatus();
         setStep(0);
         setSendError(conflict.reason === 'closed' ? tSignup('closedBody') : tSignup('fullBody'));
         setSending(false);
@@ -213,7 +147,7 @@ export default function ActivitySignupFlow({
           </Link>
         </div>
 
-        <ActivitySignupTabs activeTab={activeTab} labels={tabLabels} />
+        {showTabs && <ActivitySignupTabs activeTab={activeTab} labels={tabLabels} />}
         {renderIntro ? renderIntro(step) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
@@ -244,38 +178,16 @@ export default function ActivitySignupFlow({
               ) : (
                 <>
                   {step === 0 && (
-                    isSlotBlocked ? (
-                      <div className="rounded-xl border border-brand-pink/50 bg-white/10 p-6 text-white">
-                        <h3 className="text-2xl font-bold mb-2">
-                          {blockReason === 'full' ? tSignup('fullTitle') : tSignup('closedTitle')}
-                        </h3>
-                        <p className="text-white/90 whitespace-pre-line">
-                          {blockReason === 'full' ? tSignup('fullBody') : tSignup('closedBody')}
-                        </p>
-                      </div>
-                    ) : slotError ? (
-                      <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-6 text-red-100">
-                        {slotError}
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {checkingSlot ? <div className="text-sm text-white/70">{tSignup('checkingAvailability')}</div> : null}
-                        {slotStatus?.enabled && slotStatus.max ? (
-                          <div className="rounded-xl border border-white/10 bg-black/15 px-4 py-3 text-sm text-white/85">
-                            {/* <p>{tSignup('slotStats', { count: String(slotStatus.count), max: String(slotStatus.max) })}</p> */}
-                            <p className="mt-1 text-white/65">{tSignup('remainingSlots', { remaining: String(Math.max(slotStatus.max - slotStatus.count, 0)) })}</p>
-                          </div>
-                        ) : null}
-                        <SignupForm
-                          key={location}
-                          location={location}
-                          onComplete={(vals) => {
-                            setFormValues(vals);
-                            setStep(1);
-                          }}
-                        />
-                      </div>
-                    )
+                    <div className="space-y-4">
+                      <SignupForm
+                        key={location}
+                        location={location}
+                        onComplete={(vals) => {
+                          setFormValues(vals);
+                          setStep(1);
+                        }}
+                      />
+                    </div>
                   )}
 
                   {step === 1 && (

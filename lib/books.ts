@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { loadAdminDocument } from '@/lib/admin-content-store';
+import { getBookByIdFromDB } from '@/lib/books-db';
 import { logServerEvent } from '@/lib/observability';
 import { sortBooksDescending } from '@/lib/book-order';
 import booksFallbackData from '@/data/books.json';
@@ -151,6 +152,11 @@ export async function getBooks(): Promise<Book[]> {
 
 export async function getBookBySlug(slug: string): Promise<Book | undefined> {
   return (await getBooksStore()).booksBySlug.get(slug);
+}
+
+// Get book by ID from database
+export async function getBookById(id: number): Promise<Book | null> {
+  return getBookByIdFromDB(id);
 }
 
 export async function getBooksByTag(tag: string): Promise<Book[]> {

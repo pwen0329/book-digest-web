@@ -1,0 +1,17 @@
+[
+  {
+    "code": "BOOK_CLUB",
+    "nameEn": "Book Club",
+    "nameZh": "讀書會"
+  },
+  {
+    "code": "DETOX",
+    "nameEn": "Detox",
+    "nameZh": "數位排毒"
+  },
+  {
+    "code": "FAMILY_READING_CLUB",
+    "nameEn": "Family Reading Club",
+    "nameZh": "親子讀書會"
+  }
+]

@@ -49,7 +49,9 @@ export type RegistrationMirrorState = {
 
 export type RegistrationRecord = {
   id: string;
-  location: SignupLocation;
+  eventId: number;
+  /** @deprecated Use eventId instead. Kept for backwards compatibility during migration. */
+  location?: SignupLocation;
   locale: 'zh' | 'en';
   name: string;
   age: number;
@@ -73,6 +75,8 @@ export type RegistrationRecord = {
 
 export type RegistrationListFilters = {
   limit: number;
+  eventId?: number;
+  /** @deprecated Use eventId instead */
   location?: SignupLocation;
   status?: RegistrationRecordStatus;
   source?: RegistrationRecordSource;
@@ -101,7 +105,8 @@ type UpdateRegistrationPatch = Partial<Pick<RegistrationRecord, 'status' | 'sour
 
 type SupabaseRegistrationRow = {
   id: string;
-  location: SignupLocation;
+  event_id: number;
+  location?: SignupLocation | null;
   locale: 'zh' | 'en';
   name: string;
   age: number;
@@ -197,7 +202,7 @@ function buildSupabaseInsertPayload(record: RegistrationRecord): Record<string, 
   const supported = getSupportedSupabaseMutationColumns();
   const payload: Record<string, unknown> = {
     id: normalized.id,
-    location: normalized.location,
+    event_id: normalized.eventId,
     locale: normalized.locale,
     name: normalized.name,
     age: normalized.age,
@@ -268,7 +273,8 @@ function markUnsupportedSupabaseMutationColumn(reason: string): boolean {
 function fromSupabaseRow(row: SupabaseRegistrationRow): RegistrationRecord {
   return normalizeRecord({
     id: row.id,
-    location: row.location,
+    eventId: row.event_id,
+    location: row.location || undefined,
     locale: row.locale,
     name: row.name,
     age: row.age,
@@ -390,6 +396,9 @@ function filterRegistrations(records: RegistrationRecord[], filters: Omit<Regist
   const createdBefore = filters.createdBefore ? new Date(filters.createdBefore).getTime() : Number.NaN;
 
   return records.filter((record) => {
+    if (filters.eventId && record.eventId !== filters.eventId) {
+      return false;
+    }
     if (filters.location && record.location !== filters.location) {
       return false;
     }
@@ -545,6 +554,41 @@ export async function updateRegistrationReservation(id: string, patch: UpdateReg
   return updated;
 }
 
+export async function countActiveRegistrationsByEventId(eventId: number): Promise<number> {
+  if (isPersistentRegistrationStoreConfigured()) {
+    const pendingCutoff = new Date(Date.now() - PENDING_TTL_MS).toISOString();
+    const query = buildSupabaseQuery({
+      select: 'id',
+      event_id: `eq.${eventId}`,
+      or: `(status.eq.confirmed,and(status.eq.pending,updated_at.gte.${pendingCutoff}))`,
+    });
+    const response = await fetch(query, {
+      method: 'GET',
+      headers: getSupabaseHeaders({ Prefer: 'count=exact' }),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const reason = await response.text().catch(() => 'unknown');
+      throw new Error(`Supabase registration count failed: ${response.status} ${reason}`);
+    }
+
+    const countHeader = response.headers.get('content-range');
+    if (countHeader?.includes('/')) {
+      const total = Number(countHeader.split('/').pop());
+      if (Number.isFinite(total)) {
+        return total;
+      }
+    }
+
+    const rows = await response.json() as Array<{ id: string }>;
+    return rows.length;
+  }
+
+  return readFallbackRegistrations().filter((record) => record.eventId === eventId && isActiveRegistration(record)).length;
+}
+
+/** @deprecated Use countActiveRegistrationsByEventId instead */
 export async function countActiveRegistrations(location: SignupLocation): Promise<number> {
   if (isPersistentRegistrationStoreConfigured()) {
     const pendingCutoff = new Date(Date.now() - PENDING_TTL_MS).toISOString();
@@ -590,6 +634,7 @@ export async function listStoredRegistrations(filters: RegistrationListFilters):
       select: '*',
       order: 'created_at.desc',
       limit: filters.limit,
+      event_id: filters.eventId ? `eq.${filters.eventId}` : undefined,
       location: filters.location ? `eq.${filters.location}` : undefined,
       status: filters.status ? `eq.${filters.status}` : undefined,
       source: filters.source ? `eq.${filters.source}` : undefined,
