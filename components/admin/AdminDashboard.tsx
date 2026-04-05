@@ -202,7 +202,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
   const [registrationsViewerSource, setRegistrationsViewerSource] = useState<string>('registration-store');
   const [registrationsMirrorEnabled, setRegistrationsMirrorEnabled] = useState(false);
-  const [registrationLocationFilter, setRegistrationLocationFilter] = useState<'ALL' | string>('ALL');
+  const [registrationEventFilter, setRegistrationEventFilter] = useState<'ALL' | number>('ALL');
   const [registrationStatusFilter, setRegistrationStatusFilter] = useState<'ALL' | RegistrationRecordStatus>('ALL');
   const [registrationSourceFilter, setRegistrationSourceFilter] = useState<'ALL' | RegistrationRecord['source']>('ALL');
   const [registrationSearch, setRegistrationSearch] = useState('');
@@ -362,8 +362,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
     setRegistrationsLoading(true);
     try {
       const params = new URLSearchParams({ limit: '100' });
-      if (registrationLocationFilter !== 'ALL') {
-        params.set('location', registrationLocationFilter);
+      if (registrationEventFilter !== 'ALL') {
+        params.set('eventId', String(registrationEventFilter));
       }
       if (registrationStatusFilter !== 'ALL') {
         params.set('status', registrationStatusFilter);
@@ -396,7 +396,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
     } finally {
       setRegistrationsLoading(false);
     }
-  }, [registrationCreatedAfter, registrationCreatedBefore, registrationLocationFilter, registrationSearch, registrationSourceFilter, registrationStatusFilter]);
+  }, [registrationCreatedAfter, registrationCreatedBefore, registrationEventFilter, registrationSearch, registrationSourceFilter, registrationStatusFilter]);
 
   const refreshReconciliation = useCallback(async () => {
     setReconciliationLoading(true);
@@ -461,8 +461,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
 
   async function downloadRegistrationsCsv() {
     const params = new URLSearchParams({ limit: '1000', format: 'csv' });
-    if (registrationLocationFilter !== 'ALL') {
-      params.set('location', registrationLocationFilter);
+    if (registrationEventFilter !== 'ALL') {
+      params.set('eventId', String(registrationEventFilter));
     }
     if (registrationStatusFilter !== 'ALL') {
       params.set('status', registrationStatusFilter);
@@ -1025,10 +1025,19 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
 
               <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                 <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Location</span>
-                  <select value={registrationLocationFilter} onChange={(event) => setRegistrationLocationFilter(event.target.value)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
-                    <option value="ALL">All locations</option>
-                    {venues.map((venue) => <option key={venue.id} value={venue.name}>{venue.name}</option>)}
+                  <span className="mb-2 block text-sm text-white/70">Event</span>
+                  <select value={registrationEventFilter} onChange={(event) => setRegistrationEventFilter(event.target.value === 'ALL' ? 'ALL' : parseInt(event.target.value, 10))} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
+                    <option value="ALL">All events</option>
+                    {events.slice().sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()).map((event) => {
+                      const eventDate = new Date(event.eventDate);
+                      const isComplete = eventDate < new Date();
+                      const dateStr = eventDate.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                      return (
+                        <option key={event.id} value={event.id} style={{ color: isComplete ? '#888' : undefined }}>
+                          {dateStr} {event.title}{isComplete ? ' (complete)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
                 <label className="block">
@@ -1081,7 +1090,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                     <thead className="bg-white/5 text-left text-white/60">
                       <tr>
                         <th className="px-4 py-3 font-medium">Created</th>
-                        <th className="px-4 py-3 font-medium">Location</th>
+                        <th className="px-4 py-3 font-medium">Event</th>
                         <th className="px-4 py-3 font-medium">Name</th>
                         <th className="px-4 py-3 font-medium">Email</th>
                         <th className="px-4 py-3 font-medium">Status</th>
@@ -1094,7 +1103,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                       {registrations.map((registration) => (
                         <tr key={registration.id}>
                           <td className="px-4 py-3 text-white/75">{new Date(registration.createdAt).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-white">{registration.location}</td>
+                          <td className="px-4 py-3 text-white">{events.find((e) => e.id === registration.eventId)?.title || registration.location || `Event #${registration.eventId}`}</td>
                           <td className="px-4 py-3 text-white">{registration.name}</td>
                           <td className="px-4 py-3 text-white/85">{registration.email}</td>
                           <td className="px-4 py-3"><span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{registration.status}</span></td>

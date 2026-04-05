@@ -8,7 +8,7 @@ import { logServerError, runWithRequestTrace } from '@/lib/observability';
 // Force dynamic rendering (API routes are not suitable for static generation)
 export const dynamic = 'force-dynamic';
 
-// GET /api/registrations?limit=50&location=TW&status=confirmed&source=notion&search=alice&createdAfter=...&createdBefore=...&format=csv
+// GET /api/registrations?limit=50&eventId=1&status=confirmed&source=notion&search=alice&createdAfter=...&createdBefore=...&format=csv
 export async function GET(req: NextRequest) {
   return runWithRequestTrace(req, 'registrations.list', async () => {
     try {
@@ -39,6 +39,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const eventIdParam = req.nextUrl.searchParams.get('eventId');
+    const eventId = eventIdParam && /^\d+$/.test(eventIdParam) ? parseInt(eventIdParam, 10) : undefined;
+
+    // Legacy location support (deprecated)
     const locationParam = req.nextUrl.searchParams.get('location');
     const location = locationParam === 'TW' || locationParam === 'NL' || locationParam === 'EN' || locationParam === 'DETOX'
       ? locationParam
@@ -60,7 +64,7 @@ export async function GET(req: NextRequest) {
     const format = req.nextUrl.searchParams.get('format') || 'json';
 
     const [items, summary] = await Promise.all([
-      listStoredRegistrations({ limit, location, status, source, search, createdAfter, createdBefore }),
+      listStoredRegistrations({ limit, eventId, location, status, source, search, createdAfter, createdBefore }),
       summarizeStoredRegistrations(),
     ]);
 
