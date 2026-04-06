@@ -8,6 +8,10 @@
     "home": "首頁",
     "books": "讀書會選書",
     "events": "活動報名",
+    "taiwan": "台灣",
+    "netherlands": "荷蘭",
+    "online": "線上",
+    "location": "地點",
     "about": "關於我們",
     "joinUs": "加入我們",
     "join": "加入"
@@ -67,6 +71,10 @@
     "signUp": "馬上報名",
     "eventEnded": "活動已結束",
     "registrationClosed": "報名已截止",
+    "allEvents": "所有活動",
+    "noEventsFound": "目前沒有活動",
+    "comingSoon": "即將開放",
+    "imageNotAvailable": "圖片無法顯示",
     "digitalDetox": {
       "title": "數位排毒",
       "description": "從不斷的通知中溫柔地重置。暫時放下手機，加入我們的慢讀、正念閱讀。",

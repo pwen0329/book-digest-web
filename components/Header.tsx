@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useCallback, useEffect, useLayoutEffect, useRef, memo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import { getVenueLocations } from '@/types/venue';
 
 // Use memo to optimize navigation link component
 const NavLink = memo(function NavLink({ 
@@ -65,9 +66,11 @@ export default function Header() {
   const t = useTranslations('nav');
   const locale = useLocale();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [eventsDropdownOpen, setEventsDropdownOpen] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const pathname = usePathname();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const eventsDropdownRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     setIsReady(true);
@@ -101,6 +104,7 @@ export default function Header() {
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setEventsDropdownOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -124,12 +128,59 @@ export default function Header() {
   }, [mobileMenuOpen]);
 
   return (
-    <header data-ready={isReady ? 'true' : 'false'} className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-60 border-b border-white/10 py-3 md:py-4">
+    <header data-ready={isReady ? 'true' : 'false'} className="bg-brand-navy/95 backdrop-blur supports-[backdrop-filter]:bg-brand-navy/80 sticky top-0 z-[100] border-b border-white/10 py-3 md:py-4">
       <div data-testid="header-shell" className="mx-auto max-w-6xl px-6 h-[72px] md:h-[100px] relative">
         {/* Desktop/tablet: grid layout with equal width nav items */}
         <nav data-testid="header-primary-nav" aria-label="Primary" className="hidden md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)] items-center h-full gap-4 lg:gap-6">
           <NavLink href={`/${locale}/books`} isActive={isActive('/books')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('books')}</NavLink>
-          <NavLink href={`/${locale}/events`} isActive={isActive('/events')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>{t('events')}</NavLink>
+
+          {/* Events Dropdown */}
+          <div
+            ref={eventsDropdownRef}
+            className="relative flex items-center justify-center"
+            onMouseEnter={() => setEventsDropdownOpen(true)}
+            onMouseLeave={() => setEventsDropdownOpen(false)}
+          >
+            <button
+              className={`flex items-center justify-center font-outfit transition-colors ${
+                locale === 'zh' ? 'tracking-[0.15em]' : ''
+              } ${
+                isActive('/events')
+                  ? 'text-brand-pink font-bold'
+                  : 'text-white/95 hover:text-brand-pink hover:font-bold'
+              }`}
+              aria-expanded={eventsDropdownOpen}
+              aria-haspopup="true"
+            >
+              {t('events')}
+              <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {eventsDropdownOpen && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-[101]">
+                <div className="bg-white shadow-lg rounded-md py-2 min-w-[160px]">
+                  {/* Non-clickable header */}
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t('location')}
+                  </div>
+                  <div className="border-t border-gray-200 my-1"></div>
+                  {/* Venue location links */}
+                  {getVenueLocations().map(location => (
+                    <Link
+                      key={location}
+                      href={`/${locale}/events/${location}`}
+                      className="block px-4 py-2 hover:bg-gray-100 text-gray-900 transition-colors"
+                    >
+                      {t(location === 'TW' ? 'taiwan' : location === 'NL' ? 'netherlands' : 'online')}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <Link href={`/${locale}`} className="flex items-center justify-center" aria-label="Home" prefetch={true}>
             <Image src="/images/logo/logo-t.gif" alt="Book Digest logo" width={88} height={70} className="h-[70px] w-auto" unoptimized priority />
           </Link>
@@ -170,14 +221,57 @@ export default function Header() {
 
       {/* Mobile dropdown menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden z-50 border-t border-white/10 bg-brand-navy/98 backdrop-blur">
+        <div className="md:hidden z-[101] border-t border-white/10 bg-brand-navy/98 backdrop-blur">
           <nav aria-label="Primary mobile" className="mx-auto max-w-6xl px-6 py-4 flex flex-col gap-3">
             <MobileNavLink href={`/${locale}/books`} isActive={isActive('/books')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('books')}
             </MobileNavLink>
-            <MobileNavLink href={`/${locale}/events`} isActive={isActive('/events')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
-              {t('events')}
-            </MobileNavLink>
+
+            {/* Events Dropdown for Mobile */}
+            <div className="flex flex-col">
+              <button
+                onClick={() => setEventsDropdownOpen(!eventsDropdownOpen)}
+                className={`flex items-center justify-between py-2 px-3 rounded-lg font-outfit transition-colors ${
+                  locale === 'zh' ? 'tracking-[0.15em]' : ''
+                } ${
+                  isActive('/events')
+                    ? 'text-brand-pink font-bold bg-white/5'
+                    : 'text-white hover:bg-white/10 hover:text-brand-pink hover:font-bold'
+                }`}
+              >
+                <span>{t('events')}</span>
+                <svg
+                  className={`h-4 w-4 transition-transform ${eventsDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {eventsDropdownOpen && (
+                <div className="ml-4 mt-2 flex flex-col gap-1">
+                  <div className="px-3 py-1 text-xs font-semibold text-white/50 uppercase tracking-wider">
+                    {t('location')}
+                  </div>
+                  {getVenueLocations().map(location => (
+                    <Link
+                      key={location}
+                      href={`/${locale}/events/${location}`}
+                      className="py-2 px-3 rounded-lg text-sm text-white/80 hover:bg-white/10 hover:text-brand-pink transition-colors"
+                      onClick={() => {
+                        setEventsDropdownOpen(false);
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      {t(location === 'TW' ? 'taiwan' : location === 'NL' ? 'netherlands' : 'online')}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <MobileNavLink href={`/${locale}/about`} isActive={isActive('/about')} tracking={locale === 'zh' ? 'tracking-[0.15em]' : ''}>
               {t('about')}
             </MobileNavLink>

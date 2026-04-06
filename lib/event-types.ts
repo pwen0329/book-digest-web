@@ -19,7 +19,7 @@ function writeEventTypesToFile(eventTypes: EventType[]): void {
 }
 
 // Get all event types
-export async function getAllEventTypes(): Promise<EventType[]> {
+export async function getEventTypes(): Promise<EventType[]> {
   if (!isSupabaseConfigured()) {
     return readEventTypesFromFile();
   }

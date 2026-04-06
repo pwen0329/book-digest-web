@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { runWithRequestTrace } from '@/lib/observability';
-import { getAllEventTypes } from '@/lib/event-types';
+import { getEventTypes } from '@/lib/event-types';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const eventTypes = await getAllEventTypes();
+    const eventTypes = await getEventTypes();
     return NextResponse.json({ eventTypes }, { status: 200 });
   });
 }

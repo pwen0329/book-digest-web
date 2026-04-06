@@ -2,6 +2,17 @@
 
 export type VenueLocation = 'TW' | 'NL' | 'ONLINE';
 
+/**
+ * Get all supported venue locations.
+ * This centralized list replaces hardcoded ['TW', 'NL', 'ONLINE'] arrays
+ * scattered throughout the codebase.
+ *
+ * @returns Array of supported VenueLocation values
+ */
+export function getVenueLocations(): VenueLocation[] {
+  return ['TW', 'NL', 'ONLINE'];
+}
+
 export type Venue = {
   id: number;
   name: string;

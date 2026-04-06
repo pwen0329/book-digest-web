@@ -8,6 +8,10 @@
     "home": "Home",
     "books": "Books",
     "events": "Events",
+    "taiwan": "Taiwan",
+    "netherlands": "Netherlands",
+    "online": "Online",
+    "location": "Location",
     "about": "About Us",
     "joinUs": "Join Us",
     "join": "Join"
@@ -67,6 +71,10 @@
     "signUp": "Sign Up",
     "eventEnded": "Event Ended",
     "registrationClosed": "Registration Closed",
+    "allEvents": "All Events",
+    "noEventsFound": "No events found",
+    "comingSoon": "Coming Soon",
+    "imageNotAvailable": "Image not available",
     "digitalDetox": {
       "title": "Digital Detox",
       "description": "A gentle reset from constant notifications. Put your phone away for a while and join us in slow, mindful reading.",

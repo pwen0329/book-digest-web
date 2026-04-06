@@ -100,7 +100,7 @@ export default function EventManager({ events, venues, books, onEventsChange }: 
 
   const createDraftEvent = (): DraftEvent => ({
     slug: `event-${Date.now()}`,
-    eventTypeCode: eventTypes[0]?.code || 'BOOK_CLUB',
+    eventTypeCode: eventTypes[0]?.code || 'MANDARIN_BOOK_CLUB',
     venueId: venues[0]?.id || 1,
     title: '',
     titleEn: '',

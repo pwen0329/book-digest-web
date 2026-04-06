@@ -18,6 +18,7 @@ import {
 import { getVenueById } from '@/lib/venues';
 import { getBookById } from '@/lib/books';
 import { readJsonFile, resolveWorkspacePath, writeJsonFile } from '@/lib/json-store';
+import { E } from 'node_modules/@upstash/redis/zmscore-DcU8fVDf.mjs';
 
 const TABLE_NAME = process.env.SUPABASE_EVENTS_TABLE || 'events';
 const LOCAL_EVENTS_ROOT = '.local/playwright-admin-documents';
@@ -74,6 +75,7 @@ export async function getAllEvents(options?: {
   includeVenue?: boolean;
   includeBook?: boolean;
   isPublished?: boolean;
+  from?: string; // ISO date string - filter events on or after this date
 }): Promise<Event[]> {
   if (!isSupabaseConfigured()) {
     // File-backed fallback
@@ -85,6 +87,9 @@ export async function getAllEvents(options?: {
     }
     if (options?.isPublished !== undefined) {
       events = events.filter(e => e.isPublished === options.isPublished);
+    }
+    if (options?.from) {
+      events = events.filter(e => e.eventDate >= options.from!);
     }
 
     // Filter by venue location if specified
@@ -125,6 +130,10 @@ export async function getAllEvents(options?: {
 
   if (options?.isPublished !== undefined) {
     filters.push(`is_published=eq.${options.isPublished}`);
+  }
+
+  if (options?.from) {
+    filters.push(`event_date=gte.${options.from}`);
   }
 
   filters.push('order=event_date.desc');
@@ -428,4 +437,30 @@ export async function getLocalizedEventsContent(locale: string): Promise<Record<
   }
 
   return result;
+}
+
+// Get events for specific venue, optionally filtered by event type, hiding expired events by default
+export async function getEventsByVenueAndType(
+  venueLocation: VenueLocation,
+  eventTypeCode?: string,
+  hideExpired: boolean = true
+): Promise<Event[]> {
+  // Calculate "yesterday" to filter out events that ended (event date + 1 day)
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const fromDate = hideExpired ? yesterday.toISOString().split('T')[0] : undefined;
+
+  const events = await getAllEvents({
+    venueLocation,
+    eventTypeCode,
+    isPublished: true,
+    includeVenue: true,
+    includeBook: true,
+    from: fromDate,
+  });
+
+  // Sort by date ascending (closest to now first)
+  return events.sort((a, b) =>
+    new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()
+  );
 }
