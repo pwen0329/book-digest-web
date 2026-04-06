@@ -142,7 +142,7 @@ test.describe.serial('admin dashboard', () => {
     await expect(page.getByText('Event content and posters updated. Public event pages were revalidated.')).toBeVisible();
 
     await withPreviewPage(page, async (previewPage) => {
-      await previewPage.goto('/en/events', { waitUntil: 'domcontentloaded' });
+      await previewPage.goto('/en/events/TW', { waitUntil: 'domcontentloaded' });
       await expect(previewPage.getByRole('heading', { name: nextEventTitle })).toBeVisible();
     });
 

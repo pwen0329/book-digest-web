@@ -3,7 +3,7 @@ import 'server-only';
 import path from 'node:path';
 import { statSync } from 'node:fs';
 import type { Event, EventRow } from '@/types/event';
-import { getEventRegistrationStatus } from '@/types/event';
+import { EventRegistrationStatus } from '@/types/event';
 import type { VenueLocation } from '@/types/venue';
 import { eventFromRow, eventToRow } from '@/types/event';
 import {
@@ -17,6 +17,7 @@ import {
 } from '@/lib/supabase-utils';
 import { getVenueById } from '@/lib/venues';
 import { getBookById } from '@/lib/books';
+import { countActiveRegistrationsByEventId } from '@/lib/registration-store';
 import { readJsonFile, resolveWorkspacePath, writeJsonFile } from '@/lib/json-store';
 import { E } from 'node_modules/@upstash/redis/zmscore-DcU8fVDf.mjs';
 
@@ -68,12 +69,66 @@ function getNextIdFromFile(events: Event[]): number {
   return Math.max(...events.map(e => e.id)) + 1;
 }
 
+/**
+ * Calculate event registration status considering both time and venue capacity.
+ * This is the authoritative function for determining registration availability.
+ *
+ * @param event - Event with venue data
+ * @param currentRegistrations - Number of active registrations for this event
+ * @param now - Current time (defaults to now)
+ * @returns Registration status
+ */
+async function calculateRegistrationStatus(
+  event: Event,
+  currentRegistrations: number,
+  now: string = new Date().toISOString()
+): Promise<EventRegistrationStatus> {
+  // Check if registration hasn't opened yet
+  if (now < event.registrationOpensAt) {
+    return EventRegistrationStatus.UPCOMING;
+  }
+
+  // Check if registration has closed
+  if (now > event.registrationClosesAt) {
+    return EventRegistrationStatus.CLOSED;
+  }
+
+  // Now we're in the open time window - check venue capacity
+  let venue = event.venue;
+  if (!venue) {
+    venue = await getVenueById(event.venueId);
+    if (!venue) {
+      return EventRegistrationStatus.UNKNOWN;
+    }
+  }
+
+  // Check venue capacity
+  if (currentRegistrations >= venue.maxCapacity) {
+    return EventRegistrationStatus.FULL;
+  }
+
+  return EventRegistrationStatus.OPEN;
+}
+
+/**
+ * Populate registration status for an event.
+ * Modifies the event object in place.
+ */
+async function populateRegistrationStatus(
+  event: Event,
+  now: string = new Date().toISOString()
+): Promise<void> {
+  const currentRegistrations = await countActiveRegistrationsByEventId(event.id);
+  event.registrationStatus = await calculateRegistrationStatus(event, currentRegistrations, now);
+}
+
 // Get all events (with optional filtering and joins)
 export async function getAllEvents(options?: {
   eventTypeCode?: string;
   venueLocation?: VenueLocation;
   includeVenue?: boolean;
   includeBook?: boolean;
+  includeRegistrationStatus?: boolean;
   isPublished?: boolean;
   from?: string; // ISO date string - filter events on or after this date
 }): Promise<Event[]> {
@@ -109,7 +164,7 @@ export async function getAllEvents(options?: {
     // Fetch related data if requested
     const eventsWithRelations = await Promise.all(
       events.map(async (event) => {
-        const venue = options?.includeVenue ? await getVenueById(event.venueId) : undefined;
+        const venue = options?.includeVenue || options?.includeRegistrationStatus ? await getVenueById(event.venueId) : undefined;
         const book = options?.includeBook && event.bookId ? await getBookById(event.bookId) : undefined;
         return {
           ...event,
@@ -118,6 +173,13 @@ export async function getAllEvents(options?: {
         };
       })
     );
+
+    // Populate registration status if requested
+    if (options?.includeRegistrationStatus) {
+      await Promise.all(
+        eventsWithRelations.map(event => populateRegistrationStatus(event))
+      );
+    }
 
     return eventsWithRelations;
   }
@@ -144,7 +206,7 @@ export async function getAllEvents(options?: {
   // Fetch related data and filter by venue location if requested
   let events = await Promise.all(
     rows.map(async (row) => {
-      const venue = options?.includeVenue || options?.venueLocation ? await getVenueById(row.venue_id) : undefined;
+      const venue = options?.includeVenue || options?.includeRegistrationStatus || options?.venueLocation ? await getVenueById(row.venue_id) : undefined;
       const book =
         options?.includeBook && row.book_id ? await getBookById(row.book_id) : undefined;
       return eventFromRow(row, venue ?? undefined, book ?? undefined);
@@ -154,6 +216,13 @@ export async function getAllEvents(options?: {
   // Filter by venue location if specified
   if (options?.venueLocation) {
     events = events.filter(e => e.venue?.location === options.venueLocation);
+  }
+
+  // Populate registration status if requested
+  if (options?.includeRegistrationStatus) {
+    await Promise.all(
+      events.map(event => populateRegistrationStatus(event))
+    );
   }
 
   return events;
@@ -223,81 +292,6 @@ export async function getEventBySlug(
   return eventFromRow(row, venue ?? undefined, book ?? undefined);
 }
 
-// Get upcoming events by type
-export async function getUpcomingEventsByType(
-  eventType: EventType,
-  options?: { includeVenue?: boolean; includeBook?: boolean }
-): Promise<Event[]> {
-  if (!isSupabaseConfigured()) {
-    // File-backed fallback
-    const now = new Date().toISOString();
-    let events = readEventsFromFile();
-
-    // Filter for upcoming published events of the specified type
-    events = events.filter(
-      e => e.eventType === eventType &&
-           e.isPublished &&
-           e.eventDate >= now
-    );
-
-    // Sort by event date ascending
-    events.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
-
-    // Fetch related data if requested
-    const eventsWithRelations = await Promise.all(
-      events.map(async (event) => {
-        const venue = options?.includeVenue ? await getVenueById(event.venueId) : undefined;
-        const book = options?.includeBook && event.bookId ? await getBookById(event.bookId) : undefined;
-        return {
-          ...event,
-          venue: venue ?? undefined,
-          book: book ?? undefined,
-        };
-      })
-    );
-
-    return eventsWithRelations;
-  }
-
-  // Database path
-  const now = new Date().toISOString();
-  const rows = await fetchRows<EventRow>(
-    TABLE_NAME,
-    options?.includeVenue || options?.includeBook ? '*' : '*',
-    `and=(event_type.eq.${eventType},is_published.eq.true,event_date.gte.${now})&order=event_date.asc`
-  );
-
-  const events = await Promise.all(
-    rows.map(async (row) => {
-      const venue = options?.includeVenue ? await getVenueById(row.venue_id) : undefined;
-      const book = options?.includeBook && row.book_id ? await getBookById(row.book_id) : undefined;
-      return {
-        ...eventFromRow(row),
-        venue: venue ?? undefined,
-        book: book ?? undefined,
-      };
-    })
-  );
-
-  return events;
-}
-
-/**
- * Get the next upcoming event for registration for a given event type.
- * Returns the soonest published event with open registration.
- */
-export async function getActiveEventForRegistration(eventType: EventType): Promise<Event | null> {
-  const now = new Date().toISOString();
-  const upcomingEvents = await getUpcomingEventsByType(eventType);
-
-  // Find the first event with open registration window
-  const activeEvent = upcomingEvents.find(event => {
-    return event.registrationOpensAt <= now && now <= event.registrationClosesAt;
-  });
-
-  return activeEvent || upcomingEvents[0] || null;
-}
-
 // Create event
 export async function createEvent(
   event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>
@@ -364,81 +358,6 @@ export async function deleteEvent(id: number): Promise<void> {
   await deleteRow(TABLE_NAME, `id=eq.${id}`);
 }
 
-/**
- * Get localized event content grouped by venue location for display on public pages.
- * Returns published events organized by venue (TW, NL, ONLINE).
- */
-export async function getLocalizedEventsContent(locale: string): Promise<Record<VenueLocation, {
-  id: number;
-  slug: string;
-  posterSrc: string;
-  posterAlt: string;
-  title: string;
-  description: string;
-  eventDate: string;
-  registrationOpensAt: string;
-  registrationClosesAt: string;
-  attendanceMode: 'offline' | 'online';
-  locationName: string;
-  venueLocation: VenueLocation;
-  addressCountry?: string;
-  isRegistrationOpen: boolean;
-}[]>> {
-  const language = locale === 'en' ? 'en' : 'zh';
-
-  // Fetch all published events with venue and book data
-  const events = await getAllEvents({
-    isPublished: true,
-    includeVenue: true,
-    includeBook: true,
-  });
-
-  // Group events by venue location
-  const result: Record<VenueLocation, any[]> = {
-    TW: [],
-    NL: [],
-    ONLINE: [],
-  };
-
-  const now = new Date().toISOString();
-
-  for (const event of events) {
-    if (!event.venue) continue;
-
-    const registrationStatus = getEventRegistrationStatus(
-      event.registrationOpensAt,
-      event.registrationClosesAt,
-      now
-    );
-
-    const localizedEvent = {
-      id: event.id,
-      slug: event.slug,
-      posterSrc: (language === 'en' ? event.coverUrlEn : event.coverUrl) || event.coverUrl || '/images/events/default.jpg',
-      posterAlt: (language === 'en' ? event.titleEn : event.title) || event.title,
-      title: (language === 'en' ? event.titleEn : event.title) || event.title,
-      description: (language === 'en' ? event.descriptionEn : event.description) || event.description || '',
-      eventDate: event.eventDate,
-      registrationOpensAt: event.registrationOpensAt,
-      registrationClosesAt: event.registrationClosesAt,
-      attendanceMode: event.venue.isVirtual ? 'online' : 'offline' as const,
-      locationName: event.venue.name,
-      venueLocation: event.venue.location,
-      addressCountry: event.venue.location === 'TW' ? 'TW' : event.venue.location === 'NL' ? 'NL' : undefined,
-      registrationStatus,
-    };
-
-    result[event.venue.location].push(localizedEvent);
-  }
-
-  // Sort events within each venue by date (most recent first)
-  for (const location of Object.keys(result) as VenueLocation[]) {
-    result[location].sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
-  }
-
-  return result;
-}
-
 // Get events for specific venue, optionally filtered by event type, hiding expired events by default
 export async function getEventsByVenueAndType(
   venueLocation: VenueLocation,
@@ -456,6 +375,7 @@ export async function getEventsByVenueAndType(
     isPublished: true,
     includeVenue: true,
     includeBook: true,
+    includeRegistrationStatus: true,
     from: fromDate,
   });
 

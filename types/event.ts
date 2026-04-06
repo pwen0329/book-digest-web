@@ -7,26 +7,11 @@ export const EventRegistrationStatus = {
   UPCOMING: 'upcoming',
   OPEN: 'open',
   CLOSED: 'closed',
+  FULL: 'full',
+  UNKNOWN: 'unknown',
 } as const;
 
 export type EventRegistrationStatus = typeof EventRegistrationStatus[keyof typeof EventRegistrationStatus];
-
-/**
- * Calculate the registration status for an event based on current time
- */
-export function getEventRegistrationStatus(
-  registrationOpensAt: string,
-  registrationClosesAt: string,
-  now: string = new Date().toISOString()
-): EventRegistrationStatus {
-  if (now < registrationOpensAt) {
-    return EventRegistrationStatus.UPCOMING;
-  }
-  if (now > registrationClosesAt) {
-    return EventRegistrationStatus.CLOSED;
-  }
-  return EventRegistrationStatus.OPEN;
-}
 
 export type Event = {
   id: number;
@@ -56,6 +41,7 @@ export type Event = {
 
   // Status
   isPublished: boolean;
+  registrationStatus?: EventRegistrationStatus; // Computed status considering time and capacity
 
   createdAt: string;
   updatedAt: string;

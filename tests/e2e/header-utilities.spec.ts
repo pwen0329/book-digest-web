@@ -116,4 +116,80 @@ test.describe('Header utilities', () => {
     expect(metrics!.instagramTopRatio).toBeGreaterThan(0.55);
     expect(metrics!.instagramTopRatio).toBeLessThan(0.8);
   });
+
+  test.describe('Events dropdown navigation', () => {
+    test('should show events dropdown on hover (desktop)', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto('/en', { waitUntil: 'domcontentloaded' });
+
+      const eventsButton = page.locator('nav[aria-label="Primary"] button:has-text("Events")');
+      await expect(eventsButton).toBeVisible();
+
+      // Dropdown should not be visible initially
+      await expect(page.locator('a[href="/en/events/TW"]')).not.toBeVisible();
+
+      // Hover over events button
+      await eventsButton.hover();
+
+      // Dropdown should appear
+      await expect(page.locator('a[href="/en/events/TW"]')).toBeVisible({ timeout: 1000 });
+      await expect(page.locator('a[href="/en/events/NL"]')).toBeVisible();
+      await expect(page.locator('a[href="/en/events/ONLINE"]')).toBeVisible();
+    });
+
+    test('should navigate to correct venue page when clicking dropdown option', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto('/en', { waitUntil: 'domcontentloaded' });
+
+      const eventsButton = page.locator('nav[aria-label="Primary"] button:has-text("Events")');
+      await eventsButton.hover();
+
+      const taiwanLink = page.locator('a[href="/en/events/TW"]');
+      await taiwanLink.waitFor({ state: 'visible' });
+
+      await taiwanLink.click();
+      await page.waitForURL('/en/events/TW', { waitUntil: 'domcontentloaded' });
+
+      // Verify we're on the Taiwan events page
+      await expect(page).toHaveURL('/en/events/TW');
+      await expect(page.locator('section').first()).toBeVisible();
+    });
+
+    test('should navigate between venue pages via dropdown', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto('/en/events/TW', { waitUntil: 'domcontentloaded' });
+
+      // Open dropdown and navigate to NL
+      const eventsButton = page.locator('nav[aria-label="Primary"] button:has-text("Events")');
+      await eventsButton.hover();
+
+      const nlLink = page.locator('a[href="/en/events/NL"]');
+      await nlLink.waitFor({ state: 'visible' });
+      await nlLink.click();
+
+      await page.waitForURL('/en/events/NL', { waitUntil: 'domcontentloaded' });
+      await expect(page).toHaveURL('/en/events/NL');
+    });
+
+    test('should open events dropdown on click (mobile)', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto('/en', { waitUntil: 'domcontentloaded' });
+
+      // Open mobile menu
+      const menuButton = page.getByRole('button', { name: 'Toggle menu' });
+      await menuButton.click();
+
+      const eventsButton = page.locator('button:has-text("Events")').last();
+      await expect(eventsButton).toBeVisible();
+
+      // Dropdown should not be visible initially
+      await expect(page.locator('a[href="/en/events/TW"]').last()).not.toBeVisible();
+
+      // Click events button
+      await eventsButton.click();
+
+      // Dropdown should appear
+      await expect(page.locator('a[href="/en/events/TW"]').last()).toBeVisible({ timeout: 1000 });
+    });
+  });
 });

@@ -38,15 +38,5 @@
     "isVirtual": false,
     "createdAt": "2026-01-01T00:00:00.000Z",
     "updatedAt": "2026-01-01T00:00:00.000Z"
-  },
-  {
-    "name": "test venue",
-    "location": "TW",
-    "address": "1234545",
-    "maxCapacity": 20,
-    "isVirtual": false,
-    "id": 5,
-    "createdAt": "2026-04-06T12:29:25.392Z",
-    "updatedAt": "2026-04-06T12:29:25.392Z"
   }
 ]

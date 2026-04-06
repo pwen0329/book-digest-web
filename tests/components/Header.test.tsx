@@ -26,6 +26,9 @@ vi.mock('next-intl', () => ({
     events: 'Events',
     about: 'About Us',
     joinUs: 'Join Us',
+    taiwan: 'Taiwan',
+    netherlands: 'Netherlands',
+    online: 'Online',
   }[key] || key),
 }));
 
@@ -60,5 +63,41 @@ describe('Header', () => {
 
     const aboutLink = within(screen.getAllByTestId('header-primary-nav')[0]).getByRole('link', { name: 'About Us' });
     expect(aboutLink).not.toHaveAttribute('aria-current', 'page');
+  });
+
+  it('renders events dropdown button instead of direct link', () => {
+    currentPathname = '/en';
+    const { container } = render(<Header />);
+
+    // Get first header (in case of StrictMode duplicate rendering)
+    const header = container.querySelector('header[data-ready="true"]') as HTMLElement;
+    expect(header).toBeInTheDocument();
+
+    const desktopNav = within(header).getByRole('navigation', { name: 'Primary' });
+
+    // Should have Events button, not link
+    const eventsButton = within(desktopNav).getByRole('button', { name: /Events/i });
+    expect(eventsButton).toBeInTheDocument();
+    expect(eventsButton).toHaveAttribute('aria-expanded');
+    expect(eventsButton).toHaveAttribute('aria-haspopup', 'true');
+
+    // Should not have a direct Events link
+    expect(within(desktopNav).queryByRole('link', { name: 'Events' })).not.toBeInTheDocument();
+  });
+
+  it('marks venue events page as active in navigation', () => {
+    currentPathname = '/en/events/TW';
+    const { container } = render(<Header />);
+
+    // Get first header (in case of StrictMode duplicate rendering)
+    const header = container.querySelector('header[data-ready="true"]') as HTMLElement;
+    expect(header).toBeInTheDocument();
+
+    const desktopNav = within(header).getByRole('navigation', { name: 'Primary' });
+
+    // Events dropdown button should show active styling when on any venue page
+    const eventsButton = within(desktopNav).getByRole('button', { name: /Events/i });
+    expect(eventsButton.className).toContain('text-brand-pink');
+    expect(eventsButton.className).toContain('font-bold');
   });
 });

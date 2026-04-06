@@ -225,7 +225,23 @@ export default function EventManager({ events, venues, books, onEventsChange }: 
   // Validate registration dates
   const isRegistrationDatesValid = (event: DraftEvent | Event): boolean => {
     if (!event.registrationOpensAt || !event.registrationClosesAt) return false;
-    return new Date(event.registrationClosesAt) > new Date(event.registrationOpensAt);
+    const opensAt = new Date(event.registrationOpensAt);
+    const closesAt = new Date(event.registrationClosesAt);
+    const eventDate = new Date(event.eventDate);
+
+    // Registration closes must be after opens
+    if (closesAt <= opensAt) return false;
+
+    // Registration closes must not be after event date
+    if (closesAt > eventDate) return false;
+
+    return true;
+  };
+
+  // Check if registration closes is after event date
+  const isRegClosesAfterEventDate = (event: DraftEvent | Event): boolean => {
+    if (!event.registrationClosesAt || !event.eventDate) return false;
+    return new Date(event.registrationClosesAt) > new Date(event.eventDate);
   };
 
   return (
@@ -444,7 +460,11 @@ export default function EventManager({ events, venues, books, onEventsChange }: 
                 type="datetime-local"
                 value={toLocalDateTimeInput(selectedEvent.eventDate)}
                 onChange={(e) => updateEventField('eventDate', toIsoString(e.target.value))}
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                className={`w-full rounded-lg border px-4 py-2 text-white ${
+                  isRegClosesAfterEventDate(selectedEvent)
+                    ? 'border-red-500 bg-red-500/10'
+                    : 'border-white/20 bg-black/20'
+                }`}
               />
             </div>
 
@@ -482,7 +502,9 @@ export default function EventManager({ events, venues, books, onEventsChange }: 
             </div>
             {!isRegistrationDatesValid(selectedEvent) && (
               <p className="text-xs text-red-400">
-                Registration close time must be after open time
+                {isRegClosesAfterEventDate(selectedEvent)
+                  ? 'Registration close time must not be after event date'
+                  : 'Registration close time must be after open time'}
               </p>
             )}
 

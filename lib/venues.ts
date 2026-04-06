@@ -75,15 +75,15 @@ export async function getAllVenues(): Promise<Venue[]> {
 }
 
 // Get venue by ID
-export async function getVenueById(id: number): Promise<Venue | null> {
+export async function getVenueById(id: number): Promise<Venue | undefined> {
   if (!isSupabaseConfigured()) {
     // File-backed fallback
     const venues = readVenuesFromFile();
-    return venues.find(v => v.id === id) || null;
+    return venues.find(v => v.id === id) || undefined;
   }
 
   const row = await fetchSingleRow<VenueRow>(TABLE_NAME, '*', `id=eq.${id}`);
-  return row ? venueFromRow(row) : null;
+  return row ? venueFromRow(row) : undefined;
 }
 
 // Create venue

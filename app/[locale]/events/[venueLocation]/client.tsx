@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -24,13 +25,25 @@ export default function VenueEventsClient({
   eventTypes,
 }: VenueEventsClientProps) {
   const t = useTranslations('events');
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Find first event type that has events, or use first type
-  const initialEventType = eventTypes.find(type =>
-    events.some(e => e.eventTypeCode === type.code)
-  )?.code || eventTypes[0]?.code || '';
+  // Get type from URL or fall back to first available
+  const typeFromUrl = searchParams.get('type');
+  const validTypes = eventTypes.map(type => type.code);
+  const initialEventType = (typeFromUrl && validTypes.includes(typeFromUrl))
+    ? typeFromUrl
+    : (eventTypes.find(type => events.some(e => e.eventTypeCode === type.code))?.code || eventTypes[0]?.code || '');
 
   const [selectedEventType, setSelectedEventType] = useState<string>(initialEventType);
+
+  // Sync state with URL parameter changes
+  useEffect(() => {
+    const typeFromUrl = searchParams.get('type');
+    if (typeFromUrl && validTypes.includes(typeFromUrl) && typeFromUrl !== selectedEventType) {
+      setSelectedEventType(typeFromUrl);
+    }
+  }, [searchParams, validTypes, selectedEventType]);
 
   // Track image errors per event
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
@@ -39,6 +52,14 @@ export default function VenueEventsClient({
   const handleImageError = useCallback((eventId: number) => {
     setImageErrors(prev => new Set(prev).add(eventId));
   }, []);
+
+  // Update URL when event type selection changes
+  const handleEventTypeChange = useCallback((typeCode: string) => {
+    setSelectedEventType(typeCode);
+    const newParams = new URLSearchParams(searchParams.toString());
+    newParams.set('type', typeCode);
+    router.push(`?${newParams.toString()}`, { scroll: false });
+  }, [router, searchParams]);
 
   // Filter events by selected type
   const filteredEvents = events.filter(e => e.eventTypeCode === selectedEventType);
@@ -55,7 +76,7 @@ export default function VenueEventsClient({
         {eventTypes.map(type => (
           <button
             key={type.code}
-            onClick={() => setSelectedEventType(type.code)}
+            onClick={() => handleEventTypeChange(type.code)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               selectedEventType === type.code
                 ? 'bg-white/20 text-white'
@@ -142,7 +163,28 @@ export default function VenueEventsClient({
 
               {/* CTA Button */}
               <div className="mt-8">
-                {event.registrationStatus === EventRegistrationStatus.OPEN ? (
+                {event.registrationStatus === EventRegistrationStatus.UPCOMING ? (
+                  <button
+                    disabled
+                    className={`${ctaClass} opacity-50 cursor-not-allowed`}
+                  >
+                    {t('comingSoon')}
+                  </button>
+                ) : event.registrationStatus === EventRegistrationStatus.CLOSED ? (
+                  <button
+                    disabled
+                    className={`${ctaClass} opacity-50 cursor-not-allowed`}
+                  >
+                    {t('registrationClosed')}
+                  </button>
+                ) : event.registrationStatus === EventRegistrationStatus.FULL ? (
+                  <button
+                    disabled
+                    className={`${ctaClass} opacity-50 cursor-not-allowed`}
+                  >
+                    {t('fullTitle')}
+                  </button>
+                ) : event.registrationStatus === EventRegistrationStatus.OPEN ? (
                   <Link
                     href={`/${locale}/signup/${event.slug}`}
                     className={ctaClass}
@@ -150,13 +192,6 @@ export default function VenueEventsClient({
                   >
                     {t('signUp')}
                   </Link>
-                ) : event.registrationStatus === EventRegistrationStatus.NOT_YET_OPEN ? (
-                  <button
-                    disabled
-                    className={`${ctaClass} opacity-50 cursor-not-allowed`}
-                  >
-                    {t('comingSoon')}
-                  </button>
                 ) : (
                   <button
                     disabled

@@ -864,14 +864,46 @@ test.describe('Middleware headers', () => {
 // ------------------------------------------------------------------
 // Events page counters and content
 // ------------------------------------------------------------------
+const venues = ['TW', 'NL', 'ONLINE'];
 for (const locale of locales) {
   test.describe(`${locale} events`, () => {
-    test(`should load events page /${locale}/events`, async ({ page }) => {
-      await goto(page, `/${locale}/events`);
-      // Events page uses h3 headings for event titles
-      await expect(page.locator('h3').first()).toBeVisible();
-      // Should have event sections
+    for (const venue of venues) {
+      test(`should load venue events page /${locale}/events/${venue}`, async ({ page }) => {
+        await goto(page, `/${locale}/events/${venue}`);
+        // Should have stats counters section
+        await expect(page.locator('section').first()).toBeVisible();
+        // Should have event type tabs (if events exist)
+        await expect(page.locator('[role="tablist"], button').first()).toBeVisible();
+      });
+    }
+
+    test(`should filter events by event type on /${locale}/events/TW`, async ({ page }) => {
+      await goto(page, `/${locale}/events/TW`);
+      // Wait for page to load
       await expect(page.locator('section').first()).toBeVisible();
+
+      // Check if event type tabs exist
+      const tabs = page.locator('button:has-text("Book Club"), button:has-text("Detox")');
+      const tabCount = await tabs.count();
+
+      if (tabCount > 0) {
+        // Click first tab and verify events update
+        await tabs.first().click();
+        await page.waitForTimeout(300); // Wait for filtering animation
+        await expect(page.locator('section').first()).toBeVisible();
+      }
+    });
+
+    test(`should switch language on venue events page /${locale}/events/TW`, async ({ page }) => {
+      await goto(page, `/${locale}/events/TW`);
+      await waitForLanguageToggleReady(page);
+
+      const targetLocale = locale === 'en' ? 'zh' : 'en';
+      const buttonName = locale === 'en' ? 'Switch to Chinese' : 'Switch to English';
+
+      await switchLanguageAndWait(page, buttonName, new RegExp(`/${targetLocale}/events/TW`));
+      // Verify we're on the same venue page in new locale
+      await expect(page).toHaveURL(new RegExp(`/${targetLocale}/events/TW`));
     });
   });
 }
