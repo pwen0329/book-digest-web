@@ -74,7 +74,7 @@ export function getLocalizedBook(book: Book, locale: string) {
     displaySummary: locale === 'en' && book.summaryEn ? book.summaryEn : book.summary,
     displayCoverUrl: locale === 'en' && book.coverUrlEn ? book.coverUrlEn : book.coverUrl,
     displayCoverBlurDataURL: locale === 'en' && book.coverBlurDataURLEn ? book.coverBlurDataURLEn : book.coverBlurDataURL,
-    displayCoverUrls: locale === 'en' && book.coverUrlsEn ? book.coverUrlsEn : book.coverUrls,
+    displayCoverUrls: locale === 'en' && book.additionalCovers?.en ? book.additionalCovers.en : book.additionalCovers?.zh,
   };
 }
 

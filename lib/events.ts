@@ -19,7 +19,6 @@ import { getVenueById } from '@/lib/venues';
 import { getBookById } from '@/lib/books';
 import { countActiveRegistrationsByEventId } from '@/lib/registration-store';
 import { readJsonFile, resolveWorkspacePath, writeJsonFile } from '@/lib/json-store';
-import { E } from 'node_modules/@upstash/redis/zmscore-DcU8fVDf.mjs';
 
 const TABLE_NAME = process.env.SUPABASE_EVENTS_TABLE || 'events';
 const LOCAL_EVENTS_ROOT = '.local/playwright-admin-documents';
@@ -78,7 +77,7 @@ function getNextIdFromFile(events: Event[]): number {
  * @param now - Current time (defaults to now)
  * @returns Registration status
  */
-async function calculateRegistrationStatus(
+export async function calculateRegistrationStatus(
   event: Event,
   currentRegistrations: number,
   now: string = new Date().toISOString()

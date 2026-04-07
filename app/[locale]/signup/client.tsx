@@ -29,7 +29,7 @@ type SignupClientProps = {
   showIntro?: boolean;
 };
 
-export default function SignupClient({ event, locale, showIntro = false }: SignupClientProps) {
+export default function SignupClient({ event, showIntro = false }: SignupClientProps) {
   const t = useTranslations('events');
 
   // Use venue location directly (TW, NL, or ONLINE)

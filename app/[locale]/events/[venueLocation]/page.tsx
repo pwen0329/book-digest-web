@@ -49,7 +49,7 @@ export default async function VenueEventsPage({ params }: Props) {
   const events = rawEvents.map(event => ({
     ...event,
     coverUrl: isValidImagePath(event.coverUrl) ? event.coverUrl : DEFAULT_IMAGE,
-    coverUrlEn: isValidImagePath(event.coverUrlEn) ? event.coverUrlEn : null,
+    coverUrlEn: isValidImagePath(event.coverUrlEn) ? event.coverUrlEn : undefined,
   }));
 
   // Calculate statistics using same formula as old events page

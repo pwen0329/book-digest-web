@@ -7,10 +7,10 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 import { sendRegistrationSuccessEmail } from '@/lib/registration-success-email';
 import { getRetryAfterSeconds } from '@/lib/http-response';
 import { parseApiReferral } from '@/lib/signup';
-import { createRegistrationReservation, updateRegistrationReservation } from '@/lib/registration-store';
+import { createRegistrationReservation, updateRegistrationReservation, countActiveRegistrationsByEventId } from '@/lib/registration-store';
 import { logServerError, runWithRequestTrace } from '@/lib/observability';
-import { getEventBySlug } from '@/lib/events';
-import { getEventRegistrationStatus, EventRegistrationStatus } from '@/types/event';
+import { getEventBySlug, calculateRegistrationStatus } from '@/lib/events';
+import { EventRegistrationStatus } from '@/types/event';
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
@@ -42,11 +42,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: 'Event not found' }, { status: 404 });
       }
 
-      // Check registration status
-      const registrationStatus = getEventRegistrationStatus(
-        event.registrationOpensAt,
-        event.registrationClosesAt
-      );
+      // Calculate registration status with current registrations
+      const currentRegistrations = await countActiveRegistrationsByEventId(event.id);
+      const registrationStatus = await calculateRegistrationStatus(event, currentRegistrations);
 
       if (registrationStatus !== EventRegistrationStatus.OPEN) {
         return NextResponse.json(
@@ -176,7 +174,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
         status: 'pending',
         source: 'pending',
         eventId: event.id,
-        eventSlug: event.slug,
         mirrorState: {
           notion: { enabled: saveAlsoToNotion, status: saveAlsoToNotion ? 'pending' : 'not_configured' },
           tally: { enabled: Boolean(tallyEndpoint), status: tallyEndpoint ? 'pending' : 'not_configured' },

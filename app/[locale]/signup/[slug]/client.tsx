@@ -2,7 +2,7 @@
 
 import SignupClient from '@/app/[locale]/signup/client';
 import type { Event } from '@/types/event';
-import { getEventRegistrationStatus } from '@/types/event';
+import { EventRegistrationStatus } from '@/types/event';
 
 type EventDetailClientProps = {
   event: Event;
@@ -16,11 +16,8 @@ export default function EventDetailClient({ event, locale }: EventDetailClientPr
   const description = (language === 'en' ? event.descriptionEn : event.description) || event.description || '';
   const coverUrl = (language === 'en' ? event.coverUrlEn : event.coverUrl) || event.coverUrl;
 
-  // Calculate registration status
-  const registrationStatus = getEventRegistrationStatus(
-    event.registrationOpensAt,
-    event.registrationClosesAt
-  );
+  // Use registration status from event (should be populated by server)
+  const registrationStatus = event.registrationStatus || EventRegistrationStatus.UNKNOWN;
 
   // Convert Event to EventData format for SignupClient
   const eventData = {

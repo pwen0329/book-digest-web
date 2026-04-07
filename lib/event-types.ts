@@ -3,7 +3,7 @@ import 'server-only';
 import type { EventType, EventTypeRow } from '@/types/event-type';
 import { eventTypeFromRow } from '@/types/event-type';
 import { fetchRows, fetchSingleRow, isSupabaseConfigured } from '@/lib/supabase-utils';
-import { readJsonFile, writeJsonFile } from '@/lib/json-store';
+import { readJsonFile } from '@/lib/json-store';
 
 const TABLE_NAME = process.env.SUPABASE_EVENT_TYPES_TABLE || 'event_types';
 const FALLBACK_EVENT_TYPES_FILE = 'data/event-types.json';
@@ -11,11 +11,6 @@ const FALLBACK_EVENT_TYPES_FILE = 'data/event-types.json';
 // Read event types from file
 function readEventTypesFromFile(): EventType[] {
   return readJsonFile<EventType[]>(FALLBACK_EVENT_TYPES_FILE);
-}
-
-// Write event types to file
-function writeEventTypesToFile(eventTypes: EventType[]): void {
-  writeJsonFile(FALLBACK_EVENT_TYPES_FILE, eventTypes);
 }
 
 // Get all event types

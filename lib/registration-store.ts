@@ -2,7 +2,7 @@ import 'server-only';
 
 import { cryptoRandomId } from '@/lib/crypto-id';
 import { readJsonFile, writeJsonFile } from '@/lib/json-store';
-import type { SignupLocation } from '@/lib/signup-capacity-config';
+import type { SignupLocation } from '@/lib/signup';
 
 export type RegistrationRecordStatus = 'pending' | 'confirmed' | 'cancelled';
 export type RegistrationRecordSource = 'pending' | 'simulated' | 'tally' | 'notion';

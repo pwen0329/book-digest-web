@@ -5,7 +5,7 @@ import { readdir, stat, unlink } from 'node:fs/promises';
 import type { Book } from '@/types/book';
 import type { Event } from '@/types/event';
 import { getAllBooksFromDB } from '@/lib/books-db';
-import { getEvents } from '@/lib/events';
+import { getAllEvents } from '@/lib/events';
 import { isPersistentUploadStoreConfigured, resolveLocalAdminUploadPath } from '@/lib/admin-upload-storage';
 
 type UploadScope = 'books' | 'events';
@@ -32,8 +32,8 @@ export type ManagedAssetReport = {
 type AssetCleanupInput = {
   previousBooks: Book[];
   nextBooks: Book[];
-  previousEvents: EventContentMap;
-  nextEvents: EventContentMap;
+  previousEvents: Event[];
+  nextEvents: Event[];
 };
 
 function getSupabaseUrl(): string | null {
@@ -86,7 +86,7 @@ function extractBookAssetUrls(books: Book[]): Set<string> {
   const urls = new Set<string>();
 
   for (const book of books) {
-    [book.coverUrl, book.coverUrlEn, ...(book.coverUrls || []), ...(book.coverUrlsEn || [])]
+    [book.coverUrl, book.coverUrlEn, ...(book.additionalCovers?.zh || []), ...(book.additionalCovers?.en || [])]
       .filter((value): value is string => Boolean(value))
       .forEach((value) => urls.add(value));
   }
@@ -258,7 +258,7 @@ function getReferencedAssets(books: Book[], events: Event[]): ManagedAssetRecord
 export async function buildManagedAssetReport(gracePeriodHours = 168): Promise<ManagedAssetReport> {
   const [books, events, storedAssets] = await Promise.all([
     getAllBooksFromDB(),
-    getEvents(),
+    getAllEvents(),
     listStoredAssets(),
   ]);
 

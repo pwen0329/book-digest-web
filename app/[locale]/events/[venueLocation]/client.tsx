@@ -20,7 +20,6 @@ type VenueEventsClientProps = {
 
 export default function VenueEventsClient({
   locale,
-  venueLocation,
   events,
   eventTypes,
 }: VenueEventsClientProps) {

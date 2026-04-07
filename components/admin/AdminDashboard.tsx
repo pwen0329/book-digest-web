@@ -234,7 +234,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
   useEffect(() => {
     if (!books.length) {
       if (selectedBookId !== null) {
-        setSelectedBookId(null);
+        setSelectedBookId(undefined);
       }
       return;
     }
@@ -264,7 +264,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
     }));
   }
 
-  function buildBooksWithSelectedPatch(patch: Partial<Book>): Book[] {
+  function buildBooksWithSelectedPatch(patch: Partial<Book>): DraftBook[] {
     if (!selectedBook) {
       return books;
     }
@@ -731,9 +731,9 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
 
                       const fromIndex = books.findIndex((candidate) => candidate.id === draggedBookId);
                       moveBook(fromIndex, absoluteIndex);
-                      setDraggedBookId(null);
+                      setDraggedBookId(undefined);
                     }}
-                    onDragEnd={() => setDraggedBookId(null)}
+                    onDragEnd={() => setDraggedBookId(undefined)}
                     className={`w-full rounded-2xl px-4 py-3 text-left transition ${
                       selectedBookId === book.id ? 'bg-brand-pink text-brand-navy' : 'bg-black/10 text-white/85 hover:bg-white/10'
                     }`}
@@ -861,11 +861,11 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <label className="block">
                   <span className="mb-2 block text-sm text-white/70">Extra covers (ZH, one per line)</span>
-                  <textarea value={arrayToLines(selectedBook.coverUrls)} onChange={(event) => updateSelectedBook({ coverUrls: linesToArray(event.target.value) })} rows={4} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
+                  <textarea value={arrayToLines(selectedBook.additionalCovers?.zh)} onChange={(event) => updateSelectedBook({ additionalCovers: { ...selectedBook.additionalCovers, zh: linesToArray(event.target.value) } })} rows={4} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
                 </label>
                 <label className="block">
                   <span className="mb-2 block text-sm text-white/70">Extra covers (EN, one per line)</span>
-                  <textarea value={arrayToLines(selectedBook.coverUrlsEn)} onChange={(event) => updateSelectedBook({ coverUrlsEn: linesToArray(event.target.value) })} rows={4} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
+                  <textarea value={arrayToLines(selectedBook.additionalCovers?.en)} onChange={(event) => updateSelectedBook({ additionalCovers: { ...selectedBook.additionalCovers, en: linesToArray(event.target.value) } })} rows={4} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
                 </label>
               </div>
 
@@ -938,7 +938,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
         ) : null}
 
         {activeTab === 'events' ? (
-          <EventManager events={events} venues={venues} books={books} onEventsChange={setEvents} />
+          <EventManager events={events} venues={venues} books={books.filter((book): book is Book => book.id !== undefined)} onEventsChange={setEvents} />
         ) : null}
 
         {activeTab === 'venues' ? (
