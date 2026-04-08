@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -24,25 +24,16 @@ export default function VenueEventsClient({
   eventTypes,
 }: VenueEventsClientProps) {
   const t = useTranslations('events');
-  const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Get type from URL or fall back to first available
-  const typeFromUrl = searchParams.get('type');
+  // Get type from URL or fall back to first available (read once on mount)
   const validTypes = eventTypes.map(type => type.code);
-  const initialEventType = (typeFromUrl && validTypes.includes(typeFromUrl))
-    ? typeFromUrl
-    : (eventTypes.find(type => events.some(e => e.eventTypeCode === type.code))?.code || eventTypes[0]?.code || '');
-
-  const [selectedEventType, setSelectedEventType] = useState<string>(initialEventType);
-
-  // Sync state with URL parameter changes
-  useEffect(() => {
+  const [selectedEventType, setSelectedEventType] = useState<string>(() => {
     const typeFromUrl = searchParams.get('type');
-    if (typeFromUrl && validTypes.includes(typeFromUrl) && typeFromUrl !== selectedEventType) {
-      setSelectedEventType(typeFromUrl);
-    }
-  }, [searchParams, validTypes, selectedEventType]);
+    return (typeFromUrl && validTypes.includes(typeFromUrl))
+      ? typeFromUrl
+      : (eventTypes.find(type => events.some(e => e.eventTypeCode === type.code))?.code || eventTypes[0]?.code || '');
+  });
 
   // Track image errors per event
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
@@ -52,13 +43,14 @@ export default function VenueEventsClient({
     setImageErrors(prev => new Set(prev).add(eventId));
   }, []);
 
-  // Update URL when event type selection changes
+  // Update event type and URL (without triggering Next.js routing)
   const handleEventTypeChange = useCallback((typeCode: string) => {
     setSelectedEventType(typeCode);
-    const newParams = new URLSearchParams(searchParams.toString());
-    newParams.set('type', typeCode);
-    router.push(`?${newParams.toString()}`, { scroll: false });
-  }, [router, searchParams]);
+    // Update URL for refresh/sharing, but don't trigger Next.js routing
+    const url = new URL(window.location.href);
+    url.searchParams.set('type', typeCode);
+    window.history.replaceState(null, '', url.toString());
+  }, []);
 
   // Filter events by selected type
   const filteredEvents = events.filter(e => e.eventTypeCode === selectedEventType);
