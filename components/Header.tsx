@@ -172,6 +172,7 @@ export default function Header() {
                       key={location}
                       href={`/${locale}/events/${location}`}
                       className="block px-4 py-2 hover:bg-gray-100 text-gray-900 transition-colors"
+                      prefetch={true}
                     >
                       {t(location === 'TW' ? 'taiwan' : location === 'NL' ? 'netherlands' : 'online')}
                     </Link>
@@ -260,6 +261,7 @@ export default function Header() {
                       key={location}
                       href={`/${locale}/events/${location}`}
                       className="py-2 px-3 rounded-lg text-sm text-white/80 hover:bg-white/10 hover:text-brand-pink transition-colors"
+                      prefetch={true}
                       onClick={() => {
                         setEventsDropdownOpen(false);
                         setMobileMenuOpen(false);
