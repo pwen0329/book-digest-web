@@ -95,14 +95,10 @@ This document describes the database refactor that moves from the admin_document
 
 ### Library Functions
 - `lib/supabase-utils.ts` - Shared database utilities
-  - `shouldForceLocalPersistentStores()` - Check if using local file mode
   - `isSupabaseConfigured()` - Check if database is configured
 - `lib/venues.ts` - Venue CRUD operations
 - `lib/events.ts` - Event CRUD operations
 - `lib/books-db.ts` - Book database operations
-  - **Supports file-backed mode**: Falls back to `data/books-v2.json` when database not configured
-  - Controlled by `FORCE_LOCAL_PERSISTENT_STORES=1` environment variable
-  - Local files stored in `.local/playwright-admin-documents/books-v2.json`
 - `lib/settings.ts` - Settings operations
 - `lib/capacity-checker.ts` - Capacity checking logic
 
@@ -308,26 +304,23 @@ If issues arise:
 4. **Media**: Move images to dedicated storage table
 5. **Cache**: Add Redis layer for frequently accessed data
 
-## File-Backed Development Mode
+## Testing
 
-The database functions now support file-backed fallback mode for local development without Supabase:
+### Local Development
+For local development and testing, use a local Supabase instance:
+- Install Supabase CLI: `brew install supabase/tap/supabase`
+- Start local Supabase: `supabase start`
+- Configure environment variables to point to local instance:
+  ```bash
+  SUPABASE_URL=http://127.0.0.1:54321
+  SUPABASE_SERVICE_ROLE_KEY=<service_role_key_from_supabase_start>
+  ```
 
-### How It Works
-- Set `FORCE_LOCAL_PERSISTENT_STORES=1` to force local mode
-- Books are read from/written to `data/books-v2.json` (seed file)
-- Changes persist to `.local/playwright-admin-documents/books-v2.json`
-- Pattern matches `loadAdminDocumentRecord` from admin-content-store
-
-### Benefits
-- ✅ Develop without database connection
-- ✅ Test CRUD operations locally
-- ✅ Consistent with existing admin_documents pattern
-- ✅ Safe for CI/CD and testing environments
-
-### Seed Data
-- `data/books.json` - Legacy format (old admin_documents)
-- `data/books-v2.json` - New format with numeric IDs and timestamps
-- Generated from books.json using: `jq 'to_entries | map({id: (.key + 1), ...})'`
+### Playwright E2E Tests
+Playwright tests now use local Supabase instead of file-backed stores. Before running tests:
+1. Start local Supabase instance
+2. Run database migrations
+3. Configure test environment with local Supabase credentials
 
 ## Questions & Answers
 

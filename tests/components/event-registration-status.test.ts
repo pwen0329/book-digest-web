@@ -2,20 +2,23 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { getAllEvents } from '@/lib/events';
-import { EventRegistrationStatus } from '@/types/event';
-import type { Event } from '@/types/event';
-import type { Venue } from '@/types/venue';
+// Mock Supabase utils - use vi.hoisted to avoid initialization issues
+const { mockFetchRows } = vi.hoisted(() => ({
+  mockFetchRows: vi.fn(),
+}));
 
-// Mock dependencies
 vi.mock('@/lib/supabase-utils', () => ({
-  isSupabaseConfigured: () => false,
-  shouldForceLocalPersistentStores: () => false,
+  isSupabaseConfigured: () => true,
+  fetchRows: mockFetchRows,
+  fetchSingleRow: vi.fn(),
+  insertRow: vi.fn(),
+  updateRow: vi.fn(),
+  deleteRow: vi.fn(),
 }));
 
 vi.mock('@/lib/venues', () => ({
   getVenueById: vi.fn((id: number) => {
-    const venues: Record<number, Venue> = {
+    const venues: Record<number, any> = {
       1: { id: 1, name: 'Test Venue TW', nameEn: 'Test Venue TW', location: 'TW', address: 'Test Address', maxCapacity: 20, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
       2: { id: 2, name: 'Test Venue NL', nameEn: 'Test Venue NL', location: 'NL', address: 'Test Address', maxCapacity: 15, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
     };
@@ -40,11 +43,10 @@ vi.mock('@/lib/registration-store', () => ({
   }),
 }));
 
-vi.mock('@/lib/json-store', () => ({
-  readJsonFile: vi.fn(() => []),
-  writeJsonFile: vi.fn(),
-  resolveWorkspacePath: vi.fn((path: string) => path),
-}));
+import { getAllEvents } from '@/lib/events';
+import { EventRegistrationStatus } from '@/types/event';
+import type { Event, EventRow } from '@/types/event';
+import type { Venue } from '@/types/venue';
 
 describe('Event Registration Status', () => {
   // Use dates relative to current time to avoid test failures due to time
@@ -69,21 +71,20 @@ describe('Event Registration Status', () => {
   });
 
   it('returns UPCOMING when registration has not opened yet', async () => {
-    const { readJsonFile } = await import('@/lib/json-store');
-    vi.mocked(readJsonFile).mockReturnValue([
+    mockFetchRows.mockResolvedValueOnce([
       {
         id: 1,
         slug: 'test-upcoming',
-        eventTypeCode: 'MANDARIN_BOOK_CLUB',
-        venueId: 1,
+        event_type_code: 'MANDARIN_BOOK_CLUB',
+        venue_id: 1,
         title: 'Upcoming Event',
-        eventDate: getFutureDate(15),
-        registrationOpensAt: getFutureDate(5), // Opens 5 days from now
-        registrationClosesAt: getFutureDate(14),
-        isPublished: true,
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      } as Event,
+        event_date: getFutureDate(15),
+        registration_opens_at: getFutureDate(5), // Opens 5 days from now
+        registration_closes_at: getFutureDate(14),
+        is_published: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      } as EventRow,
     ]);
 
     const events = await getAllEvents({ includeRegistrationStatus: true });
@@ -93,21 +94,20 @@ describe('Event Registration Status', () => {
   });
 
   it('returns CLOSED when registration has closed', async () => {
-    const { readJsonFile } = await import('@/lib/json-store');
-    vi.mocked(readJsonFile).mockReturnValue([
+    mockFetchRows.mockResolvedValueOnce([
       {
         id: 1,
         slug: 'test-closed',
-        eventTypeCode: 'MANDARIN_BOOK_CLUB',
-        venueId: 1,
+        event_type_code: 'MANDARIN_BOOK_CLUB',
+        venue_id: 1,
         title: 'Closed Event',
-        eventDate: getFutureDate(15),
-        registrationOpensAt: getPastDate(30),
-        registrationClosesAt: getPastDate(1), // Closed 1 day ago
-        isPublished: true,
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      } as Event,
+        event_date: getFutureDate(15),
+        registration_opens_at: getPastDate(30),
+        registration_closes_at: getPastDate(1), // Closed 1 day ago
+        is_published: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      } as EventRow,
     ]);
 
     const events = await getAllEvents({ includeRegistrationStatus: true });
@@ -117,21 +117,20 @@ describe('Event Registration Status', () => {
   });
 
   it('returns FULL when registration is open but venue is at capacity', async () => {
-    const { readJsonFile } = await import('@/lib/json-store');
-    vi.mocked(readJsonFile).mockReturnValue([
+    mockFetchRows.mockResolvedValueOnce([
       {
         id: 3, // This ID has 20 registrations (full capacity)
         slug: 'test-full',
-        eventTypeCode: 'MANDARIN_BOOK_CLUB',
-        venueId: 1, // Venue with maxCapacity = 20
+        event_type_code: 'MANDARIN_BOOK_CLUB',
+        venue_id: 1, // Venue with maxCapacity = 20
         title: 'Full Event',
-        eventDate: getFutureDate(15),
-        registrationOpensAt: getPastDate(30),
-        registrationClosesAt: getFutureDate(14),
-        isPublished: true,
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      } as Event,
+        event_date: getFutureDate(15),
+        registration_opens_at: getPastDate(30),
+        registration_closes_at: getFutureDate(14),
+        is_published: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      } as EventRow,
     ]);
 
     const events = await getAllEvents({ includeRegistrationStatus: true });
@@ -141,21 +140,20 @@ describe('Event Registration Status', () => {
   });
 
   it('returns OPEN when registration is open and venue has available capacity', async () => {
-    const { readJsonFile } = await import('@/lib/json-store');
-    vi.mocked(readJsonFile).mockReturnValue([
+    mockFetchRows.mockResolvedValueOnce([
       {
         id: 2, // This ID has 10 registrations (below capacity)
         slug: 'test-open',
-        eventTypeCode: 'MANDARIN_BOOK_CLUB',
-        venueId: 1, // Venue with maxCapacity = 20
+        event_type_code: 'MANDARIN_BOOK_CLUB',
+        venue_id: 1, // Venue with maxCapacity = 20
         title: 'Open Event',
-        eventDate: getFutureDate(15),
-        registrationOpensAt: getPastDate(30),
-        registrationClosesAt: getFutureDate(14),
-        isPublished: true,
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      } as Event,
+        event_date: getFutureDate(15),
+        registration_opens_at: getPastDate(30),
+        registration_closes_at: getFutureDate(14),
+        is_published: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      } as EventRow,
     ]);
 
     const events = await getAllEvents({ includeRegistrationStatus: true });
@@ -165,21 +163,20 @@ describe('Event Registration Status', () => {
   });
 
   it('returns UNKNOWN when venue data is missing', async () => {
-    const { readJsonFile } = await import('@/lib/json-store');
-    vi.mocked(readJsonFile).mockReturnValue([
+    mockFetchRows.mockResolvedValueOnce([
       {
         id: 1,
         slug: 'test-unknown',
-        eventTypeCode: 'MANDARIN_BOOK_CLUB',
-        venueId: 999, // Non-existent venue ID
+        event_type_code: 'MANDARIN_BOOK_CLUB',
+        venue_id: 999, // Non-existent venue ID
         title: 'Unknown Venue Event',
-        eventDate: getFutureDate(15),
-        registrationOpensAt: getPastDate(30),
-        registrationClosesAt: getFutureDate(14),
-        isPublished: true,
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      } as Event,
+        event_date: getFutureDate(15),
+        registration_opens_at: getPastDate(30),
+        registration_closes_at: getFutureDate(14),
+        is_published: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      } as EventRow,
     ]);
 
     const events = await getAllEvents({ includeRegistrationStatus: true });
@@ -189,21 +186,20 @@ describe('Event Registration Status', () => {
   });
 
   it('checks time constraints before capacity constraints', async () => {
-    const { readJsonFile } = await import('@/lib/json-store');
-    vi.mocked(readJsonFile).mockReturnValue([
+    mockFetchRows.mockResolvedValueOnce([
       {
         id: 3, // This ID would return FULL if capacity was checked
         slug: 'test-upcoming-full',
-        eventTypeCode: 'MANDARIN_BOOK_CLUB',
-        venueId: 1,
+        event_type_code: 'MANDARIN_BOOK_CLUB',
+        venue_id: 1,
         title: 'Upcoming but Full Event',
-        eventDate: getFutureDate(15),
-        registrationOpensAt: getFutureDate(5), // Opens 5 days from now
-        registrationClosesAt: getFutureDate(14),
-        isPublished: true,
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      } as Event,
+        event_date: getFutureDate(15),
+        registration_opens_at: getFutureDate(5), // Opens 5 days from now
+        registration_closes_at: getFutureDate(14),
+        is_published: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      } as EventRow,
     ]);
 
     const events = await getAllEvents({ includeRegistrationStatus: true });
@@ -214,21 +210,20 @@ describe('Event Registration Status', () => {
   });
 
   it('includes venue data when includeRegistrationStatus is true', async () => {
-    const { readJsonFile } = await import('@/lib/json-store');
-    vi.mocked(readJsonFile).mockReturnValue([
+    mockFetchRows.mockResolvedValueOnce([
       {
         id: 1,
         slug: 'test-venue-included',
-        eventTypeCode: 'MANDARIN_BOOK_CLUB',
-        venueId: 1,
+        event_type_code: 'MANDARIN_BOOK_CLUB',
+        venue_id: 1,
         title: 'Event with Venue',
-        eventDate: getFutureDate(15),
-        registrationOpensAt: getPastDate(30),
-        registrationClosesAt: getFutureDate(14),
-        isPublished: true,
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      } as Event,
+        event_date: getFutureDate(15),
+        registration_opens_at: getPastDate(30),
+        registration_closes_at: getFutureDate(14),
+        is_published: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      } as EventRow,
     ]);
 
     const events = await getAllEvents({ includeRegistrationStatus: true });
@@ -239,21 +234,20 @@ describe('Event Registration Status', () => {
   });
 
   it('does not populate registrationStatus when includeRegistrationStatus is false', async () => {
-    const { readJsonFile } = await import('@/lib/json-store');
-    vi.mocked(readJsonFile).mockReturnValue([
+    mockFetchRows.mockResolvedValueOnce([
       {
         id: 1,
         slug: 'test-no-status',
-        eventTypeCode: 'MANDARIN_BOOK_CLUB',
-        venueId: 1,
+        event_type_code: 'MANDARIN_BOOK_CLUB',
+        venue_id: 1,
         title: 'Event without Status',
-        eventDate: getFutureDate(15),
-        registrationOpensAt: getPastDate(30),
-        registrationClosesAt: getFutureDate(14),
-        isPublished: true,
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      } as Event,
+        event_date: getFutureDate(15),
+        registration_opens_at: getPastDate(30),
+        registration_closes_at: getFutureDate(14),
+        is_published: true,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+      } as EventRow,
     ]);
 
     const events = await getAllEvents({ includeRegistrationStatus: false });

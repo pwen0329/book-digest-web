@@ -7,7 +7,7 @@
   "nav": {
     "home": "首頁",
     "books": "讀書會選書",
-    "events": "活動報名",
+    "events": "活動",
     "taiwan": "台灣",
     "netherlands": "荷蘭",
     "online": "線上",
@@ -156,7 +156,7 @@
     "joinUsBtn": "馬上報名"
   },
   "footer": {
-    "events": "活動報名",
+    "events": "活動",
     "bookClub": "讀書會",
     "unplugProject": "數位排毒",
     "getInvolved": "加入我們",

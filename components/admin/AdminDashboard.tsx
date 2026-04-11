@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { getBookSortOrder, getNextBookSortOrder, sortBooksDescending } from '@/lib/book-order';
 import { getCanonicalBookCoverHints } from '@/lib/book-cover-strategy';
 import type { Book, DraftBook } from '@/types/book';
@@ -16,12 +16,6 @@ type AdminDashboardProps = {
   initialEvents: Event[];
   initialVenues: Venue[];
   initialRegistrationEmails: RegistrationSuccessEmailSettings;
-  initialDocumentVersions: {
-    books: string | null;
-    events: string | null;
-    venues: string | null;
-    emails: string | null;
-  };
 };
 
 type DashboardTab = 'books' | 'events' | 'venues' | 'emails' | 'registrations' | 'reconciliation' | 'assets';
@@ -95,7 +89,6 @@ type ReconciliationRow = {
 
 type ReconciliationResponse = {
   summary: {
-    sourceOfTruth: 'supabase.registrations' | 'local-registration-store';
     notionConfigured: boolean;
     notionMirrorEnabled: boolean;
     totalSourceRecords: number;
@@ -184,15 +177,13 @@ function createDraftBook(existingBooks: DraftBook[]): DraftBook {
   };
 }
 
-export default function AdminDashboard({ initialBooks, initialEvents, initialVenues, initialRegistrationEmails, initialDocumentVersions }: AdminDashboardProps) {
+export default function AdminDashboard({ initialBooks, initialEvents, initialVenues, initialRegistrationEmails }: AdminDashboardProps) {
   const [hydrated, setHydrated] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('books');
   const [books, setBooks] = useState<DraftBook[]>(() => sortBooksDescending(initialBooks));
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [venues, setVenues] = useState<Venue[]>(initialVenues);
   const [registrationEmails, setRegistrationEmails] = useState<RegistrationSuccessEmailSettings>(initialRegistrationEmails);
-  const [documentVersions, setDocumentVersions] = useState(initialDocumentVersions);
-  const documentVersionsRef = useRef(initialDocumentVersions);
   const [selectedBookId, setSelectedBookId] = useState<number | undefined>(initialBooks[0]?.id);
   const [visibleBookCount, setVisibleBookCount] = useState(10);
   const [draggedBookId, setDraggedBookId] = useState<number | undefined>(undefined);
@@ -221,10 +212,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
   useEffect(() => {
     setHydrated(true);
   }, []);
-
-  useEffect(() => {
-    documentVersionsRef.current = documentVersions;
-  }, [documentVersions]);
 
   const selectedBookIndex = books.findIndex((book) => book.id === selectedBookId);
   const selectedBook = selectedBookIndex >= 0 ? books[selectedBookIndex] : books[0];
@@ -602,22 +589,9 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
   async function saveRegistrationEmails() {
     resetFlash();
 
-    const response = await fetch('/api/admin/email', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ settings: registrationEmails, expectedUpdatedAt: documentVersionsRef.current.emails }),
-    });
-
-    const payload = await response.json().catch(() => ({ error: 'Unable to save registration email settings.' }));
-    if (!response.ok) {
-      throw new Error(payload.error || 'Unable to save registration email settings.');
-    }
-
-    const nextUpdatedAt = (payload.updatedAt as string | null | undefined) ?? documentVersionsRef.current.emails;
-    setRegistrationEmails(payload.settings as RegistrationSuccessEmailSettings);
-    documentVersionsRef.current = { ...documentVersionsRef.current, emails: nextUpdatedAt ?? null };
-    setDocumentVersions((currentVersions) => ({ ...currentVersions, emails: nextUpdatedAt ?? currentVersions.emails }));
-    setMessage('Registration success email settings updated.');
+    // TODO: Implement PUT endpoint for saving email settings per event
+    // Currently email settings are hardcoded in registration-success-email-config.ts
+    setMessage('Email settings save not yet implemented. Coming soon.');
   }
 
   async function logout() {
@@ -1103,7 +1077,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                       {registrations.map((registration) => (
                         <tr key={registration.id}>
                           <td className="px-4 py-3 text-white/75">{new Date(registration.createdAt).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-white">{events.find((e) => e.id === registration.eventId)?.title || registration.location || `Event #${registration.eventId}`}</td>
+                          <td className="px-4 py-3 text-white">{events.find((e) => e.id === registration.eventId)?.title || `Event #${registration.eventId}`}</td>
                           <td className="px-4 py-3 text-white">{registration.name}</td>
                           <td className="px-4 py-3 text-white/85">{registration.email}</td>
                           <td className="px-4 py-3"><span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{registration.status}</span></td>
@@ -1169,7 +1143,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
               {reconciliation ? (
                 <>
                   <div className="grid gap-4 md:grid-cols-6">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Source of truth</p><p className="mt-1 text-sm font-semibold">{reconciliation.summary.sourceOfTruth}</p></div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Matched</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.matched}</p></div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Missing in Notion</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.missingInNotion}</p></div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Field drift</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.mismatched}</p></div>
@@ -1191,7 +1164,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                               <p className="font-semibold text-white">{row.sourceRecord.name}</p>
                               <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{row.kind}</span>
                             </div>
-                            <p className="mt-2">{row.sourceRecord.email} · {row.sourceRecord.location}</p>
+                            <p className="mt-2">{row.sourceRecord.email} · Event #{row.sourceRecord.eventId}</p>
                             <p className="mt-2">Request ID: <span className="font-mono text-white">{row.sourceRecord.requestId || 'n/a'}</span></p>
                             {row.mismatchFields.length ? <p className="mt-2">Mismatched fields: <span className="font-mono text-white">{row.mismatchFields.join(', ')}</span></p> : null}
                             {row.notionRecord ? <p className="mt-2">Notion page: <span className="font-mono text-white">{row.notionRecord.id}</span></p> : null}

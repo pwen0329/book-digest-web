@@ -32,10 +32,6 @@ type SignupClientProps = {
 export default function SignupClient({ event, showIntro = false }: SignupClientProps) {
   const t = useTranslations('events');
 
-  // Use venue location directly (TW, NL, or ONLINE)
-  // For ActivitySignupFlow, map ONLINE to TW as a default location
-  const location = event.venueLocation === 'ONLINE' ? 'TW' : event.venueLocation;
-
   // Build event-based registration endpoint
   const endpoint = `/api/event/${event.slug}/register`;
 
@@ -64,16 +60,13 @@ export default function SignupClient({ event, showIntro = false }: SignupClientP
 
   return (
     <ActivitySignupFlow
-      activeTab={location}
-      location={location}
-      tabLabels={{ TW: event.title, EN: event.title, NL: event.title, DETOX: event.title }}
+      eventSlug={event.slug}
       translationNamespace="signupFlow"
       endpoint={endpoint}
       posterSrc={event.posterSrc}
       posterBlurDataURL={undefined}
       posterAlt={event.posterAlt}
       comingSoon={comingSoonMessage}
-      showTabs={false}
       renderIntro={(step) => showIntro && step === 0 ? (
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold font-outfit">

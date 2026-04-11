@@ -121,6 +121,9 @@ describe('VenueEventsClient URL Parameter Behavior', () => {
   });
 
   it('updates URL when clicking event type tab', async () => {
+    // Mock window.history.replaceState
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
     render(
       <VenueEventsClient
         locale="en"
@@ -134,10 +137,14 @@ describe('VenueEventsClient URL Parameter Behavior', () => {
     fireEvent.click(detoxButtons[0]);
 
     await waitFor(() => {
-      expect(mockPushHistory).toHaveLength(1);
-      expect(mockPushHistory[0].url).toBe('?type=DETOX');
-      expect(mockPushHistory[0].options).toEqual({ scroll: false });
+      expect(replaceStateSpy).toHaveBeenCalledWith(
+        null,
+        '',
+        expect.stringContaining('type=DETOX')
+      );
     });
+
+    replaceStateSpy.mockRestore();
   });
 
   it('shows correct CTA buttons based on registration status', () => {

@@ -3,7 +3,7 @@ import 'server-only';
 import type { NotionRegistrationRecord } from '@/lib/notion';
 import { listRegistrations } from '@/lib/notion';
 import type { RegistrationRecord } from '@/lib/registration-store';
-import { isPersistentRegistrationStoreConfigured, listStoredRegistrations } from '@/lib/registration-store';
+import { listStoredRegistrations } from '@/lib/registration-store';
 
 export type ReconciliationMismatchField =
   | 'name'
@@ -30,7 +30,6 @@ export type ReconciliationOrphanRow = {
 };
 
 export type ReconciliationSummary = {
-  sourceOfTruth: 'supabase.registrations' | 'local-registration-store';
   notionConfigured: boolean;
   notionMirrorEnabled: boolean;
   totalSourceRecords: number;
@@ -52,11 +51,10 @@ function normalizeText(value?: string | null): string {
   return (value || '').trim();
 }
 
-function buildFallbackKey(value: { email?: string | null; location?: string | null; createdAt?: string | null; createdTime?: string | null }) {
+function buildFallbackKey(value: { email?: string | null; createdAt?: string | null; createdTime?: string | null }) {
   const email = normalizeText(value.email).toLowerCase();
-  const location = normalizeText(value.location).toUpperCase();
   const timestamp = value.createdAt || value.createdTime || '';
-  return `${email}::${location}::${timestamp.slice(0, 16)}`;
+  return `${email}::${timestamp.slice(0, 16)}`;
 }
 
 function resolveMismatchFields(source: RegistrationRecord, notion: NotionRegistrationRecord): ReconciliationMismatchField[] {
@@ -64,7 +62,7 @@ function resolveMismatchFields(source: RegistrationRecord, notion: NotionRegistr
 
   if (normalizeText(source.name) !== normalizeText(notion.name)) mismatches.push('name');
   if (normalizeText(source.email).toLowerCase() !== normalizeText(notion.email).toLowerCase()) mismatches.push('email');
-  if (normalizeText(source.location).toUpperCase() !== normalizeText(notion.location).toUpperCase()) mismatches.push('location');
+  // Location is now accessed via event relationship, not stored directly on registration
   if ((source.age || null) !== notion.age) mismatches.push('age');
   if (normalizeText(source.profession) !== normalizeText(notion.occupation)) mismatches.push('profession');
   if (normalizeText(source.instagram) !== normalizeText(notion.instagram)) mismatches.push('instagram');
@@ -85,7 +83,7 @@ function findMatchingNotionRecord(source: RegistrationRecord, notionByRegistrati
     return notionByPageId.get(source.externalId);
   }
 
-  return notionByFallbackKey.get(buildFallbackKey({ email: source.email, location: source.location, createdAt: source.createdAt }));
+  return notionByFallbackKey.get(buildFallbackKey({ email: source.email, createdAt: source.createdAt }));
 }
 
 export async function buildNotionReconciliationReport(limit = 500): Promise<ReconciliationReport> {
@@ -96,7 +94,7 @@ export async function buildNotionReconciliationReport(limit = 500): Promise<Reco
 
   const notionByRegistrationId = new Map(notionRecords.filter((record) => record.registrationId).map((record) => [record.registrationId, record]));
   const notionByPageId = new Map(notionRecords.map((record) => [record.id, record]));
-  const notionByFallbackKey = new Map(notionRecords.map((record) => [buildFallbackKey({ email: record.email, location: record.location, createdTime: record.createdTime }), record]));
+  const notionByFallbackKey = new Map(notionRecords.map((record) => [buildFallbackKey({ email: record.email, createdTime: record.createdTime }), record]));
 
   const matchedNotionIds = new Set<string>();
   const rows: ReconciliationRow[] = sourceRecords.map((sourceRecord) => {
@@ -126,7 +124,6 @@ export async function buildNotionReconciliationReport(limit = 500): Promise<Reco
 
   return {
     summary: {
-      sourceOfTruth: isPersistentRegistrationStoreConfigured() ? 'supabase.registrations' : 'local-registration-store',
       notionConfigured,
       notionMirrorEnabled,
       totalSourceRecords: sourceRecords.length,

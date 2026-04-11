@@ -1,12 +1,9 @@
 import 'server-only';
 
-import path from 'node:path';
-import { readdir, stat, unlink } from 'node:fs/promises';
 import type { Book } from '@/types/book';
 import type { Event } from '@/types/event';
 import { getAllBooksFromDB } from '@/lib/books-db';
 import { getAllEvents } from '@/lib/events';
-import { isPersistentUploadStoreConfigured, resolveLocalAdminUploadPath } from '@/lib/admin-upload-storage';
 
 type UploadScope = 'books' | 'events';
 
@@ -14,7 +11,7 @@ export type ManagedAssetRecord = {
   url: string;
   scope: UploadScope;
   fileName: string;
-  storage: 'local' | 'supabase';
+  storage: 'supabase';
   modifiedAt?: string;
 };
 
@@ -55,14 +52,6 @@ type ParsedManagedAsset = {
 };
 
 function parseManagedAssetUrl(url: string): ParsedManagedAsset | null {
-  const localMatch = url.match(/^\/uploads\/admin\/(books|events)\/([^/?#]+)$/);
-  if (localMatch) {
-    return {
-      scope: localMatch[1] as UploadScope,
-      fileName: localMatch[2],
-    };
-  }
-
   const supabaseUrl = getSupabaseUrl();
   if (!supabaseUrl) {
     return null;
@@ -109,12 +98,7 @@ function extractEventAssetUrls(events: Event[]): Set<string> {
 
 async function deleteManagedAsset(url: string) {
   const parsed = parseManagedAssetUrl(url);
-  if (!parsed) {
-    return;
-  }
-
-  if (!parsed.objectPath) {
-    await unlink(resolveLocalAdminUploadPath(parsed.scope, parsed.fileName)).catch(() => undefined);
+  if (!parsed || !parsed.objectPath) {
     return;
   }
 
@@ -146,23 +130,6 @@ export async function cleanupRemovedAdminAssets({ previousBooks, nextBooks, prev
 
   const orphanedAssets = [...previousAssets].filter((url) => !nextAssets.has(url));
   await Promise.all(orphanedAssets.map((url) => deleteManagedAsset(url)));
-}
-
-async function listLocalAssets(scope: UploadScope): Promise<ManagedAssetRecord[]> {
-  const directory = path.dirname(resolveLocalAdminUploadPath(scope, 'placeholder.txt'));
-  const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
-  const assets = await Promise.all(entries.filter((entry) => entry.isFile()).map(async (entry) => {
-    const entryStat = await stat(resolveLocalAdminUploadPath(scope, entry.name)).catch(() => null);
-    return {
-      url: `/uploads/admin/${scope}/${entry.name}`,
-      scope,
-      fileName: entry.name,
-      storage: 'local' as const,
-      modifiedAt: entryStat?.mtime.toISOString(),
-    };
-  }));
-
-  return assets;
 }
 
 async function listSupabaseAssets(scope: UploadScope): Promise<ManagedAssetRecord[]> {
@@ -225,8 +192,8 @@ async function listSupabaseAssets(scope: UploadScope): Promise<ManagedAssetRecor
 
 async function listStoredAssets(): Promise<ManagedAssetRecord[]> {
   const [bookAssets, eventAssets] = await Promise.all([
-    isPersistentUploadStoreConfigured() ? listSupabaseAssets('books') : listLocalAssets('books'),
-    isPersistentUploadStoreConfigured() ? listSupabaseAssets('events') : listLocalAssets('events'),
+    listSupabaseAssets('books'),
+    listSupabaseAssets('events'),
   ]);
 
   return [...bookAssets, ...eventAssets];
@@ -249,7 +216,7 @@ function getReferencedAssets(books: Book[], events: Event[]): ManagedAssetRecord
         url,
         scope: parsed.scope,
         fileName: parsed.fileName,
-        storage: parsed.objectPath ? 'supabase' : 'local',
+        storage: 'supabase',
       } satisfies ManagedAssetRecord;
     })
     .filter((item): item is ManagedAssetRecord => Boolean(item));

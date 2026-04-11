@@ -1,7 +1,5 @@
 import 'server-only';
 
-import { loadAdminDocument } from '@/lib/admin-content-store';
-
 export type RegistrationEmailLocale = 'zh' | 'en';
 
 export type RegistrationSuccessEmailTemplate = {
@@ -14,13 +12,20 @@ export type RegistrationSuccessEmailSettings = {
   templates: Record<RegistrationEmailLocale, RegistrationSuccessEmailTemplate>;
 };
 
-const REGISTRATION_SUCCESS_EMAIL_FILE = 'data/registration-success-email.json';
-
+// TODO: Replace with database-backed configuration per event
+// For now, return hardcoded default values from data/registration-success-email.json
 export async function getRegistrationSuccessEmailSettings(): Promise<RegistrationSuccessEmailSettings> {
-  return loadAdminDocument<RegistrationSuccessEmailSettings>({
-    key: 'registration-success-email',
-    fallbackFile: REGISTRATION_SUCCESS_EMAIL_FILE,
-  });
+  return {
+    enabled: false,
+    templates: {
+      zh: {
+        subject: 'Book Digest 報名成功｜{{eventTitle}}',
+        body: '嗨 {{name}}，\n\n你已成功完成 {{eventTitle}} 的報名。\n\n我們會以這個信箱 {{email}} 與你保持聯繫；若活動細節有更新，也會透過這裡通知你。\n\n活動類型：{{location}}\n官網：{{siteUrl}}\n\n期待在線下或線上和你見面。\nBook Digest',
+      },
+      en: {
+        subject: 'Book Digest registration confirmed | {{eventTitle}}',
+        body: 'Hi {{name}},\n\nYour registration for {{eventTitle}} is confirmed.\n\nWe will keep in touch through {{email}} if any event details change.\n\nActivity: {{location}}\nSite: {{siteUrl}}\n\nSee you soon,\nBook Digest',
+      },
+    },
+  };
 }
-
-export { REGISTRATION_SUCCESS_EMAIL_FILE };

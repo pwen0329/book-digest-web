@@ -6,19 +6,14 @@ import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import SignupForm from '@/components/SignupForm';
 import Turnstile from '@/components/Turnstile';
-import ActivitySignupTabs from '@/components/ActivitySignupTabs';
 import { BLUR_POSTER } from '@/lib/constants';
-import { mapClientReferralToApi, type SignupFormValues, type SignupLocation } from '@/lib/signup';
-
-type ActivityTab = 'TW' | 'EN' | 'NL' | 'DETOX';
+import { mapClientReferralToApi, type SignupFormValues } from '@/lib/signup';
 
 type ActivitySignupFlowProps = {
-  activeTab: ActivityTab;
-  location: SignupLocation;
+  eventSlug: string;
   posterSrc: string;
   posterBlurDataURL?: string;
   posterAlt: string;
-  tabLabels?: Partial<Record<ActivityTab, string>>;
   translationNamespace: 'signupFlow' | 'detoxSignupFlow';
   endpoint: string;
   posterPriority?: boolean;
@@ -27,22 +22,18 @@ type ActivitySignupFlowProps = {
     title: string;
     body?: string;
   };
-  showTabs?: boolean;
 };
 
 export default function ActivitySignupFlow({
-  activeTab,
-  location,
+  eventSlug,
   posterSrc,
   posterBlurDataURL,
   posterAlt,
-  tabLabels,
   translationNamespace,
   endpoint,
   posterPriority = false,
   renderIntro,
   comingSoon,
-  showTabs = true,
 }: ActivitySignupFlowProps) {
   const tEvents = useTranslations('events');
   const tSignup = useTranslations(translationNamespace);
@@ -95,7 +86,6 @@ export default function ActivitySignupFlow({
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          location,
           locale,
           name: formValues.name,
           age: Number(formValues.age),
@@ -147,7 +137,6 @@ export default function ActivitySignupFlow({
           </Link>
         </div>
 
-        {showTabs && <ActivitySignupTabs activeTab={activeTab} labels={tabLabels} />}
         {renderIntro ? renderIntro(step) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
@@ -180,8 +169,7 @@ export default function ActivitySignupFlow({
                   {step === 0 && (
                     <div className="space-y-4">
                       <SignupForm
-                        key={location}
-                        location={location}
+                        eventSlug={eventSlug}
                         onComplete={(vals) => {
                           setFormValues(vals);
                           setStep(1);
@@ -235,7 +223,7 @@ export default function ActivitySignupFlow({
                           maxLength={5}
                           value={bankLast5}
                           onChange={(e) => setBankLast5(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                          className="w-full rounded-lg bg-white px-4 py-3 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-pink transition-colors"
+                          className="w-full rounded-lg bg-white px-4 py-3 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-pink transition-colors [&:-webkit-autofill]:!bg-white [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_white] [&:-webkit-autofill]:[-webkit-text-fill-color:theme(colors.gray.900)]"
                           placeholder={tSignup('last5Placeholder')}
                         />
                         {sendError ? <p className="mt-2 text-sm text-red-300">{sendError}</p> : null}

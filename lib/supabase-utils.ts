@@ -2,14 +2,7 @@ import 'server-only';
 
 // Shared Supabase utility functions for direct REST API access
 
-export function shouldForceLocalPersistentStores(): boolean {
-  return process.env.FORCE_LOCAL_PERSISTENT_STORES === '1';
-}
-
 export function isSupabaseConfigured(): boolean {
-  if (shouldForceLocalPersistentStores()) {
-    return false;
-  }
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 

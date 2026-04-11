@@ -91,17 +91,16 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 2. `ADMIN_SESSION_SECRET`
 3. `SUPABASE_URL`
 4. `SUPABASE_SERVICE_ROLE_KEY`
-5. `SUPABASE_ADMIN_DOCUMENTS_TABLE=admin_documents`
-6. `SUPABASE_REGISTRATIONS_TABLE=registrations`
-7. `SUPABASE_STORAGE_BUCKET=admin-assets`
-8. Optional but recommended for automation: `ADMIN_API_SECRET`
-9. Optional: `RESEND_API_KEY`
-10. Optional: `REGISTRATION_EMAIL_FROM`
-11. Optional: `REGISTRATION_EMAIL_REPLY_TO`
-12. Optional: `NOTION_TOKEN`
-13. Optional: `NOTION_DB_ID`
-14. Optional: `SUBMIT_SAVE_TO_NOTION=1`
-15. Optional: `TALLY_ENDPOINT_TW`, `TALLY_ENDPOINT_NL`, `TALLY_ENDPOINT_EN`, `TALLY_ENDPOINT_DETOX`
+5. `SUPABASE_REGISTRATIONS_TABLE=registrations`
+6. `SUPABASE_STORAGE_BUCKET=admin-assets`
+7. Optional but recommended for automation: `ADMIN_API_SECRET`
+8. Optional: `RESEND_API_KEY`
+9. Optional: `REGISTRATION_EMAIL_FROM`
+10. Optional: `REGISTRATION_EMAIL_REPLY_TO`
+11. Optional: `NOTION_TOKEN`
+12. Optional: `NOTION_DB_ID`
+13. Optional: `SUBMIT_SAVE_TO_NOTION=1`
+14. Optional: `TALLY_ENDPOINT_TW`, `TALLY_ENDPOINT_NL`, `TALLY_ENDPOINT_EN`, `TALLY_ENDPOINT_DETOX`
 16. Optional: `NEXT_PUBLIC_SENTRY_DSN`
 17. Optional: `SENTRY_AUTH_TOKEN`
 18. Recommended for Supabase-first setup: leave `NEXT_PUBLIC_FORMS_ENDPOINT_*` empty so public forms keep posting to the built-in `/api/submit` route.
@@ -189,7 +188,7 @@ limit 20;
    - run the SQL block above for `public.admin_documents`
    - run `select created_at, updated_at, status, source, request_id from public.registrations order by updated_at desc limit 20;`
    - confirm `books` is a non-empty JSON array and `events` is a JSON object with `TW`, `NL`, `EN`, and `DETOX`
-   - confirm `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ADMIN_DOCUMENTS_TABLE`, and `SUPABASE_REGISTRATIONS_TABLE` are set on the same Vercel environment as the deployment
+   - confirm `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_REGISTRATIONS_TABLE` are set on the same Vercel environment as the deployment
    - redeploy after clearing any remaining runtime file reads in server utilities
 17. If `/api/admin/books`, `/api/admin/events`, `/api/admin/capacity`, or `/api/admin/email` return `400` only on Vercel while `/admin` still loads, suspect an older `public.admin_documents` schema cache. Rerun [docs/supabase-admin.sql](/data/yy/book-digest-web/docs/supabase-admin.sql) so `updated_at` is backfilled and PostgREST reloads the admin document schema.
 

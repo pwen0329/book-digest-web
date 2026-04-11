@@ -3,10 +3,10 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { z } from 'zod';
 import Turnstile from '@/components/Turnstile';
-import { EMPTY_SIGNUP_FORM_VALUES, mapClientReferralToApi, restoreSignupFormValues, type SignupFormValues, type SignupLocation } from '@/lib/signup';
+import { EMPTY_SIGNUP_FORM_VALUES, mapClientReferralToApi, restoreSignupFormValues, type SignupFormValues } from '@/lib/signup';
 
 export type SignupFormProps = {
-  location: SignupLocation;
+  eventSlug?: string;
   endpoint?: string;
   disabled?: boolean;
   // When provided, form will validate and call onComplete instead of submitting.
@@ -46,7 +46,7 @@ const formSchema = baseSchema.superRefine((data, ctx) => {
   }
 });
 
-export default function SignupForm({ location, endpoint, onComplete, disabled = false }: SignupFormProps) {
+export default function SignupForm({ eventSlug, endpoint, onComplete, disabled = false }: SignupFormProps) {
   const t = useTranslations('form');
   const tEvents = useTranslations('events');
   const locale = useLocale();
@@ -65,7 +65,7 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
     setTurnstileToken(null);
   }, []);
 
-  const storageKey = `signup-form-${location}`;
+  const storageKey = eventSlug ? `signup-form-${eventSlug}` : 'signup-form';
 
   const [values, setValues] = useState<SignupFormValues>({ ...EMPTY_SIGNUP_FORM_VALUES });
 
@@ -205,26 +205,10 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
     }
   };
 
-  // Unified white input style
+  // Unified white input style with autofill override
   const inputClass = (hasError: boolean) =>
-    `w-full rounded-lg bg-white px-4 py-3 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-pink transition-colors ${hasError ? 'ring-2 ring-red-400' : ''}`;
+    `w-full rounded-lg bg-white px-4 py-3 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-pink transition-colors [&:-webkit-autofill]:!bg-white [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_white] [&:-webkit-autofill]:[-webkit-text-fill-color:theme(colors.gray.900)] ${hasError ? 'ring-2 ring-red-400' : ''}`;
 
-  // Location badge colors
-  const locationBadgeClass = location === 'TW'
-    ? 'bg-[#FFDD57] text-brand-navy'
-    : location === 'EN'
-      ? 'bg-emerald-400 text-brand-navy'
-      : location === 'DETOX'
-        ? 'bg-cyan-300 text-brand-navy'
-      : 'bg-brand-pink text-brand-navy';
-
-  const locationLabel = location === 'TW'
-    ? tEvents('taiwan')
-    : location === 'NL'
-      ? tEvents('netherlands')
-      : location === 'EN'
-        ? tEvents('english')
-        : tEvents('detoxTitle');
   const isInputDisabled = disabled;
 
   return (
@@ -233,9 +217,6 @@ export default function SignupForm({ location, endpoint, onComplete, disabled = 
         <h3 className="text-lg font-semibold text-white">
           {tEvents('signUp')}
         </h3>
-        <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${locationBadgeClass}`}>
-          📍 {locationLabel}
-        </span>
       </div>
 
       {(!onComplete && success === 'ok') ? (

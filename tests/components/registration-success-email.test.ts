@@ -16,20 +16,19 @@ describe('registration success email', () => {
     delete process.env.REGISTRATION_EMAIL_FROM;
     delete process.env.REGISTRATION_EMAIL_REPLY_TO;
     delete process.env.NEXT_PUBLIC_SITE_URL;
-    delete process.env.FORCE_LOCAL_PERSISTENT_STORES;
   });
 
   it('renders the localized template tokens into a delivery-ready message', async () => {
-    process.env.FORCE_LOCAL_PERSISTENT_STORES = '1';
     process.env.NEXT_PUBLIC_SITE_URL = 'http://127.0.0.1:3000';
 
     const { renderRegistrationSuccessEmailMessage } = await import('@/lib/registration-success-email');
 
     const rendered = await renderRegistrationSuccessEmailMessage(originalSettings, {
-      location: 'TW',
       locale: 'zh',
       name: '測試讀者',
       email: 'reader@example.com',
+      eventTitle: '台灣讀書會',
+      eventTitleEn: 'Taiwan Book Club',
     });
 
     expect(rendered.locale).toBe('zh');
@@ -40,7 +39,6 @@ describe('registration success email', () => {
   });
 
   it('writes a sent record to the configured local outbox when enabled', async () => {
-    process.env.FORCE_LOCAL_PERSISTENT_STORES = '1';
     process.env.EMAIL_OUTBOX_FILE = 'data/test-email-outbox.json';
     process.env.NEXT_PUBLIC_SITE_URL = 'https://bookdigest.test';
 
@@ -61,10 +59,11 @@ describe('registration success email', () => {
     clearEmailOutbox();
 
     const result = await sendRegistrationSuccessEmail({
-      location: 'DETOX',
       locale: 'en',
       name: 'Detox Adventurer',
       email: 'detox@example.com',
+      eventTitle: '數位排毒營',
+      eventTitleEn: 'Unplug Project',
     });
 
     expect(result).toEqual({ status: 'sent', transport: 'file' });
@@ -73,7 +72,6 @@ describe('registration success email', () => {
     expect(deliveries[0]).toMatchObject({
       to: 'detox@example.com',
       locale: 'en',
-      location: 'DETOX',
       transport: 'file',
     });
     expect(deliveries[0].subject).toContain('Unplug Project');

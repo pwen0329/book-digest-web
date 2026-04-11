@@ -158,7 +158,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       // Create reservation record
       const reservationRecord = await createRegistrationReservation({
-        location,
+        eventId: event.id,
         locale,
         name: payload.name,
         age: payload.age,
@@ -173,7 +173,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
         timestamp: payload.timestamp || new Date().toISOString(),
         status: 'pending',
         source: 'pending',
-        eventId: event.id,
         mirrorState: {
           notion: { enabled: saveAlsoToNotion, status: saveAlsoToNotion ? 'pending' : 'not_configured' },
           tally: { enabled: Boolean(tallyEndpoint), status: tallyEndpoint ? 'pending' : 'not_configured' },

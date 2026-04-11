@@ -42,12 +42,6 @@ export async function GET(req: NextRequest) {
     const eventIdParam = req.nextUrl.searchParams.get('eventId');
     const eventId = eventIdParam && /^\d+$/.test(eventIdParam) ? parseInt(eventIdParam, 10) : undefined;
 
-    // Legacy location support (deprecated)
-    const locationParam = req.nextUrl.searchParams.get('location');
-    const location = locationParam === 'TW' || locationParam === 'NL' || locationParam === 'EN' || locationParam === 'DETOX'
-      ? locationParam
-      : undefined;
-
     const statusParam = req.nextUrl.searchParams.get('status');
     const status = statusParam === 'pending' || statusParam === 'confirmed' || statusParam === 'cancelled'
       ? statusParam
@@ -64,7 +58,7 @@ export async function GET(req: NextRequest) {
     const format = req.nextUrl.searchParams.get('format') || 'json';
 
     const [items, summary] = await Promise.all([
-      listStoredRegistrations({ limit, eventId, location, status, source, search, createdAfter, createdBefore }),
+      listStoredRegistrations({ limit, eventId, status, source, search, createdAfter, createdBefore }),
       summarizeStoredRegistrations(),
     ]);
 
