@@ -131,6 +131,13 @@ export default function VenueManager({ venues, onVenuesChange }: VenueManagerPro
     onVenuesChange(venues.map((v) => (v.id === selectedVenueId ? updated : v)));
   };
 
+  const isMaxCapacityValid = (capacity: number | undefined): boolean => {
+    if (capacity === undefined || isNaN(capacity)) return false;
+    return capacity >= 1 && capacity <= 99999;
+  };
+
+  const isSaveDisabled = !selectedVenue?.name || !isMaxCapacityValid(selectedVenue?.maxCapacity);
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
       {/* Venue List */}
@@ -192,7 +199,7 @@ export default function VenueManager({ venues, onVenuesChange }: VenueManagerPro
               )}
               <button
                 onClick={() => saveVenue(selectedVenue)}
-                disabled={isSaving || !selectedVenue.name}
+                disabled={isSaving || isSaveDisabled}
                 className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {selectedVenue.id === undefined ? 'Create' : 'Save'}
@@ -258,12 +265,27 @@ export default function VenueManager({ venues, onVenuesChange }: VenueManagerPro
                 Max Capacity <span className="text-red-400">*</span>
               </label>
               <input
-                type="number"
-                value={selectedVenue.maxCapacity}
-                onChange={(e) => updateVenueField('maxCapacity', parseInt(e.target.value) || 0)}
-                min="1"
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                type="text"
+                value={selectedVenue.maxCapacity ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    updateVenueField('maxCapacity', undefined as any);
+                  } else {
+                    const num = parseInt(value);
+                    if (!isNaN(num)) {
+                      updateVenueField('maxCapacity', num);
+                    }
+                  }
+                }}
+                placeholder="e.g., 20"
+                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white placeholder-white/40"
               />
+              {selectedVenue.maxCapacity !== undefined && !isMaxCapacityValid(selectedVenue.maxCapacity) && (
+                <p className="mt-1 text-sm text-red-400">
+                  Max capacity must be between 1 and 99999
+                </p>
+              )}
             </div>
 
             {/* Virtual */}
