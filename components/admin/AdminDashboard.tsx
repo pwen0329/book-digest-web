@@ -368,7 +368,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
         params.set('createdBefore', toIsoString(registrationCreatedBefore));
       }
 
-      const response = await fetch(`/api/registrations?${params.toString()}`, { cache: 'no-store' });
+      const response = await fetch(`/api/admin/registrations?${params.toString()}`, { cache: 'no-store' });
       const payload = await response.json().catch(() => null) as RegistrationsResponse | null;
       if (!response.ok || !payload) {
         throw new Error(payload && 'error' in payload ? String((payload as { error?: unknown }).error) : 'Unable to load registrations.');
@@ -467,7 +467,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
       params.set('createdBefore', toIsoString(registrationCreatedBefore));
     }
 
-    const response = await fetch(`/api/registrations?${params.toString()}`, { cache: 'no-store' });
+    const response = await fetch(`/api/admin/registrations?${params.toString()}`, { cache: 'no-store' });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({ error: 'Unable to export CSV.' }));
       throw new Error(payload.error || 'Unable to export CSV.');

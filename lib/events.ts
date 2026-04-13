@@ -153,7 +153,12 @@ export async function getEventBySlug(
   const venue = options?.includeVenue ? await getVenueById(row.venue_id) : undefined;
   const book = options?.includeBook && row.book_id ? await getBookById(row.book_id) : undefined;
 
-  return eventFromRow(row, venue ?? undefined, book ?? undefined);
+  const event = eventFromRow(row, venue ?? undefined, book ?? undefined);
+
+  // Always populate registration status for signup pages
+  await populateRegistrationStatus(event);
+
+  return event;
 }
 
 // Create event

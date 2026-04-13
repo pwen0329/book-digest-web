@@ -24,61 +24,6 @@ END;
 $$;
 
 -- ============================================================================
--- TABLE: registrations
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.registrations (
-  id TEXT PRIMARY KEY,
-  event_id BIGINT NOT NULL,
-  locale TEXT NOT NULL CHECK (locale IN ('zh', 'en')),
-  name TEXT NOT NULL,
-  age INTEGER NOT NULL,
-  profession TEXT NOT NULL,
-  email TEXT NOT NULL,
-  instagram TEXT,
-  referral TEXT NOT NULL,
-  referral_other TEXT,
-  bank_account TEXT,
-  visitor_id TEXT,
-  request_id TEXT,
-  timestamp TIMESTAMPTZ NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'cancelled')),
-  source TEXT NOT NULL CHECK (source IN ('pending', 'simulated', 'tally', 'notion')),
-  external_id TEXT,
-  mirror_state JSONB NOT NULL DEFAULT '{"notion":{"enabled":false,"status":"not_configured"},"tally":{"enabled":false,"status":"not_configured"},"email":{"enabled":false,"status":"not_configured"}}'::jsonb,
-  audit_trail JSONB NOT NULL DEFAULT '[]'::jsonb,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_registrations_event_id ON public.registrations (event_id);
-CREATE INDEX IF NOT EXISTS idx_registrations_status ON public.registrations (status);
-CREATE INDEX IF NOT EXISTS idx_registrations_created_at ON public.registrations (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_registrations_updated_at ON public.registrations (updated_at DESC);
-CREATE INDEX IF NOT EXISTS idx_registrations_timestamp ON public.registrations (timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_registrations_external_id ON public.registrations (external_id);
-CREATE INDEX IF NOT EXISTS idx_registrations_request_id ON public.registrations (request_id);
-
--- Foreign key constraints
-ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS fk_registrations_event;
-ALTER TABLE public.registrations
-  ADD CONSTRAINT fk_registrations_event
-  FOREIGN KEY (event_id)
-  REFERENCES events(id)
-  ON DELETE RESTRICT;
-
--- Trigger
-DROP TRIGGER IF EXISTS registrations_set_updated_at ON public.registrations;
-CREATE TRIGGER registrations_set_updated_at
-BEFORE UPDATE ON public.registrations
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
-
--- Row level security
-ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
-
--- ============================================================================
 -- TABLE: event_types (reference table)
 -- ============================================================================
 
@@ -204,6 +149,61 @@ CREATE INDEX IF NOT EXISTS idx_events_published ON public.events(is_published);
 CREATE INDEX IF NOT EXISTS idx_events_book ON public.events(book_id);
 
 -- ============================================================================
+-- TABLE: registrations
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.registrations (
+  id TEXT PRIMARY KEY,
+  event_id BIGINT NOT NULL,
+  locale TEXT NOT NULL CHECK (locale IN ('zh', 'en')),
+  name TEXT NOT NULL,
+  age INTEGER NOT NULL,
+  profession TEXT NOT NULL,
+  email TEXT NOT NULL,
+  instagram TEXT,
+  referral TEXT NOT NULL,
+  referral_other TEXT,
+  bank_account TEXT,
+  visitor_id TEXT,
+  request_id TEXT,
+  timestamp TIMESTAMPTZ NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'cancelled')),
+  source TEXT NOT NULL CHECK (source IN ('pending', 'simulated', 'tally', 'notion')),
+  external_id TEXT,
+  mirror_state JSONB NOT NULL DEFAULT '{"notion":{"enabled":false,"status":"not_configured"},"tally":{"enabled":false,"status":"not_configured"},"email":{"enabled":false,"status":"not_configured"}}'::jsonb,
+  audit_trail JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_registrations_event_id ON public.registrations (event_id);
+CREATE INDEX IF NOT EXISTS idx_registrations_status ON public.registrations (status);
+CREATE INDEX IF NOT EXISTS idx_registrations_created_at ON public.registrations (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_registrations_updated_at ON public.registrations (updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_registrations_timestamp ON public.registrations (timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_registrations_external_id ON public.registrations (external_id);
+CREATE INDEX IF NOT EXISTS idx_registrations_request_id ON public.registrations (request_id);
+
+-- Foreign key constraints
+ALTER TABLE public.registrations DROP CONSTRAINT IF EXISTS fk_registrations_event;
+ALTER TABLE public.registrations
+  ADD CONSTRAINT fk_registrations_event
+  FOREIGN KEY (event_id)
+  REFERENCES events(id)
+  ON DELETE RESTRICT;
+
+-- Trigger
+DROP TRIGGER IF EXISTS registrations_set_updated_at ON public.registrations;
+CREATE TRIGGER registrations_set_updated_at
+BEFORE UPDATE ON public.registrations
+FOR EACH ROW
+EXECUTE FUNCTION public.set_updated_at();
+
+-- Row level security
+ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
 -- TABLE: settings
 -- ============================================================================
 
@@ -217,25 +217,6 @@ CREATE TABLE IF NOT EXISTS public.settings (
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_settings_updated ON public.settings(updated_at DESC);
-
--- ============================================================================
--- ADD FOREIGN KEYS TO REGISTRATIONS
--- ============================================================================
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints
-                 WHERE constraint_name='fk_registrations_event') THEN
-    ALTER TABLE public.registrations
-      ADD CONSTRAINT fk_registrations_event
-      FOREIGN KEY (event_id)
-      REFERENCES public.events(id)
-      ON DELETE RESTRICT;
-  END IF;
-END $$;
-
--- Add indexes for foreign keys
-CREATE INDEX IF NOT EXISTS idx_registrations_event ON public.registrations(event_id);
 
 -- ============================================================================
 -- RELOAD SCHEMA CACHE
