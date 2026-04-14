@@ -126,6 +126,7 @@ export default function VenueManager({ venues, onVenuesChange }: VenueManagerPro
 
   const updateVenueField = (field: keyof DraftVenue, value: string | number | boolean) => {
     if (!selectedVenue) return;
+    if (value === undefined) return;
 
     const updated = { ...selectedVenue, [field]: value };
     onVenuesChange(venues.map((v) => (v.id === selectedVenueId ? updated : v)));
@@ -270,12 +271,11 @@ export default function VenueManager({ venues, onVenuesChange }: VenueManagerPro
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value === '') {
-                    updateVenueField('maxCapacity', undefined as any);
-                  } else {
-                    const num = parseInt(value);
-                    if (!isNaN(num)) {
-                      updateVenueField('maxCapacity', num);
-                    }
+                    return; // Don't update if empty - keep existing value
+                  }
+                  const num = parseInt(value);
+                  if (!isNaN(num)) {
+                    updateVenueField('maxCapacity', num);
                   }
                 }}
                 placeholder="e.g., 20"
