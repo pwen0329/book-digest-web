@@ -9,6 +9,13 @@ import Turnstile from '@/components/Turnstile';
 import { BLUR_POSTER } from '@/lib/constants';
 import { mapClientReferralToApi, type SignupFormValues } from '@/lib/signup';
 
+export enum SignupStep {
+  INTRO = 0,
+  REGISTRATION_FORM = 1,
+  PAYMENT_INFO = 2,
+  SUCCESS = 3,
+}
+
 type ActivitySignupFlowProps = {
   eventSlug: string;
   posterSrc: string;
@@ -17,7 +24,7 @@ type ActivitySignupFlowProps = {
   endpoint: string;
   venueLocation: string;
   posterPriority?: boolean;
-  renderIntro?: (step: 0 | 1 | 2 | 3) => ReactNode;
+  renderIntro?: (step: SignupStep) => ReactNode;
   comingSoon?: {
     title: string;
     body?: string;
@@ -38,7 +45,30 @@ export default function ActivitySignupFlow({
   const tEvents = useTranslations('events');
   const tSignup = useTranslations('signupFlow');
   const locale = useLocale();
-  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  const storageKey = `signup-step-${eventSlug}`;
+
+  // Always start with INTRO to avoid hydration mismatch
+  const [step, setStepState] = useState<SignupStep>(SignupStep.INTRO);
+  const [mounted, setMounted] = useState(false);
+
+  // Restore step from sessionStorage after hydration
+  useEffect(() => {
+    const saved = sessionStorage.getItem(storageKey);
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (Object.values(SignupStep).includes(parsed)) {
+        setStepState(parsed as SignupStep);
+      }
+    }
+    setMounted(true);
+  }, [storageKey]);
+
+  // Update both state and sessionStorage together
+  const setStep = useCallback((newStep: SignupStep) => {
+    setStepState(newStep);
+    sessionStorage.setItem(storageKey, newStep.toString());
+  }, [storageKey]);
+
   const [formValues, setFormValues] = useState<SignupFormValues | null>(null);
   const [bankLast5, setBankLast5] = useState('');
   const [sending, setSending] = useState(false);
@@ -102,7 +132,7 @@ export default function ActivitySignupFlow({
 
       if (resp.status === 409) {
         const conflict = await resp.json().catch(() => ({ reason: 'full' }));
-        setStep(0);
+        setStep(SignupStep.INTRO);
         setSendError(conflict.reason === 'closed' ? tSignup('closedBody') : tSignup('fullBody'));
         setSending(false);
         return;
@@ -111,7 +141,7 @@ export default function ActivitySignupFlow({
       if (!resp.ok) throw new Error('Request failed');
       submitRequestRef.current = null;
       setTurnstileToken(null);
-      setStep(3);
+      setStep(SignupStep.SUCCESS);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         return;
@@ -164,9 +194,13 @@ export default function ActivitySignupFlow({
                   </div>
                   {comingSoon.body ? <p className="font-bold text-white text-lg font-outfit whitespace-pre-line">{comingSoon.body}</p> : null}
                 </div>
+              ) : !mounted ? (
+                <div className="flex items-center justify-center min-h-[300px]">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-pink"></div>
+                </div>
               ) : (
                 <>
-                  {step === 0 && (
+                  {step === SignupStep.INTRO && (
                     <div className="text-white flex flex-col min-h-[300px] justify-between py-6">
                       <div>
                         <h3 className="text-xl font-bold mb-4">{tSignup('paymentIntroTitle')}</h3>
@@ -174,7 +208,7 @@ export default function ActivitySignupFlow({
                       </div>
                       <div className="pt-6">
                         <button
-                          onClick={() => setStep(1)}
+                          onClick={() => setStep(SignupStep.REGISTRATION_FORM)}
                           className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
                         >
                           {tSignup('agreeAndContinue')}
@@ -183,19 +217,19 @@ export default function ActivitySignupFlow({
                     </div>
                   )}
 
-                  {step === 1 && (
+                  {step === SignupStep.REGISTRATION_FORM && (
                     <div className="space-y-4">
                       <SignupForm
                         eventSlug={eventSlug}
                         onComplete={(vals) => {
                           setFormValues(vals);
-                          setStep(2);
+                          setStep(SignupStep.PAYMENT_INFO);
                         }}
                       />
                     </div>
                   )}
 
-                  {step === 2 && (
+                  {step === SignupStep.PAYMENT_INFO && (
                     <div className="text-white">
                       <h3 className="text-xl font-bold mb-4">{tSignup('remitTitle')}</h3>
                       <div className="space-y-1 text-white/90">
@@ -241,7 +275,7 @@ export default function ActivitySignupFlow({
                     </div>
                   )}
 
-                  {step === 3 && (
+                  {step === SignupStep.SUCCESS && (
                     <div className="text-white">
                       <h3 className="text-xl font-bold mb-4">{tSignup('successTitle')}</h3>
                       <p className="whitespace-pre-line text-white">{tSignup('successBody')}</p>

@@ -1,7 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import ActivitySignupFlow from '@/components/ActivitySignupFlow';
+import ActivitySignupFlow, { SignupStep } from '@/components/ActivitySignupFlow';
 import type { VenueLocation } from '@/types/venue';
 import { EventRegistrationStatus } from '@/types/event';
 import type { EventRegistrationStatus as EventRegistrationStatusType } from '@/types/event';
@@ -67,7 +67,7 @@ export default function SignupClient({ event, showIntro = false }: SignupClientP
       posterBlurDataURL={undefined}
       posterAlt={event.posterAlt}
       comingSoon={comingSoonMessage}
-      renderIntro={(step) => showIntro && step === 0 ? (
+      renderIntro={(step) => showIntro && step === SignupStep.INTRO ? (
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold font-outfit">
             {t('joinBookClub')}

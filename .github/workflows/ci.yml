@@ -103,6 +103,7 @@ jobs:
         env:
           BASE_URL: ${{ steps.vercel-preview.outputs.url }}
           CAPACITY_GUARDRAILS_E2E: 1
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       - name: Upload Playwright report
         if: always()
