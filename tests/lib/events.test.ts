@@ -51,10 +51,10 @@ describe('events', () => {
   const mockVenue: Venue = {
     id: 1,
     name: 'Test Venue',
-    nameEn: 'Test Venue EN',
     location: 'TW',
     address: 'Test Address',
     maxCapacity: 20,
+    isVirtual: false,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   };

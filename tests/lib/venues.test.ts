@@ -31,10 +31,10 @@ describe('venues', () => {
   const mockVenueRow: VenueRow = {
     id: 1,
     name: 'Test Venue TW',
-    name_en: 'Test Venue TW EN',
     location: 'TW',
     address: '123 Test Street, Taipei',
     max_capacity: 20,
+    is_virtual: false,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-02T00:00:00Z',
   };
@@ -92,10 +92,10 @@ describe('venues', () => {
     it('creates a new venue', async () => {
       const newVenue: Omit<Venue, 'id' | 'createdAt' | 'updatedAt'> = {
         name: 'New Venue',
-        nameEn: 'New Venue EN',
         location: 'NL',
         address: '456 New Street, Amsterdam',
         maxCapacity: 15,
+        isVirtual: false,
       };
 
       mockInsertRow.mockResolvedValueOnce({
@@ -119,12 +119,13 @@ describe('venues', () => {
       expect(createdVenue.name).toBe('New Venue');
     });
 
-    it('creates venue without optional English name', async () => {
+    it('creates venue with all required fields', async () => {
       const newVenue: Omit<Venue, 'id' | 'createdAt' | 'updatedAt'> = {
         name: 'Venue Without EN',
         location: 'TW',
         address: 'Test Address',
         maxCapacity: 10,
+        isVirtual: false,
       };
 
       mockInsertRow.mockResolvedValueOnce(mockVenueRow);

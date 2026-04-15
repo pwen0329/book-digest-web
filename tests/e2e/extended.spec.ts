@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
-import signupCapacity from '@/data/signup-capacity.json';
+
+const signupCapacity = {
+  TW: { max: 30, startAt: '2026-01-01', endAt: '2026-12-31' },
+  EN: { max: 30, startAt: '2026-01-01', endAt: '2026-12-31' },
+};
 
 async function goto(page: Page, path: string) {
   let lastError: unknown;
