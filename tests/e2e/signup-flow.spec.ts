@@ -20,15 +20,7 @@ test.describe('Signup Flow', () => {
     const eventTypesResponse = await request.get('/api/admin/event-types', {
       headers: adminHeaders,
     });
-
-    // DEBUG: Log response details
-    console.log('Event types API response status:', eventTypesResponse.status());
-    if (!eventTypesResponse.ok()) {
-      const errorBody = await eventTypesResponse.text();
-      console.log('Event types API error body:', errorBody);
-      throw new Error(`Event types API returned ${eventTypesResponse.status()}: ${errorBody}`);
-    }
-
+    expect(eventTypesResponse.ok()).toBeTruthy();
     const data = await eventTypesResponse.json();
     eventTypes = data.eventTypes;
     expect(eventTypes.length).toBeGreaterThan(0);

@@ -20,16 +20,7 @@ test.describe('Admin v2 API - Happy flow', () => {
     const eventTypesResponse = await request.get('/api/admin/event-types', {
       headers: adminHeaders,
     });
-
-    // DEBUG: Log response details
-    console.log('Event types API response status:', eventTypesResponse.status());
-    console.log('Event types API response headers:', eventTypesResponse.headers());
-    if (!eventTypesResponse.ok()) {
-      const errorBody = await eventTypesResponse.text();
-      console.log('Event types API error body:', errorBody);
-      throw new Error(`Event types API returned ${eventTypesResponse.status()}: ${errorBody}`);
-    }
-
+    expect(eventTypesResponse.ok()).toBeTruthy();
     const data = await eventTypesResponse.json();
     eventTypes = data.eventTypes;
     expect(eventTypes.length).toBeGreaterThan(0);
@@ -324,6 +315,23 @@ test.describe('Admin v2 API - Happy flow', () => {
 
       // Step 7f: Submit payment to complete registration (step 3)
       await page.click('button:has-text("Submit")');
+
+      // DEBUG: Wait and check what's on the page
+      await page.waitForTimeout(2000);
+      const pageContent = await page.content();
+      console.log('Page HTML after submit (first 500 chars):', pageContent.substring(0, 500));
+
+      // Check if there's an error message
+      const errorMessage = await page.locator('.text-red-300, .text-red-400, .text-red-500, p[class*="text-red"]').textContent().catch(() => null);
+      if (errorMessage) {
+        console.log('Error message found:', errorMessage);
+      }
+
+      // Check what step we're on
+      const introButton = await page.locator('button:has-text("I Understand")').isVisible().catch(() => false);
+      const formVisible = await page.locator('form').isVisible().catch(() => false);
+      const bankInput = await page.locator('input#bank-last-5').isVisible().catch(() => false);
+      console.log('Page state - Intro:', introButton, 'Form:', formVisible, 'Bank:', bankInput);
 
       // Step 7g: Wait for success message
       await expect(page.locator('text=/success|registered|thank you/i')).toBeVisible({ timeout: 10000 });
