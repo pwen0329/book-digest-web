@@ -20,7 +20,16 @@ test.describe('Admin v2 API - Happy flow', () => {
     const eventTypesResponse = await request.get('/api/admin/event-types', {
       headers: adminHeaders,
     });
-    expect(eventTypesResponse.ok()).toBeTruthy();
+
+    // DEBUG: Log response details
+    console.log('Event types API response status:', eventTypesResponse.status());
+    console.log('Event types API response headers:', eventTypesResponse.headers());
+    if (!eventTypesResponse.ok()) {
+      const errorBody = await eventTypesResponse.text();
+      console.log('Event types API error body:', errorBody);
+      throw new Error(`Event types API returned ${eventTypesResponse.status()}: ${errorBody}`);
+    }
+
     const data = await eventTypesResponse.json();
     eventTypes = data.eventTypes;
     expect(eventTypes.length).toBeGreaterThan(0);
