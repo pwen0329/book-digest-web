@@ -369,4 +369,80 @@ test.describe('Admin v2 API - Happy flow', () => {
       // Cleanup will happen in afterEach
     });
   }
+
+  test('event with missing cover image shows fallback placeholder', async ({ page, request }) => {
+    const eventTypeCode = eventTypes[0].code;
+    const timestamp = `${Date.now()}-img-${Math.random().toString(36).slice(2, 9)}`;
+    const bookSlug = `test-book-${timestamp}`;
+    const venueSlug = `test-venue-${timestamp}`;
+    const eventSlug = `test-event-${timestamp}`;
+
+    // Create book
+    const bookResponse = await request.post('/api/admin/book-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: bookSlug,
+        title: 'Missing Image Test Book',
+        author: 'Test Author',
+      },
+    });
+    expect(bookResponse.ok()).toBeTruthy();
+    const bookData = await bookResponse.json();
+    cleanup.books.push(bookData.book.id);
+
+    // Create venue
+    const venueResponse = await request.post('/api/admin/venue-v2', {
+      headers: adminHeaders,
+      data: {
+        name: venueSlug,
+        location: 'TW',
+        maxCapacity: 20,
+        isVirtual: false,
+      },
+    });
+    expect(venueResponse.ok()).toBeTruthy();
+    const venueData = await venueResponse.json();
+    cleanup.venues.push(venueData.venue.id);
+
+    // Create event with non-existent coverUrl
+    const now = new Date();
+    const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const currentRegOpens = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+    const currentRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+    const eventResponse = await request.post('/api/admin/event-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: eventSlug,
+        eventTypeCode: eventTypeCode,
+        venueId: venueData.venue.id,
+        bookId: bookData.book.id,
+        title: 'Missing Image Test Event',
+        titleEn: 'Missing Image Test Event EN',
+        coverUrl: '/images/events/non-existent-image.jpg', // Intentionally missing
+        eventDate: futureEvent.toISOString(),
+        registrationOpensAt: currentRegOpens.toISOString(),
+        registrationClosesAt: currentRegCloses.toISOString(),
+        isPublished: true,
+      },
+    });
+    expect(eventResponse.ok()).toBeTruthy();
+    const eventData = await eventResponse.json();
+    cleanup.events.push(eventData.event.id);
+
+    // Visit the signup page
+    await page.goto(`/en/signup/${eventSlug}`, { waitUntil: 'networkidle' });
+
+    // Wait for page to load
+    await page.waitForTimeout(1000);
+
+    // Verify fallback placeholder is shown (check for the gradient div)
+    const fallbackPlaceholder = page.locator('div.bg-gradient-to-br.from-brand-navy.to-brand-pink');
+    await expect(fallbackPlaceholder).toBeVisible({ timeout: 5000 });
+
+    // Verify the page still renders correctly
+    await expect(page.locator('button:has-text("I Understand")')).toBeVisible({ timeout: 5000 });
+
+    // Cleanup happens in afterEach
+  });
 });
