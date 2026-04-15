@@ -322,8 +322,8 @@ test.describe('Admin v2 API - Happy flow', () => {
         { timeout: 10000 }
       );
 
-      // Wait for React to re-render
-      await page.waitForTimeout(1000);
+      // Wait for React to re-render - increased to 3000ms for reliability under parallel test execution
+      await page.waitForTimeout(3000);
 
       // Step 7g: Wait for success message - look for the h3 directly
       await expect(page.locator('h3:has-text("Registration Successful")')).toBeVisible({ timeout: 5000 });
