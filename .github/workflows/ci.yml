@@ -94,6 +94,16 @@ jobs:
           check_interval: 5
           vercel_protection_bypass_header: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
+      - name: Debug - Test preview URL with bypass secret
+        run: |
+          echo "Testing preview URL: ${{ steps.vercel-preview.outputs.url }}"
+          echo "Testing with header..."
+          curl -v -H "x-vercel-protection-bypass: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}" \
+            "${{ steps.vercel-preview.outputs.url }}" 2>&1 | head -30
+          echo ""
+          echo "Testing with query parameter..."
+          curl -v "${{ steps.vercel-preview.outputs.url }}?x-vercel-protection-bypass=${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}" 2>&1 | head -30
+
       - name: Run E2E tests against preview
         run: npx playwright test
         env:
