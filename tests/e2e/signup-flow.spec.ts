@@ -31,19 +31,30 @@ test.describe('Signup Flow', () => {
   });
 
   test.afterEach(async ({ request }) => {
-    // Delete in correct order due to foreign key constraints: events -> venues -> books
+    // Delete in correct order due to foreign key constraints: registrations -> events -> venues -> books
+
+    // First delete all registrations for the test events
+    for (const eventId of cleanup.events) {
+      await request.delete(`/api/admin/registrations-by-event/${eventId}`, {
+        headers: adminHeaders,
+      }).catch(() => {});
+    }
+
+    // Then delete events
     for (const eventId of cleanup.events) {
       await request.delete(`/api/admin/event-v2/${eventId}`, {
         headers: adminHeaders,
       }).catch(() => {});
     }
 
+    // Then delete venues
     for (const venueId of cleanup.venues) {
       await request.delete(`/api/admin/venue-v2/${venueId}`, {
         headers: adminHeaders,
       }).catch(() => {});
     }
 
+    // Finally delete books
     for (const bookId of cleanup.books) {
       await request.delete(`/api/admin/book-v2/${bookId}`, {
         headers: adminHeaders,
