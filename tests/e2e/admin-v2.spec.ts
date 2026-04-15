@@ -316,25 +316,17 @@ test.describe('Admin v2 API - Happy flow', () => {
       // Step 7f: Submit payment to complete registration (step 3)
       await page.click('button:has-text("Submit")');
 
-      // DEBUG: Wait and check what's on the page
-      await page.waitForTimeout(2000);
-      const pageContent = await page.content();
-      console.log('Page HTML after submit (first 500 chars):', pageContent.substring(0, 500));
+      // Wait for the registration request to complete
+      await page.waitForResponse(response =>
+        response.url().includes('/register') && response.status() === 201,
+        { timeout: 10000 }
+      );
 
-      // Check if there's an error message
-      const errorMessage = await page.locator('.text-red-300, .text-red-400, .text-red-500, p[class*="text-red"]').textContent().catch(() => null);
-      if (errorMessage) {
-        console.log('Error message found:', errorMessage);
-      }
+      // Wait for React to re-render
+      await page.waitForTimeout(1000);
 
-      // Check what step we're on
-      const introButton = await page.locator('button:has-text("I Understand")').isVisible().catch(() => false);
-      const formVisible = await page.locator('form').isVisible().catch(() => false);
-      const bankInput = await page.locator('input#bank-last-5').isVisible().catch(() => false);
-      console.log('Page state - Intro:', introButton, 'Form:', formVisible, 'Bank:', bankInput);
-
-      // Step 7g: Wait for success message
-      await expect(page.locator('text=/success|registered|thank you/i')).toBeVisible({ timeout: 10000 });
+      // Step 7g: Wait for success message - look for the h3 directly
+      await expect(page.locator('h3:has-text("Registration Successful")')).toBeVisible({ timeout: 5000 });
 
       // Step 8: Verify registration was created via API
       // First check all registrations without filter
