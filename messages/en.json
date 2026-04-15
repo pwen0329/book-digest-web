@@ -227,8 +227,9 @@
     "backHome": "Back to Home"
   },
   "signupFlow": {
-    "thanksTitle": "THANKS FOR YOUR INTEREST!",
-    "thanksBody": "To make sure everyone has enough time and space for meaningful discussion, we limit the number of participants per session. Starting in 2026, we will collect a small NT$ 100 registration fee to help cover venue, website, and admin costs, and to encourage attendance.\n\nThis helps us keep the quality of each gathering consistent — so that every one of you who comes can enjoy a rich and worthwhile book club experience. Thank you for your understanding and support!",
+    "paymentIntroTitle": "THANKS FOR YOUR INTEREST!",
+    "paymentIntroBody": "To make sure everyone has enough time and space for meaningful discussion, we limit the number of participants per session. Starting in 2026, we will collect a small NT$ 100 registration fee to help cover venue, website, and admin costs, and to encourage attendance.\n\nThis helps us keep the quality of each gathering consistent — so that every one of you who comes can enjoy a rich and worthwhile book club experience. Thank you for your understanding and support!",
+    "agreeAndContinue": "I Understand, Continue",
     "next": "Next",
     "checkingAvailability": "Checking availability...",
     "remitTitle": "Payment Details",

@@ -61,8 +61,8 @@ export default function SignupClient({ event, showIntro = false }: SignupClientP
   return (
     <ActivitySignupFlow
       eventSlug={event.slug}
-      translationNamespace="signupFlow"
       endpoint={endpoint}
+      venueLocation={event.venueLocation}
       posterSrc={event.posterSrc}
       posterBlurDataURL={undefined}
       posterAlt={event.posterAlt}

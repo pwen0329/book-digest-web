@@ -17,7 +17,7 @@ test.describe('Admin v2 API - Happy flow', () => {
   let cleanup: TestCleanup = { events: [], venues: [], books: [] };
 
   test.beforeAll(async ({ request }) => {
-    const eventTypesResponse = await request.get('http://127.0.0.1:3000/api/admin/event-types', {
+    const eventTypesResponse = await request.get('/api/admin/event-types', {
       headers: adminHeaders,
     });
     expect(eventTypesResponse.ok()).toBeTruthy();
@@ -33,19 +33,19 @@ test.describe('Admin v2 API - Happy flow', () => {
   test.afterEach(async ({ request }) => {
     // Delete in correct order due to foreign key constraints: events -> venues -> books
     for (const eventId of cleanup.events) {
-      await request.delete(`http://127.0.0.1:3000/api/admin/event-v2/${eventId}`, {
+      await request.delete(`/api/admin/event-v2/${eventId}`, {
         headers: adminHeaders,
       }).catch(() => {});
     }
 
     for (const venueId of cleanup.venues) {
-      await request.delete(`http://127.0.0.1:3000/api/admin/venue-v2/${venueId}`, {
+      await request.delete(`/api/admin/venue-v2/${venueId}`, {
         headers: adminHeaders,
       }).catch(() => {});
     }
 
     for (const bookId of cleanup.books) {
-      await request.delete(`http://127.0.0.1:3000/api/admin/book-v2/${bookId}`, {
+      await request.delete(`/api/admin/book-v2/${bookId}`, {
         headers: adminHeaders,
       }).catch(() => {});
     }
@@ -59,7 +59,7 @@ test.describe('Admin v2 API - Happy flow', () => {
     const eventTypeCode = eventTypes[0].code;
 
     // Create a book
-    const bookResponse = await request.post('http://127.0.0.1:3000/api/admin/book-v2', {
+    const bookResponse = await request.post('/api/admin/book-v2', {
       headers: adminHeaders,
       data: {
         slug: bookSlug,
@@ -73,7 +73,7 @@ test.describe('Admin v2 API - Happy flow', () => {
     cleanup.books.push(bookId);
 
     // Create a venue
-    const venueResponse = await request.post('http://127.0.0.1:3000/api/admin/venue-v2', {
+    const venueResponse = await request.post('/api/admin/venue-v2', {
       headers: adminHeaders,
       data: {
         name: venueSlug,
@@ -93,7 +93,7 @@ test.describe('Admin v2 API - Happy flow', () => {
     const futureRegOpens = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
     const futureRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
 
-    const eventResponse = await request.post('http://127.0.0.1:3000/api/admin/event-v2', {
+    const eventResponse = await request.post('/api/admin/event-v2', {
       headers: adminHeaders,
       data: {
         slug: eventSlug,
@@ -113,14 +113,14 @@ test.describe('Admin v2 API - Happy flow', () => {
     cleanup.events.push(eventId);
 
     // Try to delete the book - should succeed because book_id uses ON DELETE SET NULL
-    const deleteBookResponse = await request.delete(`http://127.0.0.1:3000/api/admin/book-v2/${bookId}`, {
+    const deleteBookResponse = await request.delete(`/api/admin/book-v2/${bookId}`, {
       headers: adminHeaders,
     });
     expect(deleteBookResponse.ok()).toBeTruthy();
     cleanup.books = cleanup.books.filter(id => id !== bookId);
 
     // Verify event still exists but book_id is now null
-    const getEventResponse = await request.get(`http://127.0.0.1:3000/api/admin/event-v2/${eventId}`, {
+    const getEventResponse = await request.get(`/api/admin/event-v2/${eventId}`, {
       headers: adminHeaders,
     });
     expect(getEventResponse.ok()).toBeTruthy();
@@ -128,21 +128,21 @@ test.describe('Admin v2 API - Happy flow', () => {
     expect(eventCheck.event.bookId).toBeUndefined(); // bookId should be null/undefined now
 
     // Try to delete the venue - should fail with FK constraint error (venue uses ON DELETE RESTRICT)
-    const deleteVenueResponse = await request.delete(`http://127.0.0.1:3000/api/admin/venue-v2/${venueId}`, {
+    const deleteVenueResponse = await request.delete(`/api/admin/venue-v2/${venueId}`, {
       headers: adminHeaders,
     });
     expect(deleteVenueResponse.ok()).toBeFalsy();
     expect(deleteVenueResponse.status()).toBe(500); // Server error due to FK constraint
 
     // Delete the event first
-    const deleteEventResponse = await request.delete(`http://127.0.0.1:3000/api/admin/event-v2/${eventId}`, {
+    const deleteEventResponse = await request.delete(`/api/admin/event-v2/${eventId}`, {
       headers: adminHeaders,
     });
     expect(deleteEventResponse.ok()).toBeTruthy();
     cleanup.events = cleanup.events.filter(id => id !== eventId);
 
     // Now we can successfully delete the venue
-    const deleteVenueRetryResponse = await request.delete(`http://127.0.0.1:3000/api/admin/venue-v2/${venueId}`, {
+    const deleteVenueRetryResponse = await request.delete(`/api/admin/venue-v2/${venueId}`, {
       headers: adminHeaders,
     });
     expect(deleteVenueRetryResponse.ok()).toBeTruthy();
@@ -158,7 +158,7 @@ test.describe('Admin v2 API - Happy flow', () => {
       const eventSlug = `test-event-${timestamp}`;
 
         // Step 1: Create a book
-      const bookResponse = await request.post('http://127.0.0.1:3000/api/admin/book-v2', {
+      const bookResponse = await request.post('/api/admin/book-v2', {
         headers: adminHeaders,
         data: {
           slug: bookSlug,
@@ -180,7 +180,7 @@ test.describe('Admin v2 API - Happy flow', () => {
       cleanup.books.push(bookId);
 
       // Step 2: Create a venue
-      const venueResponse = await request.post('http://127.0.0.1:3000/api/admin/venue-v2', {
+      const venueResponse = await request.post('/api/admin/venue-v2', {
         headers: adminHeaders,
         data: {
           name: venueSlug,
@@ -209,7 +209,7 @@ test.describe('Admin v2 API - Happy flow', () => {
       const pastRegCloses = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
       const futureEventTime = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
 
-      const pastEventResponse = await request.post('http://127.0.0.1:3000/api/admin/event-v2', {
+      const pastEventResponse = await request.post('/api/admin/event-v2', {
         headers: adminHeaders,
         data: {
           slug: eventSlug,
@@ -242,7 +242,7 @@ test.describe('Admin v2 API - Happy flow', () => {
       const futureRegOpens = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days from now
       const futureRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000); // 6 days from now
 
-      const futureEventResponse = await request.put(`http://127.0.0.1:3000/api/admin/event-v2/${eventId}`, {
+      const futureEventResponse = await request.put(`/api/admin/event-v2/${eventId}`, {
         headers: adminHeaders,
         data: {
           eventDate: futureEventTime.toISOString(),
@@ -263,7 +263,7 @@ test.describe('Admin v2 API - Happy flow', () => {
       const currentRegOpens = new Date(now.getTime() - 1 * 60 * 60 * 1000); // 1 hour ago
       const currentRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000); // 6 days from now
 
-      const openEventResponse = await request.put(`http://127.0.0.1:3000/api/admin/event-v2/${eventId}`, {
+      const openEventResponse = await request.put(`/api/admin/event-v2/${eventId}`, {
         headers: adminHeaders,
         data: {
           registrationOpensAt: currentRegOpens.toISOString(),
@@ -276,44 +276,47 @@ test.describe('Admin v2 API - Happy flow', () => {
       // Step 7: Test registration flow
       await page.goto(`/en/signup/${eventSlug}`, { waitUntil: 'networkidle' });
 
-      // Step 7a: Click "Next" on intro page
-      await expect(page.locator('button:has-text("Next")')).toBeVisible({ timeout: 5000 });
-      await page.click('button:has-text("Next")');
+      // Step 7a: Payment intro page (step 0) - click "I Understand, Continue"
+      await expect(page.locator('button:has-text("I Understand")')).toBeVisible({ timeout: 5000 });
+      await page.click('button:has-text("I Understand")');
       await page.waitForTimeout(500);
 
-      // Step 7b: Wait for the registration form to be visible
+      // Step 7b: Wait for the registration form to be visible (step 1)
       await expect(page.locator('form')).toBeVisible({ timeout: 5000 });
 
       // Step 7c: Fill in registration form - all required fields
       const testEmail = `test-${timestamp}@example.com`;
-      const testBankAccount = '12345'; // 5 digits for payment
       await page.fill('input[name="name"], input[placeholder*="name" i]', 'Test User');
       await page.fill('input[name="age"], input[placeholder*="age" i]', '25');
       await page.fill('input[name="profession"], input[placeholder*="do" i]', 'Engineer');
       await page.fill('input[type="email"]', testEmail);
       await page.selectOption('select[name="referral"]', 'BookDigestIG');
 
-      // Step 7d: Fill in bank account field (5 digits)
-      const bankAccountInput = page.locator('input[name="bankAccount"], input[placeholder*="account" i]');
-      if (await bankAccountInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await bankAccountInput.fill(testBankAccount);
-      }
-
-      // Step 7e: Submit the form
+      // Step 7d: Submit the form to go to bank account page (step 2)
       await page.click('button[type="submit"]');
+      await page.waitForTimeout(500);
 
-      // Step 7f: Wait for success message
+      // Step 7e: Fill in bank account field (5 digits) on step 2
+      const testBankAccount = '12345';
+      const bankAccountInput = page.locator('input#bank-last-5');
+      await expect(bankAccountInput).toBeVisible({ timeout: 5000 });
+      await bankAccountInput.fill(testBankAccount);
+
+      // Step 7f: Submit payment to complete registration (step 3)
+      await page.click('button:has-text("Submit")');
+
+      // Step 7g: Wait for success message
       await expect(page.locator('text=/success|registered|thank you/i')).toBeVisible({ timeout: 10000 });
 
       // Step 8: Verify registration was created via API
       // First check all registrations without filter
-      const allRegistrationsResponse = await request.get(`http://127.0.0.1:3000/api/admin/registrations?limit=100`, {
+      const allRegistrationsResponse = await request.get(`/api/admin/registrations?limit=100`, {
         headers: adminHeaders,
       });
       const allRegistrationsData = await allRegistrationsResponse.json();
       console.log('Registration test - total registrations in system:', allRegistrationsData.items?.length || 0);
 
-      const registrationsResponse = await request.get(`http://127.0.0.1:3000/api/admin/registrations?eventId=${eventId}`, {
+      const registrationsResponse = await request.get(`/api/admin/registrations?eventId=${eventId}`, {
         headers: adminHeaders,
       });
 

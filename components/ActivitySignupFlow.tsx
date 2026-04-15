@@ -14,8 +14,8 @@ type ActivitySignupFlowProps = {
   posterSrc: string;
   posterBlurDataURL?: string;
   posterAlt: string;
-  translationNamespace: 'signupFlow' | 'detoxSignupFlow';
   endpoint: string;
+  venueLocation: string;
   posterPriority?: boolean;
   renderIntro?: (step: 0 | 1 | 2 | 3) => ReactNode;
   comingSoon?: {
@@ -29,14 +29,14 @@ export default function ActivitySignupFlow({
   posterSrc,
   posterBlurDataURL,
   posterAlt,
-  translationNamespace,
   endpoint,
+  venueLocation,
   posterPriority = false,
   renderIntro,
   comingSoon,
 }: ActivitySignupFlowProps) {
   const tEvents = useTranslations('events');
-  const tSignup = useTranslations(translationNamespace);
+  const tSignup = useTranslations('signupFlow');
   const locale = useLocale();
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [formValues, setFormValues] = useState<SignupFormValues | null>(null);
@@ -127,7 +127,7 @@ export default function ActivitySignupFlow({
       <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
         <div className="mb-8">
           <Link
-            href={`/${locale}/events`}
+            href={`/${locale}/events/${venueLocation}`}
             className="inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-brand-pink transition-colors font-outfit"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,31 +167,31 @@ export default function ActivitySignupFlow({
               ) : (
                 <>
                   {step === 0 && (
+                    <div className="text-white flex flex-col min-h-[300px] justify-between py-6">
+                      <div>
+                        <h3 className="text-xl font-bold mb-4">{tSignup('paymentIntroTitle')}</h3>
+                        <p className="whitespace-pre-line text-white">{tSignup('paymentIntroBody')}</p>
+                      </div>
+                      <div className="pt-6">
+                        <button
+                          onClick={() => setStep(1)}
+                          className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
+                        >
+                          {tSignup('agreeAndContinue')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 1 && (
                     <div className="space-y-4">
                       <SignupForm
                         eventSlug={eventSlug}
                         onComplete={(vals) => {
                           setFormValues(vals);
-                          setStep(1);
+                          setStep(2);
                         }}
                       />
-                    </div>
-                  )}
-
-                  {step === 1 && (
-                    <div className="text-white flex flex-col min-h-[300px] justify-between py-6">
-                      <div>
-                        <h3 className="text-xl font-bold mb-4">{tSignup('thanksTitle')}</h3>
-                        <p className="whitespace-pre-line text-white">{tSignup('thanksBody')}</p>
-                      </div>
-                      <div className="pt-6">
-                        <button
-                          onClick={() => setStep(2)}
-                          className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
-                        >
-                          {tSignup('next')}
-                        </button>
-                      </div>
                     </div>
                   )}
 
