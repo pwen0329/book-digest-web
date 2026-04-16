@@ -5,7 +5,7 @@
 import { Redis } from '@upstash/redis';
 
 const WINDOW_MS = 60 * 1000; // 1 minute window
-const MAX_REQUESTS = 10;     // max requests per window per IP
+const MAX_REQUESTS = Number.parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '10', 10); // max requests per window per IP
 const MAX_ENTRIES = 10_000;  // in-memory cap (DoS protection)
 
 // --------------- Redis backend (Upstash) ---------------

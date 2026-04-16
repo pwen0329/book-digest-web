@@ -314,19 +314,23 @@ test.describe('Admin v2 API - Happy flow', () => {
       await bankAccountInput.fill(testBankAccount);
 
       // Step 7f: Submit payment to complete registration (step 3)
-      await page.click('button:has-text("Submit")');
+      // Ensure button is ready and clickable before clicking
+      const submitButton = page.locator('button:has-text("Submit")');
+      await expect(submitButton).toBeEnabled({ timeout: 5000 });
 
-      // Wait for the registration request to complete
-      await page.waitForResponse(response =>
+      // Start listening for the response before clicking (prevents race condition)
+      const responsePromise = page.waitForResponse(response =>
         response.url().includes('/register') && response.status() === 201,
         { timeout: 10000 }
       );
 
-      // Wait for React to re-render - increased to 3000ms for reliability under parallel test execution
-      await page.waitForTimeout(3000);
+      await submitButton.click();
 
-      // Step 7g: Wait for success message - look for the h3 directly
-      await expect(page.locator('h3:has-text("Registration Successful")')).toBeVisible({ timeout: 5000 });
+      // Wait for the registration request to complete
+      await responsePromise;
+
+      // Step 7g: Wait for success message with polling (handles React re-render timing automatically)
+      await expect(page.locator('h3:has-text("Registration Successful")')).toBeVisible({ timeout: 10000 });
 
       // Step 8: Verify registration was created via API
       // First check all registrations without filter
