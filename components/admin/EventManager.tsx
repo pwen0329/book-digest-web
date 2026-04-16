@@ -98,22 +98,29 @@ export default function EventManager({ events, venues, books, onEventsChange }: 
     fetchRegistrationCounts();
   }, [fetchRegistrationCounts]);
 
-  const createDraftEvent = (): DraftEvent => ({
-    slug: `event-${Date.now()}`,
-    eventTypeCode: eventTypes[0]?.code || 'MANDARIN_BOOK_CLUB',
-    venueId: venues[0]?.id || 1,
-    title: '',
-    titleEn: '',
-    description: '',
-    descriptionEn: '',
-    eventDate: new Date().toISOString(),
-    registrationOpensAt: new Date().toISOString(),
-    registrationClosesAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-    bookId: undefined,
-    coverUrl: '',
-    coverUrlEn: '',
-    isPublished: false,
-  });
+  const createDraftEvent = (): DraftEvent => {
+    const now = Date.now();
+    const oneMonth = 30 * 24 * 60 * 60 * 1000;
+    const eventDate = now + oneMonth; // Today + 1 month
+    const registrationClosesAt = eventDate - (24 * 60 * 60 * 1000); // Event date - 1 day
+
+    return {
+      slug: `event-${Date.now()}`,
+      eventTypeCode: eventTypes[0]?.code || 'MANDARIN_BOOK_CLUB',
+      venueId: venues[0]?.id || 1,
+      title: '',
+      titleEn: '',
+      description: '',
+      descriptionEn: '',
+      eventDate: new Date(eventDate).toISOString(),
+      registrationOpensAt: new Date().toISOString(), // Today
+      registrationClosesAt: new Date(registrationClosesAt).toISOString(),
+      bookId: undefined,
+      coverUrl: '',
+      coverUrlEn: '',
+      isPublished: false,
+    };
+  };
 
   const addEvent = () => {
     const draft = createDraftEvent();
