@@ -23,14 +23,15 @@ Tally     = optional outbound copy for legacy/external flows
 ```mermaid
 flowchart TD
   User[Reader submits form] --> Api[/api/event/slug/register]
-  Api --> Truth[(Supabase registrations or fallback store)]
+  Api --> Truth[(Supabase registrations)]
   Api -. optional mirror .-> Notion[(Notion database)]
   Admin[/admin] --> Truth
-  Admin --> Docs[(Supabase admin_documents or JSON fallback)]
-  Admin --> Events[(Supabase events table or data/events.json)]
-  Public[Public pages] --> Docs
+  Admin --> Books[(Supabase books table)]
+  Admin --> Events[(Supabase events table)]
+  Admin --> Settings[(Supabase settings table)]
+  Public[Public pages] --> Books
   Public --> Events
-  Assets[Uploaded covers and posters] --> Storage[(Supabase Storage or local uploads)]
+  Assets[Uploaded covers and posters] --> Storage[(Supabase Storage)]
   Admin --> Storage
 ```
 
@@ -39,12 +40,11 @@ flowchart TD
 ```mermaid
 flowchart LR
   A{Is Supabase configured?} -->|yes| B[Supabase becomes source of truth]
-  A -->|no| C[Local JSON and local registrations fallback]
-  B --> D[/admin reads Supabase]
-  B --> E[Public pages read Supabase-backed docs]
+  A -->|no| C[Cannot run - Supabase required]
+  B --> D[/admin reads Supabase tables]
+  B --> E[Public pages read Supabase books/events]
   B --> F[Capacity and registrations read Supabase]
   G[Notion mirror enabled] -. does not replace truth .-> B
-  H[Tally forwarding enabled] -. does not replace truth .-> B
 ```
 
 ## Do I Still Need Notion?
@@ -142,6 +142,9 @@ SUPABASE_SERVICE_ROLE_KEY=...
 SUPABASE_REGISTRATIONS_TABLE=registrations
 SUPABASE_EVENTS_TABLE=events
 SUPABASE_VENUES_TABLE=venues
+SUPABASE_BOOKS_TABLE=books
+SUPABASE_SETTINGS_TABLE=settings
+SUPABASE_EVENT_TYPES_TABLE=event_types
 SUPABASE_STORAGE_BUCKET=admin-assets
 ```
 
