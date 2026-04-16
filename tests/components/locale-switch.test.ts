@@ -16,4 +16,15 @@ describe('buildLocalizedPath', () => {
   it('handles locale-free paths safely', () => {
     expect(buildLocalizedPath('/about', 'zh')).toBe('/zh/about');
   });
+
+  it('preserves venue location in events paths', () => {
+    expect(buildLocalizedPath('/en/events/TW', 'zh')).toBe('/zh/events/TW');
+    expect(buildLocalizedPath('/en/events/NL', 'zh')).toBe('/zh/events/NL');
+    expect(buildLocalizedPath('/en/events/ONLINE', 'zh')).toBe('/zh/events/ONLINE');
+  });
+
+  it('switches locale for event registration pages', () => {
+    const params = new URLSearchParams('ref=instagram');
+    expect(buildLocalizedPath('/en/signup/tw-2026-03', 'zh', params)).toBe('/zh/signup/tw-2026-03?ref=instagram');
+  });
 });

@@ -50,7 +50,6 @@ Core variables:
 - `ADMIN_SESSION_SECRET`: admin session signing secret
 - `SUPABASE_URL`: persistent admin document and upload backend base URL
 - `SUPABASE_SERVICE_ROLE_KEY`: server-side key used for admin document writes and storage uploads
-- `SUPABASE_ADMIN_DOCUMENTS_TABLE`: optional admin documents table name, defaults to `admin_documents`
 - `SUPABASE_REGISTRATIONS_TABLE`: optional persistent registrations table name, defaults to `registrations`
 - `SUPABASE_STORAGE_BUCKET`: optional asset bucket name, defaults to `admin-assets`
 - `TALLY_ENDPOINT_TW|NL|EN|DETOX`: optional upstream submission webhooks
@@ -112,23 +111,24 @@ How it works:
 
 - `app/[locale]`: public localized routes
 - `app/admin`: admin login and dashboard shell
-- `app/api/submit`: submission and capacity API
+- `app/api/event/[slug]/register`: event registration API
 - `app/api/admin/*`: authenticated admin write APIs
 - `components/admin/AdminDashboard.tsx`: main admin UI
 - `data/books.json`: editable books content
-- `data/events-content.json`: editable event content and posters
-- `data/signup-capacity.json`: editable capacity windows
+- `data/events.json`: database-driven events data (managed via admin API)
+- `data/venues.json`: event venues configuration
 - `data/registration-success-email.json`: editable confirmation email settings
 - `lib/`: server and shared helpers
 - `tests/components`: Vitest regression and functional tests
 - `tests/e2e`: Playwright end-to-end coverage
 
-## How submissions work
+## How registrations work
 
-1. Public signup pages post to `/api/submit?loc=...`.
-2. The API validates payloads, Turnstile, and capacity.
-3. It optionally forwards to Tally and/or saves to Notion.
-4. If the admin confirmation-email toggle is enabled, it renders the localized email template and sends it through Resend or the local outbox transport.
+1. Public signup pages post to `/api/event/[slug]/register`.
+2. The API validates payloads, Turnstile, and event capacity.
+3. Registration is stored in Supabase (or fallback JSON store).
+4. Optionally mirrors to Notion if configured.
+5. If the admin confirmation-email toggle is enabled, it renders the localized email template and sends it through Resend or the local outbox transport.
 
 ## Admin dashboard
 
@@ -145,10 +145,10 @@ Typical admin workflow:
 Current dashboard areas:
 
 - `Books`: edit book metadata and copy
-- `Events`: edit event titles, descriptions, posters, and coming-soon state
-- `Capacity`: control registration windows and max capacity
+- `Events`: create and edit events with dates, venues, capacity, and localized content
+- `Venues`: manage event locations and capacities
 - `Emails`: turn confirmation emails on or off and edit localized subject/body templates
-- `Registrations`: filter by activity, status, source, and submission time; inspect request-aware audit trail; export CSV
+- `Registrations`: filter by event, status, source, and submission time; inspect request-aware audit trail; export CSV
 - `Reconciliation`: compare the source-of-truth registrations store against the optional Notion mirror
 - `Assets`: scan referenced uploads vs stored uploads and prune old orphaned assets safely
 
@@ -203,7 +203,7 @@ Supabase bootstrap:
 
 1. Create a table and bucket using [docs/supabase-admin.sql](/data/yy/book-digest-web/docs/supabase-admin.sql).
 2. Follow [docs/supabase-deployment-checklist.md](/data/yy/book-digest-web/docs/supabase-deployment-checklist.md).
-3. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ADMIN_DOCUMENTS_TABLE`, `SUPABASE_REGISTRATIONS_TABLE`, and `SUPABASE_STORAGE_BUCKET` in Vercel.
+3. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_REGISTRATIONS_TABLE`, and `SUPABASE_STORAGE_BUCKET` in Vercel.
 4. Redeploy.
 
 Once Supabase is configured, `/admin` edits persist on Vercel and public pages read the same persistent data source.

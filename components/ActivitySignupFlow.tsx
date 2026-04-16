@@ -6,33 +6,25 @@ import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import SignupForm from '@/components/SignupForm';
 import Turnstile from '@/components/Turnstile';
-import ActivitySignupTabs from '@/components/ActivitySignupTabs';
 import { BLUR_POSTER } from '@/lib/constants';
-import { mapClientReferralToApi, type SignupFormValues, type SignupLocation } from '@/lib/signup';
+import { mapClientReferralToApi, type SignupFormValues } from '@/lib/signup';
 
-export type ActivitySignupSlotStatus = {
-  enabled: boolean;
-  open: boolean;
-  full: boolean;
-  count: number;
-  max: number | null;
-  reason: 'ok' | 'closed' | 'full';
-};
-
-type ActivityTab = 'TW' | 'EN' | 'NL' | 'DETOX';
+export enum SignupStep {
+  INTRO = 0,
+  REGISTRATION_FORM = 1,
+  PAYMENT_INFO = 2,
+  SUCCESS = 3,
+}
 
 type ActivitySignupFlowProps = {
-  activeTab: ActivityTab;
-  location: SignupLocation;
+  eventSlug: string;
   posterSrc: string;
   posterBlurDataURL?: string;
   posterAlt: string;
-  tabLabels?: Partial<Record<ActivityTab, string>>;
-  translationNamespace: 'signupFlow' | 'detoxSignupFlow';
-  endpoint?: string;
-  initialSlotStatus?: ActivitySignupSlotStatus | null;
+  endpoint: string;
+  venueLocation: string;
   posterPriority?: boolean;
-  renderIntro?: (step: 0 | 1 | 2 | 3) => ReactNode;
+  renderIntro?: (step: SignupStep) => ReactNode;
   comingSoon?: {
     title: string;
     body?: string;
@@ -40,32 +32,49 @@ type ActivitySignupFlowProps = {
 };
 
 export default function ActivitySignupFlow({
-  activeTab,
-  location,
+  eventSlug,
   posterSrc,
   posterBlurDataURL,
   posterAlt,
-  tabLabels,
-  translationNamespace,
   endpoint,
-  initialSlotStatus = null,
+  venueLocation,
   posterPriority = false,
   renderIntro,
   comingSoon,
 }: ActivitySignupFlowProps) {
   const tEvents = useTranslations('events');
-  const tSignup = useTranslations(translationNamespace);
+  const tSignup = useTranslations('signupFlow');
   const locale = useLocale();
-  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  const storageKey = `signup-step-${eventSlug}`;
+
+  // Always start with INTRO to avoid hydration mismatch
+  const [step, setStepState] = useState<SignupStep>(SignupStep.INTRO);
+  const [mounted, setMounted] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  // Restore step from sessionStorage after hydration
+  useEffect(() => {
+    const saved = sessionStorage.getItem(storageKey);
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (Object.values(SignupStep).includes(parsed)) {
+        setStepState(parsed as SignupStep);
+      }
+    }
+    setMounted(true);
+  }, [storageKey]);
+
+  // Update both state and sessionStorage together
+  const setStep = useCallback((newStep: SignupStep) => {
+    setStepState(newStep);
+    sessionStorage.setItem(storageKey, newStep.toString());
+  }, [storageKey]);
+
   const [formValues, setFormValues] = useState<SignupFormValues | null>(null);
   const [bankLast5, setBankLast5] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [slotStatus, setSlotStatus] = useState<ActivitySignupSlotStatus | null>(initialSlotStatus);
-  const [checkingSlot, setCheckingSlot] = useState(false);
-  const [slotError, setSlotError] = useState<string | null>(null);
-  const slotRequestRef = useRef<AbortController | null>(null);
   const submitRequestRef = useRef<AbortController | null>(null);
 
   const handleTurnstileVerify = useCallback((token: string) => {
@@ -76,64 +85,12 @@ export default function ActivitySignupFlow({
     setTurnstileToken(null);
   }, []);
 
-  const submitEndpoint = endpoint || `/api/submit?loc=${location}`;
-
-  const refreshSlotStatus = useCallback(async () => {
-    slotRequestRef.current?.abort();
-    const controller = new AbortController();
-    slotRequestRef.current = controller;
-    setCheckingSlot(true);
-    setSlotError(null);
-    try {
-      const statusUrl = new URL(`/api/submit?loc=${location}`, window.location.origin);
-      statusUrl.searchParams.set('_', Date.now().toString());
-      const res = await fetch(statusUrl.pathname + statusUrl.search, { method: 'GET', signal: controller.signal, cache: 'no-store' });
-      if (!res.ok) {
-        setSlotStatus(null);
-        setSlotError(tSignup('slotCheckError'));
-        return;
-      }
-      const data = await res.json().catch(() => null);
-      if (!data || typeof data !== 'object') {
-        setSlotStatus(null);
-        setSlotError(tSignup('slotCheckError'));
-        return;
-      }
-
-      setSlotStatus({
-        enabled: data.enabled === true,
-        open: data.open !== false,
-        full: data.full === true,
-        count: typeof data.count === 'number' ? data.count : 0,
-        max: typeof data.max === 'number' ? data.max : null,
-          reason: (data.reason as ActivitySignupSlotStatus['reason']) || 'ok',
-      });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return;
-      }
-      setSlotStatus(null);
-      setSlotError(tSignup('slotCheckError'));
-    } finally {
-      if (slotRequestRef.current === controller) {
-        slotRequestRef.current = null;
-        setCheckingSlot(false);
-      }
-    }
-  }, [location, tSignup]);
-
-  useEffect(() => {
-    if (comingSoon) return;
-    void refreshSlotStatus();
-  }, [comingSoon, refreshSlotStatus]);
+  const submitEndpoint = endpoint;
 
   useEffect(() => () => {
-    slotRequestRef.current?.abort();
     submitRequestRef.current?.abort();
   }, []);
 
-  const isSlotBlocked = Boolean(slotStatus?.enabled && (slotStatus.full || !slotStatus.open));
-  const blockReason = slotStatus?.reason === 'full' ? 'full' : 'closed';
   const formBgClass = 'bg-white/20 backdrop-blur-xl rounded-2xl';
   const cancelTitle = tSignup('cancelTitle');
   const cancelBody = tSignup('cancelBody');
@@ -160,7 +117,6 @@ export default function ActivitySignupFlow({
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          location,
           locale,
           name: formValues.name,
           age: Number(formValues.age),
@@ -177,8 +133,7 @@ export default function ActivitySignupFlow({
 
       if (resp.status === 409) {
         const conflict = await resp.json().catch(() => ({ reason: 'full' }));
-        await refreshSlotStatus();
-        setStep(0);
+        setStep(SignupStep.INTRO);
         setSendError(conflict.reason === 'closed' ? tSignup('closedBody') : tSignup('fullBody'));
         setSending(false);
         return;
@@ -187,7 +142,7 @@ export default function ActivitySignupFlow({
       if (!resp.ok) throw new Error('Request failed');
       submitRequestRef.current = null;
       setTurnstileToken(null);
-      setStep(3);
+      setStep(SignupStep.SUCCESS);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         return;
@@ -203,7 +158,7 @@ export default function ActivitySignupFlow({
       <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
         <div className="mb-8">
           <Link
-            href={`/${locale}/events`}
+            href={`/${locale}/events/${venueLocation}`}
             className="inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-brand-pink transition-colors font-outfit"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,22 +168,33 @@ export default function ActivitySignupFlow({
           </Link>
         </div>
 
-        <ActivitySignupTabs activeTab={activeTab} labels={tabLabels} />
         {renderIntro ? renderIntro(step) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-stretch max-w-6xl mx-auto">
           <div className="flex justify-center lg:justify-end">
             <div className="relative w-full max-w-[480px] lg:w-[480px] h-auto rounded-xl overflow-hidden shadow-xl" style={{ aspectRatio: '4/5' }}>
-              <Image
-                src={posterSrc}
-                alt={posterAlt}
-                fill
-                sizes="(max-width: 1024px) 420px, 50vw"
-                className="object-cover"
-                priority={posterPriority}
-                placeholder="blur"
-                blurDataURL={posterBlurDataURL || BLUR_POSTER}
-              />
+              {imageError ? (
+                <div className="w-full h-full bg-gradient-to-br from-brand-navy to-brand-pink flex items-center justify-center">
+                  <div className="text-center text-white p-8">
+                    <svg className="w-24 h-24 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm font-outfit opacity-75">Event Poster</p>
+                  </div>
+                </div>
+              ) : (
+                <Image
+                  src={posterSrc}
+                  alt={posterAlt}
+                  fill
+                  sizes="(max-width: 1024px) 420px, 50vw"
+                  className="object-cover"
+                  priority={posterPriority}
+                  placeholder="blur"
+                  blurDataURL={posterBlurDataURL || BLUR_POSTER}
+                  onError={() => setImageError(true)}
+                />
+              )}
             </div>
           </div>
 
@@ -241,61 +207,42 @@ export default function ActivitySignupFlow({
                   </div>
                   {comingSoon.body ? <p className="font-bold text-white text-lg font-outfit whitespace-pre-line">{comingSoon.body}</p> : null}
                 </div>
+              ) : !mounted ? (
+                <div className="flex items-center justify-center min-h-[300px]">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-pink"></div>
+                </div>
               ) : (
                 <>
-                  {step === 0 && (
-                    isSlotBlocked ? (
-                      <div className="rounded-xl border border-brand-pink/50 bg-white/10 p-6 text-white">
-                        <h3 className="text-2xl font-bold mb-2">
-                          {blockReason === 'full' ? tSignup('fullTitle') : tSignup('closedTitle')}
-                        </h3>
-                        <p className="text-white/90 whitespace-pre-line">
-                          {blockReason === 'full' ? tSignup('fullBody') : tSignup('closedBody')}
-                        </p>
-                      </div>
-                    ) : slotError ? (
-                      <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-6 text-red-100">
-                        {slotError}
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {checkingSlot ? <div className="text-sm text-white/70">{tSignup('checkingAvailability')}</div> : null}
-                        {slotStatus?.enabled && slotStatus.max ? (
-                          <div className="rounded-xl border border-white/10 bg-black/15 px-4 py-3 text-sm text-white/85">
-                            {/* <p>{tSignup('slotStats', { count: String(slotStatus.count), max: String(slotStatus.max) })}</p> */}
-                            <p className="mt-1 text-white/65">{tSignup('remainingSlots', { remaining: String(Math.max(slotStatus.max - slotStatus.count, 0)) })}</p>
-                          </div>
-                        ) : null}
-                        <SignupForm
-                          key={location}
-                          location={location}
-                          onComplete={(vals) => {
-                            setFormValues(vals);
-                            setStep(1);
-                          }}
-                        />
-                      </div>
-                    )
-                  )}
-
-                  {step === 1 && (
+                  {step === SignupStep.INTRO && (
                     <div className="text-white flex flex-col min-h-[300px] justify-between py-6">
                       <div>
-                        <h3 className="text-xl font-bold mb-4">{tSignup('thanksTitle')}</h3>
-                        <p className="whitespace-pre-line text-white">{tSignup('thanksBody')}</p>
+                        <h3 className="text-xl font-bold mb-4">{tSignup('paymentIntroTitle')}</h3>
+                        <p className="whitespace-pre-line text-white">{tSignup('paymentIntroBody')}</p>
                       </div>
                       <div className="pt-6">
                         <button
-                          onClick={() => setStep(2)}
+                          onClick={() => setStep(SignupStep.REGISTRATION_FORM)}
                           className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
                         >
-                          {tSignup('next')}
+                          {tSignup('agreeAndContinue')}
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {step === 2 && (
+                  {step === SignupStep.REGISTRATION_FORM && (
+                    <div className="space-y-4">
+                      <SignupForm
+                        eventSlug={eventSlug}
+                        onComplete={(vals) => {
+                          setFormValues(vals);
+                          setStep(SignupStep.PAYMENT_INFO);
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {step === SignupStep.PAYMENT_INFO && (
                     <div className="text-white">
                       <h3 className="text-xl font-bold mb-4">{tSignup('remitTitle')}</h3>
                       <div className="space-y-1 text-white/90">
@@ -323,7 +270,7 @@ export default function ActivitySignupFlow({
                           maxLength={5}
                           value={bankLast5}
                           onChange={(e) => setBankLast5(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                          className="w-full rounded-lg bg-white px-4 py-3 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-pink transition-colors"
+                          className="w-full rounded-lg bg-white px-4 py-3 text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-pink transition-colors [&:-webkit-autofill]:!bg-white [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_white] [&:-webkit-autofill]:[-webkit-text-fill-color:theme(colors.gray.900)]"
                           placeholder={tSignup('last5Placeholder')}
                         />
                         {sendError ? <p className="mt-2 text-sm text-red-300">{sendError}</p> : null}
@@ -341,7 +288,7 @@ export default function ActivitySignupFlow({
                     </div>
                   )}
 
-                  {step === 3 && (
+                  {step === SignupStep.SUCCESS && (
                     <div className="text-white">
                       <h3 className="text-xl font-bold mb-4">{tSignup('successTitle')}</h3>
                       <p className="whitespace-pre-line text-white">{tSignup('successBody')}</p>

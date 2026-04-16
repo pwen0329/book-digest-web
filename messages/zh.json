@@ -7,7 +7,11 @@
   "nav": {
     "home": "首頁",
     "books": "讀書會選書",
-    "events": "活動報名",
+    "events": "活動",
+    "taiwan": "台灣",
+    "netherlands": "荷蘭",
+    "online": "線上",
+    "location": "地點",
     "about": "關於我們",
     "joinUs": "加入我們",
     "join": "加入"
@@ -48,6 +52,10 @@
     "taiwan": "台灣",
     "netherlands": "荷蘭",
     "english": "英文",
+    "online": "線上",
+    "venueTW": "台灣",
+    "venueNL": "荷蘭",
+    "venueONLINE": "線上",
     "registrationForm": "報名表單",
     "readingDays": "閱讀天數",
     "clubsHeld": "舉辦場次",
@@ -61,6 +69,13 @@
     "detoxTitle": "數位排毒",
     "detoxDesc": "勇者們，來自異世界的干擾太強大了！\n那些被稱為「螢幕」的神祕法器正在吸取我們的靈魂。\n大魔法師已下達禁令：進入本領地前，\n請將所有數位法器封印於「時空寶箱」中。\n\n<label>任務目標：</label>擺脫數位心靈控制，重新連結你的隊友\n<label>冒險裝備：</label>一支鉛筆、幾顆骰子，以及你無窮的想像力\n<label>客製角色：</label>告訴我們你的角色的外觀、衣著、飾品、職業、有無魔法，我們會幫你 3D 列印出屬於自己的角色！（報名成功後請私訊 IG，告訴我們你的角色外觀）\n<label>獎勵：</label>專注力 +10、社交能力 +5、以及一段真正的傳奇回憶",
     "signUp": "馬上報名",
+    "eventEnded": "活動已結束",
+    "registrationClosed": "報名已截止",
+    "allEvents": "所有活動",
+    "noEventsFound": "目前沒有活動",
+    "comingSoon": "即將開放",
+    "fullTitle": "報名額滿",
+    "imageNotAvailable": "圖片無法顯示",
     "digitalDetox": {
       "title": "數位排毒",
       "description": "從不斷的通知中溫柔地重置。暫時放下手機，加入我們的慢讀、正念閱讀。",
@@ -141,7 +156,7 @@
     "joinUsBtn": "馬上報名"
   },
   "footer": {
-    "events": "活動報名",
+    "events": "活動",
     "bookClub": "讀書會",
     "unplugProject": "數位排毒",
     "getInvolved": "加入我們",
@@ -212,8 +227,9 @@
     "backHome": "返回首頁"
   },
   "signupFlow": {
-    "thanksTitle": "THANKS FOR YOUR INTEREST!",
-    "thanksBody": "為了讓每位參與者都有充足的討論時間與互動空間，我們每場讀書會皆設定人數上限。自 2026 年起，我們會酌收 NT$ 100 報名費，用於場地租借、網站維運與行政成本，也能提高報名者的出席意願。\n\n這樣的安排能讓活動品質更穩定，也讓每一位到場的你，都能享有一段豐富且值得的讀書時光。感謝你的理解與支持！",
+    "paymentIntroTitle": "THANKS FOR YOUR INTEREST!",
+    "paymentIntroBody": "為了讓每位參與者都有充足的討論時間與互動空間，我們每場讀書會皆設定人數上限。自 2026 年起，我們會酌收 NT$ 100 報名費，用於場地租借、網站維運與行政成本，也能提高報名者的出席意願。\n\n這樣的安排能讓活動品質更穩定，也讓每一位到場的你，都能享有一段豐富且值得的讀書時光。感謝你的理解與支持！",
+    "agreeAndContinue": "我了解，繼續報名",
     "next": "下一步",
     "checkingAvailability": "確認名額中...",
     "remitTitle": "匯款資訊",

@@ -1,8 +1,8 @@
 import 'server-only';
 
 import { cryptoRandomId } from '@/lib/crypto-id';
-import { readJsonFile, writeJsonFile } from '@/lib/json-store';
-import type { SignupLocation } from '@/lib/signup-capacity-config';
+import type { VenueLocation } from '@/types/venue';
+import { getVenueLocations } from '@/types/venue';
 
 export type RegistrationRecordStatus = 'pending' | 'confirmed' | 'cancelled';
 export type RegistrationRecordSource = 'pending' | 'simulated' | 'tally' | 'notion';
@@ -49,7 +49,7 @@ export type RegistrationMirrorState = {
 
 export type RegistrationRecord = {
   id: string;
-  location: SignupLocation;
+  eventId: number;
   locale: 'zh' | 'en';
   name: string;
   age: number;
@@ -73,7 +73,7 @@ export type RegistrationRecord = {
 
 export type RegistrationListFilters = {
   limit: number;
-  location?: SignupLocation;
+  eventId?: number;
   status?: RegistrationRecordStatus;
   source?: RegistrationRecordSource;
   search?: string;
@@ -84,7 +84,7 @@ export type RegistrationListFilters = {
 export type RegistrationAuditSummary = {
   total: number;
   byStatus: Record<RegistrationRecordStatus, number>;
-  byLocation: Record<SignupLocation, Record<RegistrationRecordStatus, number> & { total: number }>;
+  byVenueLocation: Record<VenueLocation, Record<RegistrationRecordStatus, number> & { total: number }>;
   notionMirrored: number;
   failedMirrors: number;
 };
@@ -101,7 +101,7 @@ type UpdateRegistrationPatch = Partial<Pick<RegistrationRecord, 'status' | 'sour
 
 type SupabaseRegistrationRow = {
   id: string;
-  location: SignupLocation;
+  event_id: number;
   locale: 'zh' | 'en';
   name: string;
   age: number;
@@ -123,9 +123,6 @@ type SupabaseRegistrationRow = {
   updated_at: string;
 };
 
-const REGISTRATIONS_FALLBACK_FILE = process.env.FORCE_LOCAL_PERSISTENT_STORES === '1'
-  ? '.local/playwright-registrations.json'
-  : '.local/registrations.json';
 const SUPABASE_REGISTRATIONS_TABLE = process.env.SUPABASE_REGISTRATIONS_TABLE || 'registrations';
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const OPTIONAL_SUPABASE_MUTATION_COLUMNS = new Set([
@@ -142,10 +139,6 @@ const OPTIONAL_SUPABASE_MUTATION_COLUMNS = new Set([
 ]);
 
 const unsupportedSupabaseMutationColumns = new Set<string>();
-
-function shouldForceLocalPersistentStores(): boolean {
-  return process.env.FORCE_LOCAL_PERSISTENT_STORES === '1';
-}
 
 function createDefaultMirrorState(): RegistrationMirrorState {
   return {
@@ -197,7 +190,7 @@ function buildSupabaseInsertPayload(record: RegistrationRecord): Record<string, 
   const supported = getSupportedSupabaseMutationColumns();
   const payload: Record<string, unknown> = {
     id: normalized.id,
-    location: normalized.location,
+    event_id: normalized.eventId,
     locale: normalized.locale,
     name: normalized.name,
     age: normalized.age,
@@ -268,7 +261,7 @@ function markUnsupportedSupabaseMutationColumn(reason: string): boolean {
 function fromSupabaseRow(row: SupabaseRegistrationRow): RegistrationRecord {
   return normalizeRecord({
     id: row.id,
-    location: row.location,
+    eventId: row.event_id,
     locale: row.locale,
     name: row.name,
     age: row.age,
@@ -291,28 +284,24 @@ function fromSupabaseRow(row: SupabaseRegistrationRow): RegistrationRecord {
   });
 }
 
-function getSupabaseUrl(): string | null {
-  if (shouldForceLocalPersistentStores()) {
-    return null;
+function getSupabaseUrl(): string {
+  const url = process.env.SUPABASE_URL;
+  if (!url) {
+    throw new Error('SUPABASE_URL is not configured.');
   }
-
-  return process.env.SUPABASE_URL || null;
+  return url;
 }
 
-function getSupabaseServiceRoleKey(): string | null {
-  if (shouldForceLocalPersistentStores()) {
-    return null;
+function getSupabaseServiceRoleKey(): string {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
   }
-
-  return process.env.SUPABASE_SERVICE_ROLE_KEY || null;
+  return key;
 }
 
 function getSupabaseHeaders(extraHeaders?: Record<string, string>): HeadersInit {
   const key = getSupabaseServiceRoleKey();
-  if (!key) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
-  }
-
   return {
     apikey: key,
     Authorization: `Bearer ${key}`,
@@ -323,10 +312,6 @@ function getSupabaseHeaders(extraHeaders?: Record<string, string>): HeadersInit 
 
 function getSupabaseTableUrl(): string {
   const url = getSupabaseUrl();
-  if (!url) {
-    throw new Error('SUPABASE_URL is not configured.');
-  }
-
   return `${url}/rest/v1/${SUPABASE_REGISTRATIONS_TABLE}`;
 }
 
@@ -351,88 +336,24 @@ function buildSupabaseQuery(params: Record<string, string | number | Array<strin
   return `${getSupabaseTableUrl()}?${query.toString()}`;
 }
 
-export function isPersistentRegistrationStoreConfigured(): boolean {
-  return Boolean(getSupabaseUrl() && getSupabaseServiceRoleKey());
-}
-
 export function resetRegistrationStoreSchemaFallbacksForTesting(): void {
   unsupportedSupabaseMutationColumns.clear();
 }
 
-function readFallbackRegistrations(): RegistrationRecord[] {
-  try {
-    return readJsonFile<RegistrationRecord[]>(REGISTRATIONS_FALLBACK_FILE).map((record) => normalizeRecord(record));
-  } catch {
-    return [];
-  }
-}
-
-function writeFallbackRegistrations(records: RegistrationRecord[]): void {
-  writeJsonFile(REGISTRATIONS_FALLBACK_FILE, records.map((record) => normalizeRecord(record)));
-}
-
-function isActiveRegistration(record: RegistrationRecord): boolean {
-  if (record.status === 'confirmed') {
-    return true;
-  }
-
-  if (record.status !== 'pending') {
-    return false;
-  }
-
-  const updatedAt = new Date(record.updatedAt).getTime();
-  return Number.isFinite(updatedAt) && Date.now() - updatedAt <= PENDING_TTL_MS;
-}
-
-function filterRegistrations(records: RegistrationRecord[], filters: Omit<RegistrationListFilters, 'limit'>): RegistrationRecord[] {
-  const searchTerm = filters.search?.trim().toLowerCase();
-  const createdAfter = filters.createdAfter ? new Date(filters.createdAfter).getTime() : Number.NaN;
-  const createdBefore = filters.createdBefore ? new Date(filters.createdBefore).getTime() : Number.NaN;
-
-  return records.filter((record) => {
-    if (filters.location && record.location !== filters.location) {
-      return false;
-    }
-    if (filters.status && record.status !== filters.status) {
-      return false;
-    }
-    if (filters.source && record.source !== filters.source) {
-      return false;
-    }
-    if (Number.isFinite(createdAfter) && new Date(record.timestamp).getTime() < createdAfter) {
-      return false;
-    }
-    if (Number.isFinite(createdBefore) && new Date(record.timestamp).getTime() > createdBefore) {
-      return false;
-    }
-    if (!searchTerm) {
-      return true;
-    }
-
-    return [record.name, record.email, record.profession, record.instagram, record.externalId, record.requestId, record.bankAccount, record.visitorId]
-      .filter((value): value is string => Boolean(value))
-      .some((value) => value.toLowerCase().includes(searchTerm));
-  });
-}
-
 async function getStoredRegistrationById(id: string): Promise<RegistrationRecord | null> {
-  if (isPersistentRegistrationStoreConfigured()) {
-    const response = await fetch(`${getSupabaseTableUrl()}?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, {
-      method: 'GET',
-      headers: getSupabaseHeaders(),
-      cache: 'no-store',
-    });
+  const response = await fetch(`${getSupabaseTableUrl()}?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, {
+    method: 'GET',
+    headers: getSupabaseHeaders(),
+    cache: 'no-store',
+  });
 
-    if (!response.ok) {
-      const reason = await response.text().catch(() => 'unknown');
-      throw new Error(`Supabase registration lookup failed: ${response.status} ${reason}`);
-    }
-
-    const rows = await response.json() as SupabaseRegistrationRow[];
-    return rows[0] ? fromSupabaseRow(rows[0]) : null;
+  if (!response.ok) {
+    const reason = await response.text().catch(() => 'unknown');
+    throw new Error(`Supabase registration lookup failed: ${response.status} ${reason}`);
   }
 
-  return readFallbackRegistrations().find((record) => record.id === id) || null;
+  const rows = await response.json() as SupabaseRegistrationRow[];
+  return rows[0] ? fromSupabaseRow(rows[0]) : null;
 }
 
 export async function createRegistrationReservation(input: CreateRegistrationInput): Promise<RegistrationRecord> {
@@ -449,42 +370,35 @@ export async function createRegistrationReservation(input: CreateRegistrationInp
         actor: 'system',
         summary: 'Registration reservation created.',
         requestId: input.requestId,
-        details: { status: input.status, source: input.source, location: input.location },
+        details: { status: input.status, source: input.source, eventId: input.eventId },
       },
     ],
     createdAt: now,
     updatedAt: now,
   });
 
-  if (isPersistentRegistrationStoreConfigured()) {
-    for (let attempt = 0; attempt <= OPTIONAL_SUPABASE_MUTATION_COLUMNS.size; attempt += 1) {
-      const response = await fetch(getSupabaseTableUrl(), {
-        method: 'POST',
-        headers: getSupabaseHeaders({ Prefer: 'return=representation' }),
-        body: JSON.stringify([buildSupabaseInsertPayload(record)]),
-        cache: 'no-store',
-      });
+  for (let attempt = 0; attempt <= OPTIONAL_SUPABASE_MUTATION_COLUMNS.size; attempt += 1) {
+    const response = await fetch(getSupabaseTableUrl(), {
+      method: 'POST',
+      headers: getSupabaseHeaders({ Prefer: 'return=representation' }),
+      body: JSON.stringify([buildSupabaseInsertPayload(record)]),
+      cache: 'no-store',
+    });
 
-      if (response.ok) {
-        const rows = await response.json() as SupabaseRegistrationRow[];
-        return rows[0] ? fromSupabaseRow(rows[0]) : record;
-      }
-
-      const reason = await response.text().catch(() => 'unknown');
-      if (response.status === 400 && markUnsupportedSupabaseMutationColumn(reason)) {
-        continue;
-      }
-
-      throw new Error(`Supabase registration insert failed: ${response.status} ${reason}`);
+    if (response.ok) {
+      const rows = await response.json() as SupabaseRegistrationRow[];
+      return rows[0] ? fromSupabaseRow(rows[0]) : record;
     }
 
-    throw new Error('Supabase registration insert failed after exhausting schema fallbacks.');
+    const reason = await response.text().catch(() => 'unknown');
+    if (response.status === 400 && markUnsupportedSupabaseMutationColumn(reason)) {
+      continue;
+    }
+
+    throw new Error(`Supabase registration insert failed: ${response.status} ${reason}`);
   }
 
-  const records = readFallbackRegistrations();
-  records.push(record);
-  writeFallbackRegistrations(records);
-  return record;
+  throw new Error('Supabase registration insert failed after exhausting schema fallbacks.');
 }
 
 export async function updateRegistrationReservation(id: string, patch: UpdateRegistrationPatch): Promise<RegistrationRecord | null> {
@@ -509,184 +423,185 @@ export async function updateRegistrationReservation(id: string, patch: UpdateReg
     updatedAt,
   });
 
-  if (isPersistentRegistrationStoreConfigured()) {
-    for (let attempt = 0; attempt <= OPTIONAL_SUPABASE_MUTATION_COLUMNS.size; attempt += 1) {
-      const response = await fetch(`${getSupabaseTableUrl()}?id=eq.${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        headers: getSupabaseHeaders({ Prefer: 'return=representation' }),
-        body: JSON.stringify(buildSupabaseUpdatePayload(updated)),
-        cache: 'no-store',
-      });
-
-      if (response.ok) {
-        const rows = await response.json() as SupabaseRegistrationRow[];
-        return rows[0] ? fromSupabaseRow(rows[0]) : null;
-      }
-
-      const reason = await response.text().catch(() => 'unknown');
-      if (response.status === 400 && markUnsupportedSupabaseMutationColumn(reason)) {
-        continue;
-      }
-
-      throw new Error(`Supabase registration update failed: ${response.status} ${reason}`);
-    }
-
-    throw new Error('Supabase registration update failed after exhausting schema fallbacks.');
-  }
-
-  const records = readFallbackRegistrations();
-  const index = records.findIndex((record) => record.id === id);
-  if (index === -1) {
-    return null;
-  }
-
-  records[index] = updated;
-  writeFallbackRegistrations(records);
-  return updated;
-}
-
-export async function countActiveRegistrations(location: SignupLocation): Promise<number> {
-  if (isPersistentRegistrationStoreConfigured()) {
-    const pendingCutoff = new Date(Date.now() - PENDING_TTL_MS).toISOString();
-    const query = buildSupabaseQuery({
-      select: 'id',
-      location: `eq.${location}`,
-      or: `(status.eq.confirmed,and(status.eq.pending,updated_at.gte.${pendingCutoff}))`,
-    });
-    const response = await fetch(query, {
-      method: 'GET',
-      headers: getSupabaseHeaders({ Prefer: 'count=exact' }),
+  for (let attempt = 0; attempt <= OPTIONAL_SUPABASE_MUTATION_COLUMNS.size; attempt += 1) {
+    const response = await fetch(`${getSupabaseTableUrl()}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: getSupabaseHeaders({ Prefer: 'return=representation' }),
+      body: JSON.stringify(buildSupabaseUpdatePayload(updated)),
       cache: 'no-store',
     });
 
-    if (!response.ok) {
-      const reason = await response.text().catch(() => 'unknown');
-      throw new Error(`Supabase registration count failed: ${response.status} ${reason}`);
+    if (response.ok) {
+      const rows = await response.json() as SupabaseRegistrationRow[];
+      return rows[0] ? fromSupabaseRow(rows[0]) : null;
     }
 
-    const countHeader = response.headers.get('content-range');
-    if (countHeader?.includes('/')) {
-      const total = Number(countHeader.split('/').pop());
-      if (Number.isFinite(total)) {
-        return total;
-      }
+    const reason = await response.text().catch(() => 'unknown');
+    if (response.status === 400 && markUnsupportedSupabaseMutationColumn(reason)) {
+      continue;
     }
 
-    const rows = await response.json() as Array<{ id: string }>;
-    return rows.length;
+    throw new Error(`Supabase registration update failed: ${response.status} ${reason}`);
   }
 
-  return readFallbackRegistrations().filter((record) => record.location === location && isActiveRegistration(record)).length;
+  throw new Error('Supabase registration update failed after exhausting schema fallbacks.');
+}
+
+export async function countActiveRegistrationsByEventId(eventId: number): Promise<number> {
+  const pendingCutoff = new Date(Date.now() - PENDING_TTL_MS).toISOString();
+  const query = buildSupabaseQuery({
+    select: 'id',
+    event_id: `eq.${eventId}`,
+    or: `(status.eq.confirmed,and(status.eq.pending,updated_at.gte.${pendingCutoff}))`,
+  });
+  const response = await fetch(query, {
+    method: 'GET',
+    headers: getSupabaseHeaders({ Prefer: 'count=exact' }),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const reason = await response.text().catch(() => 'unknown');
+    throw new Error(`Supabase registration count failed: ${response.status} ${reason}`);
+  }
+
+  const countHeader = response.headers.get('content-range');
+  if (countHeader?.includes('/')) {
+    const total = Number(countHeader.split('/').pop());
+    if (Number.isFinite(total)) {
+      return total;
+    }
+  }
+
+  const rows = await response.json() as Array<{ id: string }>;
+  return rows.length;
 }
 
 export async function listStoredRegistrations(filters: RegistrationListFilters): Promise<RegistrationRecord[]> {
-  if (isPersistentRegistrationStoreConfigured()) {
-    const timestampFilters = [
-      filters.createdAfter ? `gte.${filters.createdAfter}` : undefined,
-      filters.createdBefore ? `lte.${filters.createdBefore}` : undefined,
-    ].filter((value): value is string => Boolean(value));
+  const timestampFilters = [
+    filters.createdAfter ? `gte.${filters.createdAfter}` : undefined,
+    filters.createdBefore ? `lte.${filters.createdBefore}` : undefined,
+  ].filter((value): value is string => Boolean(value));
 
-    const queryParams: Record<string, string | number | Array<string | number> | undefined> = {
-      select: '*',
-      order: 'created_at.desc',
-      limit: filters.limit,
-      location: filters.location ? `eq.${filters.location}` : undefined,
-      status: filters.status ? `eq.${filters.status}` : undefined,
-      source: filters.source ? `eq.${filters.source}` : undefined,
-      timestamp: timestampFilters.length ? timestampFilters : undefined,
-    };
+  const queryParams: Record<string, string | number | Array<string | number> | undefined> = {
+    select: '*',
+    order: 'created_at.desc',
+    limit: filters.limit,
+    event_id: filters.eventId ? `eq.${filters.eventId}` : undefined,
+    status: filters.status ? `eq.${filters.status}` : undefined,
+    source: filters.source ? `eq.${filters.source}` : undefined,
+    timestamp: timestampFilters.length ? timestampFilters : undefined,
+  };
 
-    if (filters.search?.trim()) {
-      const token = `*${filters.search.trim()}*`;
-      queryParams.or = `(name.ilike.${token},email.ilike.${token},profession.ilike.${token},external_id.ilike.${token},request_id.ilike.${token})`;
-    }
-
-    const response = await fetch(buildSupabaseQuery(queryParams), {
-      method: 'GET',
-      headers: getSupabaseHeaders(),
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      const reason = await response.text().catch(() => 'unknown');
-      throw new Error(`Supabase registration list failed: ${response.status} ${reason}`);
-    }
-
-    const rows = await response.json() as SupabaseRegistrationRow[];
-    return rows.map((row) => fromSupabaseRow(row));
+  if (filters.search?.trim()) {
+    const token = `*${filters.search.trim()}*`;
+    queryParams.or = `(name.ilike.${token},email.ilike.${token},profession.ilike.${token},external_id.ilike.${token},request_id.ilike.${token})`;
   }
 
-  const records = filterRegistrations(readFallbackRegistrations(), filters)
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-  return records.slice(0, filters.limit);
+  const response = await fetch(buildSupabaseQuery(queryParams), {
+    method: 'GET',
+    headers: getSupabaseHeaders(),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const reason = await response.text().catch(() => 'unknown');
+    throw new Error(`Supabase registration list failed: ${response.status} ${reason}`);
+  }
+
+  const rows = await response.json() as SupabaseRegistrationRow[];
+  return rows.map((row) => fromSupabaseRow(row));
 }
 
 async function countStoredRegistrations(filters: Omit<RegistrationListFilters, 'limit' | 'search'>): Promise<number> {
-  if (isPersistentRegistrationStoreConfigured()) {
-    const timestampFilters = [
-      filters.createdAfter ? `gte.${filters.createdAfter}` : undefined,
-      filters.createdBefore ? `lte.${filters.createdBefore}` : undefined,
-    ].filter((value): value is string => Boolean(value));
+  const timestampFilters = [
+    filters.createdAfter ? `gte.${filters.createdAfter}` : undefined,
+    filters.createdBefore ? `lte.${filters.createdBefore}` : undefined,
+  ].filter((value): value is string => Boolean(value));
 
-    const queryParams: Record<string, string | Array<string> | undefined> = {
-      select: 'id',
-      location: filters.location ? `eq.${filters.location}` : undefined,
-      status: filters.status ? `eq.${filters.status}` : undefined,
-      source: filters.source ? `eq.${filters.source}` : undefined,
-      timestamp: timestampFilters.length ? timestampFilters : undefined,
-    };
+  const queryParams: Record<string, string | Array<string> | undefined> = {
+    select: 'id',
+    event_id: filters.eventId ? `eq.${filters.eventId}` : undefined,
+    status: filters.status ? `eq.${filters.status}` : undefined,
+    source: filters.source ? `eq.${filters.source}` : undefined,
+    timestamp: timestampFilters.length ? timestampFilters : undefined,
+  };
 
-    const response = await fetch(buildSupabaseQuery(queryParams), {
-      method: 'GET',
-      headers: getSupabaseHeaders({ Prefer: 'count=exact' }),
-      cache: 'no-store',
-    });
+  const response = await fetch(buildSupabaseQuery(queryParams), {
+    method: 'GET',
+    headers: getSupabaseHeaders({ Prefer: 'count=exact' }),
+    cache: 'no-store',
+  });
 
-    if (!response.ok) {
-      const reason = await response.text().catch(() => 'unknown');
-      throw new Error(`Supabase registration count failed: ${response.status} ${reason}`);
-    }
-
-    const countHeader = response.headers.get('content-range');
-    if (countHeader?.includes('/')) {
-      const total = Number(countHeader.split('/').pop());
-      if (Number.isFinite(total)) {
-        return total;
-      }
-    }
-
-    const rows = await response.json() as Array<{ id: string }>;
-    return rows.length;
+  if (!response.ok) {
+    const reason = await response.text().catch(() => 'unknown');
+    throw new Error(`Supabase registration count failed: ${response.status} ${reason}`);
   }
 
-  return filterRegistrations(readFallbackRegistrations(), filters).length;
+  const countHeader = response.headers.get('content-range');
+  if (countHeader?.includes('/')) {
+    const total = Number(countHeader.split('/').pop());
+    if (Number.isFinite(total)) {
+      return total;
+    }
+  }
+
+  const rows = await response.json() as Array<{ id: string }>;
+  return rows.length;
 }
 
 export async function summarizeStoredRegistrations(): Promise<RegistrationAuditSummary> {
-  const locations: SignupLocation[] = ['TW', 'NL', 'EN', 'DETOX'];
-  const statuses: RegistrationRecordStatus[] = ['pending', 'confirmed', 'cancelled'];
+  const venueLocations = getVenueLocations();
 
-  const byLocation = Object.fromEntries(locations.map((location) => [
+  const byVenueLocation = Object.fromEntries(venueLocations.map((location) => [
     location,
     { total: 0, pending: 0, confirmed: 0, cancelled: 0 },
-  ])) as RegistrationAuditSummary['byLocation'];
+  ])) as RegistrationAuditSummary['byVenueLocation'];
 
   const byStatus = { pending: 0, confirmed: 0, cancelled: 0 } satisfies RegistrationAuditSummary['byStatus'];
 
-  await Promise.all(locations.flatMap((location) => statuses.map(async (status) => {
-    const count = await countStoredRegistrations({ location, status });
-    byLocation[location][status] = count;
-    byLocation[location].total += count;
-    byStatus[status] += count;
-  })));
+  // Fetch all registrations with event and venue data joined
+  const query = buildSupabaseQuery({
+    select: 'status,event_id,events!inner(venue_id,venues!inner(location))',
+  });
+
+  const response = await fetch(query, {
+    method: 'GET',
+    headers: getSupabaseHeaders(),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const reason = await response.text().catch(() => 'unknown');
+    throw new Error(`Failed to fetch registrations for summary: ${response.status} ${reason}`);
+  }
+
+  type RegistrationWithVenue = {
+    status: RegistrationRecordStatus;
+    events: { venues: { location: VenueLocation } };
+  };
+
+  const rows = await response.json() as RegistrationWithVenue[];
+
+  // Count registrations by venue location and status
+  for (const row of rows) {
+    const venueLocation = row.events.venues.location;
+    const status = row.status;
+
+    byVenueLocation[venueLocation][status]++;
+    byVenueLocation[venueLocation].total++;
+    byStatus[status]++;
+  }
 
   const notionMirrored = await countStoredRegistrations({ source: 'notion' });
-  const failedMirrors = (await listStoredRegistrations({ limit: 1000 })).filter((record) => record.mirrorState?.notion?.status === 'failed' || record.mirrorState?.tally?.status === 'failed').length;
+  const failedMirrors = (await listStoredRegistrations({ limit: 1000 })).filter(
+    (record) => record.mirrorState?.notion?.status === 'failed' || record.mirrorState?.tally?.status === 'failed'
+  ).length;
 
   return {
     total: byStatus.pending + byStatus.confirmed + byStatus.cancelled,
     byStatus,
-    byLocation,
+    byVenueLocation,
     notionMirrored,
     failedMirrors,
   };
@@ -710,7 +625,7 @@ export function serializeRegistrationsCsv(records: RegistrationRecord[]): string
     'createdAt',
     'updatedAt',
     'timestamp',
-    'location',
+    'eventId',
     'locale',
     'name',
     'email',
@@ -736,7 +651,7 @@ export function serializeRegistrationsCsv(records: RegistrationRecord[]): string
     record.createdAt,
     record.updatedAt,
     record.timestamp,
-    record.location,
+    record.eventId,
     record.locale,
     record.name,
     record.email,
@@ -760,25 +675,41 @@ export function serializeRegistrationsCsv(records: RegistrationRecord[]): string
   return [headers, ...rows].map((row) => row.map((value) => escapeCsvValue(value)).join(',')).join('\n');
 }
 
-export async function resetRegistrationsForTesting(location: SignupLocation): Promise<void> {
+export async function resetRegistrationsForTesting(venueLocation: VenueLocation): Promise<void> {
   if (process.env.ALLOW_CAPACITY_RESET !== '1') {
     return;
   }
 
-  if (isPersistentRegistrationStoreConfigured()) {
-    const response = await fetch(`${getSupabaseTableUrl()}?location=eq.${encodeURIComponent(location)}`, {
-      method: 'DELETE',
-      headers: getSupabaseHeaders(),
-      cache: 'no-store',
-    });
+  // First, get all event IDs for this venue location
+  const eventsQuery = `${getSupabaseUrl()}/rest/v1/events?select=id,venues!inner(location)&venues.location=eq.${encodeURIComponent(venueLocation)}`;
+  const eventsResponse = await fetch(eventsQuery, {
+    method: 'GET',
+    headers: getSupabaseHeaders(),
+    cache: 'no-store',
+  });
 
-    if (!response.ok) {
-      const reason = await response.text().catch(() => 'unknown');
-      throw new Error(`Supabase registration reset failed: ${response.status} ${reason}`);
-    }
-    return;
+  if (!eventsResponse.ok) {
+    const reason = await eventsResponse.text().catch(() => 'unknown');
+    throw new Error(`Failed to fetch events for venue location ${venueLocation}: ${eventsResponse.status} ${reason}`);
   }
 
-  const records = readFallbackRegistrations().filter((record) => record.location !== location);
-  writeFallbackRegistrations(records);
+  const events = await eventsResponse.json() as Array<{ id: number }>;
+  const eventIds = events.map(e => e.id);
+
+  if (eventIds.length === 0) {
+    return; // No events for this location, nothing to delete
+  }
+
+  // Delete all registrations for these event IDs
+  const deleteQuery = `${getSupabaseTableUrl()}?event_id=in.(${eventIds.join(',')})`;
+  const response = await fetch(deleteQuery, {
+    method: 'DELETE',
+    headers: getSupabaseHeaders(),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const reason = await response.text().catch(() => 'unknown');
+    throw new Error(`Supabase registration reset failed: ${response.status} ${reason}`);
+  }
 }

@@ -7,7 +7,7 @@ import { getCanonicalBookCoverHints } from '@/lib/book-cover-strategy';
 describe('book cover strategy', () => {
   it('builds canonical zh and en cover hints from the book order and titles', () => {
     const hints = getCanonicalBookCoverHints({
-      id: 'book-61',
+      id: 61,
       sortOrder: 61,
       slug: 'new-book-61',
       title: '新的 書 / 封面',

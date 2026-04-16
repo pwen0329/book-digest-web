@@ -58,9 +58,9 @@ flowchart TD
 ## 3. Pages, Components, Responsibilities
 - Home: Hero (copy + scrapbook image), CTAs to Events/Detox, Why Us.
 - Books: Responsive grid of cards; BookModal (deep-linkable via `/books/{slug}`).
-- Events: Counters (IntersectionObserver + animation), TW/NL sign-up forms (one required).
+- Events: Dropdown navigation by venue (Taiwan/Netherlands/Online); event type filtering tabs (Mandarin Book Club, English Book Club, Family Reading Club, Detox); chronological event display with registration status; Counters (IntersectionObserver + animation).
 - About: Story and Why Us blocks.
-- Global: Header (nav + language switch), Footer (Podcast/Instagram/Email/Contact), Layout.
+- Global: Header (nav + language switch + events dropdown), Footer (Podcast/Instagram/Email/Contact), Layout.
 
 Core components
 - `BookCard`: cover, title, author, date; opens modal.
@@ -70,17 +70,19 @@ Core components
 - `PageFlipAnimation`: Page flip animation with 3D transform; supports autoplay and reduced-motion.
 - `SectionDivider`: White line separator between sections; customizable color and thickness.
 - `Counter`: animated integer counter with reduced-motion support.
-- `SignupForm`: location-aware (TW|NL), validation, honeypot, submission state.
+- `SignupForm`: event-aware, validation, honeypot, submission state.
 - `LangToggle`: next-intl integration, route-preserving switch.
+- `VenueEventsClient`: venue-specific event display with event type filtering tabs.
 
 ## 4. Routing (Next.js App Router)
 - `/` → Home
 - `/books` → Grid; modal opened via search param or parallel route.
 - `/books/[slug]` → Full book article page (white background, sidebar, Reading Outpost style layout).
-- `/events` → Counters + forms; supports `?event=TW|NL` to filter single event.
+- `/events/[venueLocation]` → Venue-specific events page (TW|NL|ONLINE); event type tabs for filtering; displays events chronologically with registration status.
+- `/signup/[eventSlug]` → Event registration form.
 - `/about` → Story
 - `/contact`, `/terms`, `/privacy`
-- Locales: `/en/*`, `/zh/*` (Phase 2 locale routes; Phase 1 can use query/state)
+- Locales: `/en/*`, `/zh/*` with proper i18n routing
 
 ## 5. Data Flow and Sequence Diagrams
 
@@ -114,49 +116,70 @@ sequenceDiagram
   B->>U: accessible modal ready
 ```
 
-### 5.3 Events counters animation
+### 5.3 Events page with venue filtering and event type tabs
 ```mermaid
 sequenceDiagram
   participant U as User
-  participant E as /events page
-  participant S as JSON (/data/stats.json)
+  participant H as Header
+  participant E as /events/[venueLocation] page
+  participant D as Data (events.json, event-types.json)
 
-  U->>E: Navigate /events
-  E->>S: fetch stats
-  S-->>E: {readingDays, clubsHeld, readersJoined}
-  E->>E: observe counters in viewport
-  E->>U: animate numbers (or show final if reduced-motion)
+  U->>H: Click Events dropdown
+  H->>U: Show venue options (Taiwan/Netherlands/Online)
+  U->>H: Select Taiwan
+  H->>E: Navigate /events/TW
+  E->>D: fetch events for TW venue + event types
+  D-->>E: filtered events + event types
+  E->>E: calculate stats, validate image URLs
+  E->>U: render counters + event type tabs
+  U->>E: click "English Book Club" tab
+  E->>E: filter events by selected type
+  E->>U: show filtered events chronologically
 ```
 
-### 5.4 Form submission (Phase 1 external)
+### 5.4 Event registration flow
 ```mermaid
 sequenceDiagram
   participant U as User
-  participant F as SignupForm (TW or NL)
-  participant P as Processor (Formspree/Tally)
-
-  U->>F: fill fields + consent
-  F->>F: validate (age 13-120, email, referralOther)
-  F->>P: POST submission (honeypot empty)
-  P-->>F: 200/201
-  F->>U: show success / clear PII / log conversion (no PII)
-```
-
-### 5.5 Form submission (Phase 2 custom)
-```mermaid
-sequenceDiagram
-  participant U as User
+  participant E as /events/TW page
+  participant R as /signup/[eventSlug] page
   participant F as SignupForm
-  participant A as /api/registrations
+  participant A as /api/event/[slug]/register
   participant DB as Supabase
-  participant EM as Resend
 
-  U->>F: submit
-  F->>A: POST JSON (validated client + server)
-  A->>DB: insert row (rate limit + spam check)
-  A->>EM: send confirmation (optional)
+  U->>E: View event details
+  E->>U: Show registration button with status
+  U->>R: Click "Sign Up" button
+  R->>F: Load form with event context
+  U->>F: Fill form fields + consent
+  F->>F: validate (age 13-120, email, referralOther)
+  F->>A: POST submission (honeypot empty)
+  A->>DB: insert registration (rate limit + spam check)
   A-->>F: 201 Created
-  F->>U: success UI
+  F->>U: show success / clear PII
+```
+
+### 5.5 Admin event management
+```mermaid
+sequenceDiagram
+  participant A as Admin
+  participant D as /admin Dashboard
+  participant API as /api/admin/events
+  participant DB as Supabase
+
+  A->>D: Access admin panel
+  D->>API: GET /api/admin/events
+  API->>DB: fetch events with venue + type info
+  DB-->>API: events array
+  API-->>D: events data
+  D->>A: show events list with edit/delete
+  A->>D: Create/Edit event
+  D->>API: POST/PATCH event data
+  API->>DB: validate + save event
+  API->>DB: validate image URLs, event dates
+  DB-->>API: success
+  API-->>D: 200/201
+  D->>A: show updated list
 ```
 
 ## 6. Data Models (TypeScript)
@@ -180,8 +203,31 @@ export type EventStats = {
   readersJoined: number;
 };
 
+export type EventType = {
+  code: 'MANDARIN_BOOK_CLUB' | 'ENGLISH_BOOK_CLUB' | 'FAMILY_READING_CLUB' | 'DETOX';
+  nameEn: string;
+  nameZh: string;
+};
+
+export type Event = {
+  id: number;
+  slug: string;
+  eventTypeCode: string;
+  venueId: number;
+  title: string;
+  titleEn?: string;
+  description: string;
+  descriptionEn?: string;
+  eventDate: string; // ISO date
+  registrationOpensAt: string;
+  registrationClosesAt: string;
+  coverUrl: string;
+  coverUrlEn?: string;
+  isPublished: boolean;
+};
+
 export type Registration = {
-  location: 'TW' | 'NL';
+  eventSlug: string;
   firstName: string;
   lastName: string;
   age: number;
@@ -281,21 +327,47 @@ export type Registration = {
 app/
   layout.tsx
   page.tsx
-  books/
-    page.tsx
-    [slug]/page.tsx   # optional if using route for deep-link modal
-  events/page.tsx
-  about/page.tsx
-  contact/page.tsx
+  [locale]/
+    books/
+      page.tsx
+      [slug]/page.tsx
+    events/
+      [venueLocation]/
+        page.tsx          # Venue-specific events page
+        client.tsx        # Client component with event type tabs
+    signup/
+      [slug]/
+        page.tsx          # Event-specific registration page
+        client.tsx        # Registration form client component
+    about/page.tsx
+    contact/page.tsx
+  api/
+    admin/
+      events/route.ts
+      event-types/route.ts
+      venues/route.ts
+      registrations/route.ts
+    event/
+      [slug]/
+        register/route.ts
 components/
   BookCard.tsx
   BookModal.tsx
   Counter.tsx
   SignupForm.tsx
   LangToggle.tsx
+  Header.tsx            # With events dropdown navigation
+  VenueEventsClient.tsx
+  admin/
+    EventManager.tsx
+    VenueManager.tsx
+    AdminDashboard.tsx
   ...
 lib/
   i18n/
+  events.ts             # Event data loading and filtering
+  event-types.ts        # Event type data loading
+  venues.ts             # Venue data loading
   analytics.ts
   validation.ts
   fetchers.ts
@@ -304,9 +376,13 @@ messages/
   zh.json
 data/
   books.json
-  stats.json
+  events.json           # Event data with venue and type codes
+  event-types.json      # Event type definitions
+  venues.json           # Venue definitions
 public/
-  images/book-covers/*
+  images/
+    book-covers/
+    events/
 ```
 
 ## 18. Implementation Notes

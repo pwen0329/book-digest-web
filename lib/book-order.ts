@@ -1,4 +1,4 @@
-import type { Book } from '@/types/book';
+import type { Book, DraftBook } from '@/types/book';
 
 const COVER_NUMBER_PATTERN = /\/images\/books_(?:zh|en)\/(\d+)_/;
 
@@ -16,7 +16,7 @@ function extractCoverNumber(value?: string): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-export function getBookSortOrder(book: Book): number {
+export function getBookSortOrder(book: Book | DraftBook): number {
   if (typeof book.sortOrder === 'number' && Number.isInteger(book.sortOrder) && book.sortOrder > 0) {
     return book.sortOrder;
   }

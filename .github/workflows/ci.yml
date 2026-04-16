@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
-    name: Lint and Typecheck
+  lint-and-typecheck:
+    name: Lint & Typecheck
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -35,16 +35,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Component tests
-        run: npm run test:components
-
       - name: Typecheck
         run: npx tsc --noEmit
 
-  build:
-    name: Build
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
-    needs: quality
+    needs: lint-and-typecheck
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -61,13 +58,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: NEXT_DIST_DIR=.next-ci npm run build
+      - name: Run component tests
+        run: npm run test:components
 
-  e2e-chromium:
-    name: Playwright E2E (Chromium)
+  e2e-preview:
+    name: E2E Tests (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    needs: build
+    if: github.event_name == 'pull_request'
+    needs: unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit, 'Mobile Chrome', 'Mobile Safari']
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -84,19 +86,37 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
 
-      - name: Build app
-        run: NEXT_DIST_DIR=.next-ci npm run build
+      - name: Wait for Vercel preview deployment
+        uses: patrickedqvist/wait-for-vercel-preview@v1.3.3
+        id: vercel-preview
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          max_timeout: 300
+          check_interval: 5
+          vercel_protection_bypass_header: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
-      - name: Run E2E tests
-        run: CAPACITY_GUARDRAILS_E2E=1 BASE_URL=http://127.0.0.1:3000 npx playwright test --project=chromium
+      - name: Run E2E tests against preview
+        run: npx playwright test --project="${{ matrix.browser }}"
+        env:
+          BASE_URL: ${{ steps.vercel-preview.outputs.url }}
+          CAPACITY_GUARDRAILS_E2E: 1
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: playwright-report/
           retention-days: 14
+
+      - name: Upload test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 7

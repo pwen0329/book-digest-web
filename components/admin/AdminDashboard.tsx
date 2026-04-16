@@ -1,46 +1,25 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { getBookSortOrder, getNextBookSortOrder, sortBooksDescending } from '@/lib/book-order';
 import { getCanonicalBookCoverHints } from '@/lib/book-cover-strategy';
-import type { Book } from '@/types/book';
-import type { EventContentId, EventContentMap } from '@/types/event-content';
+import type { Book, DraftBook } from '@/types/book';
+import type { Event } from '@/types/event';
+import type { Venue } from '@/types/venue';
 import type { RegistrationEmailLocale, RegistrationSuccessEmailSettings } from '@/lib/registration-success-email-config';
-import type { CapacityConfigFile, SignupLocation } from '@/lib/signup-capacity-config';
 import type { RegistrationAuditSummary, RegistrationRecord, RegistrationRecordStatus } from '@/lib/registration-store';
+import VenueManager from '@/components/admin/VenueManager';
+import EventManager from '@/components/admin/EventManager';
 
 type AdminDashboardProps = {
   initialBooks: Book[];
-  initialEvents: EventContentMap;
-  initialCapacity: CapacityConfigFile;
+  initialEvents: Event[];
+  initialVenues: Venue[];
   initialRegistrationEmails: RegistrationSuccessEmailSettings;
-  initialDocumentVersions: {
-    books: string | null;
-    events: string | null;
-    capacity: string | null;
-    emails: string | null;
-  };
 };
 
-type DashboardTab = 'books' | 'events' | 'capacity' | 'emails' | 'registrations' | 'reconciliation' | 'assets';
+type DashboardTab = 'books' | 'events' | 'venues' | 'emails' | 'registrations' | 'reconciliation' | 'assets';
 
-type CapacityLiveStatus = {
-  enabled: boolean;
-  open: boolean;
-  full: boolean;
-  count: number;
-  max: number | null;
-  reason: 'ok' | 'closed' | 'full';
-};
-
-const EVENT_IDS: EventContentId[] = ['TW', 'EN', 'NL', 'DETOX'];
-const CAPACITY_IDS: SignupLocation[] = ['TW', 'EN', 'NL', 'DETOX'];
-
-function buildCapacityStatusUrl(location: SignupLocation): string {
-  const statusUrl = new URL(`/api/submit?loc=${location}`, window.location.origin);
-  statusUrl.searchParams.set('_', Date.now().toString());
-  return statusUrl.pathname + statusUrl.search;
-}
 const REGISTRATION_SOURCES = ['pending', 'simulated', 'tally', 'notion'] as const;
 
 function linesToArray(value: string): string[] | undefined {
@@ -59,20 +38,6 @@ function tagsToInput(value?: string[]): string {
 function inputToTags(value: string): string[] | undefined {
   const items = value.split(',').map((item) => item.trim()).filter(Boolean);
   return items.length ? items : undefined;
-}
-
-function toLocalDateTimeInput(value?: string): string {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const pad = (segment: number) => String(segment).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function toIsoString(value: string): string {
@@ -124,7 +89,6 @@ type ReconciliationRow = {
 
 type ReconciliationResponse = {
   summary: {
-    sourceOfTruth: 'supabase.registrations' | 'local-registration-store';
     notionConfigured: boolean;
     notionMirrorEnabled: boolean;
     totalSourceRecords: number;
@@ -186,15 +150,15 @@ async function uploadAsset(scope: 'books' | 'events', file: File): Promise<Uploa
   return payload as UploadedAsset;
 }
 
-function createDraftBook(existingBooks: Book[]): Book {
-  const nextOrder = getNextBookSortOrder(existingBooks);
+function createDraftBook(existingBooks: DraftBook[]): DraftBook {
+  const nextOrder = getNextBookSortOrder(existingBooks as Book[]);
   const slugBase = `new-book-${nextOrder}`;
   const slug = existingBooks.some((book) => book.slug === slugBase)
     ? `new-book-${Date.now()}`
     : slugBase;
 
   return {
-    id: `draft-${Date.now()}`,
+    id: undefined, // undefined = draft
     sortOrder: nextOrder,
     slug,
     title: `新書籍 ${nextOrder}`,
@@ -213,28 +177,23 @@ function createDraftBook(existingBooks: Book[]): Book {
   };
 }
 
-export default function AdminDashboard({ initialBooks, initialEvents, initialCapacity, initialRegistrationEmails, initialDocumentVersions }: AdminDashboardProps) {
+export default function AdminDashboard({ initialBooks, initialEvents, initialVenues, initialRegistrationEmails }: AdminDashboardProps) {
   const [hydrated, setHydrated] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('books');
-  const [books, setBooks] = useState<Book[]>(() => sortBooksDescending(initialBooks));
-  const [events, setEvents] = useState<EventContentMap>(initialEvents);
-  const [capacity, setCapacity] = useState<CapacityConfigFile>(initialCapacity);
+  const [books, setBooks] = useState<DraftBook[]>(() => sortBooksDescending(initialBooks));
+  const [events, setEvents] = useState<Event[]>(initialEvents);
+  const [venues, setVenues] = useState<Venue[]>(initialVenues);
   const [registrationEmails, setRegistrationEmails] = useState<RegistrationSuccessEmailSettings>(initialRegistrationEmails);
-  const [documentVersions, setDocumentVersions] = useState(initialDocumentVersions);
-  const documentVersionsRef = useRef(initialDocumentVersions);
-  const [capacityStatus, setCapacityStatus] = useState<Partial<Record<SignupLocation, CapacityLiveStatus>>>({});
-  const [capacityStatusLoading, setCapacityStatusLoading] = useState(false);
-  const [selectedBookId, setSelectedBookId] = useState<string | number | null>(initialBooks[0]?.id ?? null);
+  const [selectedBookId, setSelectedBookId] = useState<number | undefined>(initialBooks[0]?.id);
   const [visibleBookCount, setVisibleBookCount] = useState(10);
-  const [draggedBookId, setDraggedBookId] = useState<string | number | null>(null);
+  const [draggedBookId, setDraggedBookId] = useState<number | undefined>(undefined);
   const [uploadingAssetKey, setUploadingAssetKey] = useState<string | null>(null);
-  const [selectedEventId, setSelectedEventId] = useState<EventContentId>('TW');
   const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
   const [registrationsSummary, setRegistrationsSummary] = useState<RegistrationAuditSummary | null>(null);
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
   const [registrationsViewerSource, setRegistrationsViewerSource] = useState<string>('registration-store');
   const [registrationsMirrorEnabled, setRegistrationsMirrorEnabled] = useState(false);
-  const [registrationLocationFilter, setRegistrationLocationFilter] = useState<'ALL' | SignupLocation>('ALL');
+  const [registrationEventFilter, setRegistrationEventFilter] = useState<'ALL' | number>('ALL');
   const [registrationStatusFilter, setRegistrationStatusFilter] = useState<'ALL' | RegistrationRecordStatus>('ALL');
   const [registrationSourceFilter, setRegistrationSourceFilter] = useState<'ALL' | RegistrationRecord['source']>('ALL');
   const [registrationSearch, setRegistrationSearch] = useState('');
@@ -254,57 +213,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     setHydrated(true);
   }, []);
 
-  useEffect(() => {
-    documentVersionsRef.current = documentVersions;
-  }, [documentVersions]);
-
-  useEffect(() => {
-    if (activeTab !== 'capacity') {
-      return;
-    }
-
-    let cancelled = false;
-
-    async function refreshCapacityStatus() {
-      setCapacityStatusLoading(true);
-      try {
-        const entries = await Promise.all(CAPACITY_IDS.map(async (location) => {
-          const response = await fetch(buildCapacityStatusUrl(location), { cache: 'no-store' });
-          if (!response.ok) {
-            throw new Error(`Unable to load capacity status for ${location}`);
-          }
-          const payload = await response.json();
-          return [location, {
-            enabled: payload.enabled === true,
-            open: payload.open !== false,
-            full: payload.full === true,
-            count: typeof payload.count === 'number' ? payload.count : 0,
-            max: typeof payload.max === 'number' ? payload.max : null,
-            reason: payload.reason === 'closed' || payload.reason === 'full' ? payload.reason : 'ok',
-          } satisfies CapacityLiveStatus] as const;
-        }));
-
-        if (!cancelled) {
-          setCapacityStatus(Object.fromEntries(entries));
-        }
-      } catch (refreshError) {
-        if (!cancelled) {
-          setError(refreshError instanceof Error ? refreshError.message : 'Unable to load capacity status.');
-        }
-      } finally {
-        if (!cancelled) {
-          setCapacityStatusLoading(false);
-        }
-      }
-    }
-
-    void refreshCapacityStatus();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab]);
-
   const selectedBookIndex = books.findIndex((book) => book.id === selectedBookId);
   const selectedBook = selectedBookIndex >= 0 ? books[selectedBookIndex] : books[0];
   const selectedBookCoverHints = selectedBook ? getCanonicalBookCoverHints(selectedBook) : null;
@@ -313,7 +221,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
   useEffect(() => {
     if (!books.length) {
       if (selectedBookId !== null) {
-        setSelectedBookId(null);
+        setSelectedBookId(undefined);
       }
       return;
     }
@@ -343,7 +251,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     }));
   }
 
-  function buildBooksWithSelectedPatch(patch: Partial<Book>): Book[] {
+  function buildBooksWithSelectedPatch(patch: Partial<Book>): DraftBook[] {
     if (!selectedBook) {
       return books;
     }
@@ -355,26 +263,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
       return { ...book, ...patch };
     });
-  }
-
-  function updateEventField(field: keyof EventContentMap[EventContentId], value: EventContentMap[EventContentId][keyof EventContentMap[EventContentId]]) {
-    setEvents((currentEvents) => ({
-      ...currentEvents,
-      [selectedEventId]: {
-        ...currentEvents[selectedEventId],
-        [field]: value,
-      },
-    }));
-  }
-
-  function updateCapacityField(location: SignupLocation, field: keyof NonNullable<CapacityConfigFile[SignupLocation]>, value: string | number | boolean) {
-    setCapacity((currentCapacity) => ({
-      ...currentCapacity,
-      [location]: {
-        ...currentCapacity[location],
-        [field]: value,
-      },
-    }));
   }
 
   function updateRegistrationEmailField(locale: RegistrationEmailLocale, field: 'subject' | 'body', value: string) {
@@ -410,7 +298,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     setError(null);
   }
 
-  function normalizeLocalBookOrder(nextBooks: Book[]): Book[] {
+  function normalizeLocalBookOrder(nextBooks: DraftBook[]): DraftBook[] {
     const maxOrder = nextBooks.length;
     return nextBooks.map((book, index) => ({
       ...book,
@@ -423,21 +311,46 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       return;
     }
 
-    const confirmed = window.confirm(`Delete "${selectedBook.title}"? This removes it from the public site after saving.`);
+    const confirmed = window.confirm(`Delete "${selectedBook.title}"? This removes it from the public site immediately.`);
     if (!confirmed) {
       return;
     }
 
-    const nextBooks = normalizeLocalBookOrder(books.filter((book) => book.id !== selectedBook.id));
-    await saveBooks(nextBooks, 'Book deleted and public pages were revalidated.');
+    // If it's a draft (undefined ID), just remove it locally
+    if (selectedBook.id === undefined) {
+      const nextBooks = normalizeLocalBookOrder(books.filter((book) => book !== selectedBook));
+      setBooks(nextBooks);
+      setMessage('Draft book removed.');
+      return;
+    }
+
+    // Delete from database
+    const response = await fetch(`/api/admin/book-v2/${selectedBook.id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({ error: 'Unable to delete book.' }));
+      throw new Error(payload.error || 'Unable to delete book.');
+    }
+
+    // Reload books from database
+    const listResponse = await fetch('/api/admin/books-v2');
+    const listPayload = await listResponse.json().catch(() => ({ error: 'Unable to load books.' }));
+    if (!listResponse.ok) {
+      throw new Error(listPayload.error || 'Unable to load books.');
+    }
+
+    setBooks(sortBooksDescending(listPayload.books as Book[]));
+    setMessage('Book deleted and public pages were revalidated.');
   }
 
   const refreshRegistrations = useCallback(async () => {
     setRegistrationsLoading(true);
     try {
       const params = new URLSearchParams({ limit: '100' });
-      if (registrationLocationFilter !== 'ALL') {
-        params.set('location', registrationLocationFilter);
+      if (registrationEventFilter !== 'ALL') {
+        params.set('eventId', String(registrationEventFilter));
       }
       if (registrationStatusFilter !== 'ALL') {
         params.set('status', registrationStatusFilter);
@@ -455,7 +368,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
         params.set('createdBefore', toIsoString(registrationCreatedBefore));
       }
 
-      const response = await fetch(`/api/registrations?${params.toString()}`, { cache: 'no-store' });
+      const response = await fetch(`/api/admin/registrations?${params.toString()}`, { cache: 'no-store' });
       const payload = await response.json().catch(() => null) as RegistrationsResponse | null;
       if (!response.ok || !payload) {
         throw new Error(payload && 'error' in payload ? String((payload as { error?: unknown }).error) : 'Unable to load registrations.');
@@ -470,7 +383,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     } finally {
       setRegistrationsLoading(false);
     }
-  }, [registrationCreatedAfter, registrationCreatedBefore, registrationLocationFilter, registrationSearch, registrationSourceFilter, registrationStatusFilter]);
+  }, [registrationCreatedAfter, registrationCreatedBefore, registrationEventFilter, registrationSearch, registrationSourceFilter, registrationStatusFilter]);
 
   const refreshReconciliation = useCallback(async () => {
     setReconciliationLoading(true);
@@ -535,8 +448,8 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
   async function downloadRegistrationsCsv() {
     const params = new URLSearchParams({ limit: '1000', format: 'csv' });
-    if (registrationLocationFilter !== 'ALL') {
-      params.set('location', registrationLocationFilter);
+    if (registrationEventFilter !== 'ALL') {
+      params.set('eventId', String(registrationEventFilter));
     }
     if (registrationStatusFilter !== 'ALL') {
       params.set('status', registrationStatusFilter);
@@ -554,7 +467,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
       params.set('createdBefore', toIsoString(registrationCreatedBefore));
     }
 
-    const response = await fetch(`/api/registrations?${params.toString()}`, { cache: 'no-store' });
+    const response = await fetch(`/api/admin/registrations?${params.toString()}`, { cache: 'no-store' });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({ error: 'Unable to export CSV.' }));
       throw new Error(payload.error || 'Unable to export CSV.');
@@ -579,112 +492,106 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     void refreshRegistrations();
   }, [activeTab, refreshRegistrations]);
 
-  async function saveBooks(nextBooksOverride?: Book[], successMessage = 'Books updated. Public pages were revalidated.') {
+  async function saveBooks(nextBooksOverride?: DraftBook[], successMessage = 'Books updated. Public pages were revalidated.') {
     resetFlash();
 
     const sourceBooks = nextBooksOverride || books;
-    const payloadBooks = sourceBooks.map((book) => ({
-      ...book,
-      coverUrls: book.coverUrls?.filter(Boolean),
-      coverUrlsEn: book.coverUrlsEn?.filter(Boolean),
-      discussionPoints: book.discussionPoints?.filter(Boolean),
-      discussionPointsEn: book.discussionPointsEn?.filter(Boolean),
-      tags: book.tags?.filter(Boolean),
-    }));
 
-    const response = await fetch('/api/admin/books', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ books: payloadBooks, expectedUpdatedAt: documentVersionsRef.current.books }),
-    });
+    // Handle draft books (need to be created in database first)
+    const draftBooks = sourceBooks.filter((book) => book.id === undefined);
+    const existingBooks = sourceBooks.filter((book) => book.id !== undefined);
 
-    const payload = await response.json().catch(() => ({ error: 'Unable to save books.' }));
-    if (!response.ok) {
-      throw new Error(payload.error || 'Unable to save books.');
+    // Create draft books in database
+    for (const draftBook of draftBooks) {
+      const payloadBook = {
+        sortOrder: draftBook.sortOrder,
+        slug: draftBook.slug,
+        title: draftBook.title,
+        titleEn: draftBook.titleEn,
+        author: draftBook.author,
+        authorEn: draftBook.authorEn,
+        coverUrl: draftBook.coverUrl,
+        coverUrlEn: draftBook.coverUrlEn,
+        coverBlurDataURL: draftBook.coverBlurDataURL,
+        coverBlurDataURLEn: draftBook.coverBlurDataURLEn,
+        additionalCovers: draftBook.additionalCovers,
+        readDate: draftBook.readDate,
+        summary: draftBook.summary,
+        summaryEn: draftBook.summaryEn,
+        readingNotes: draftBook.readingNotes,
+        readingNotesEn: draftBook.readingNotesEn,
+        discussionPoints: draftBook.discussionPoints?.filter(Boolean),
+        discussionPointsEn: draftBook.discussionPointsEn?.filter(Boolean),
+        tags: draftBook.tags?.filter(Boolean),
+        links: draftBook.links,
+      };
+
+      const response = await fetch('/api/admin/book-v2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadBook),
+      });
+
+      const payload = await response.json().catch(() => ({ error: 'Unable to create book.' }));
+      if (!response.ok) {
+        throw new Error(payload.error || 'Unable to create book.');
+      }
     }
 
-    const nextUpdatedAt = (payload.updatedAt as string | null | undefined) ?? documentVersionsRef.current.books;
-    setBooks(sortBooksDescending(payload.books as Book[]));
-    documentVersionsRef.current = { ...documentVersionsRef.current, books: nextUpdatedAt ?? null };
-    setDocumentVersions((currentVersions) => ({ ...currentVersions, books: nextUpdatedAt ?? currentVersions.books }));
+    // Update existing books
+    for (const book of existingBooks) {
+      const payloadBook = {
+        sortOrder: book.sortOrder,
+        slug: book.slug,
+        title: book.title,
+        titleEn: book.titleEn,
+        author: book.author,
+        authorEn: book.authorEn,
+        coverUrl: book.coverUrl,
+        coverUrlEn: book.coverUrlEn,
+        coverBlurDataURL: book.coverBlurDataURL,
+        coverBlurDataURLEn: book.coverBlurDataURLEn,
+        additionalCovers: book.additionalCovers,
+        readDate: book.readDate,
+        summary: book.summary,
+        summaryEn: book.summaryEn,
+        readingNotes: book.readingNotes,
+        readingNotesEn: book.readingNotesEn,
+        discussionPoints: book.discussionPoints?.filter(Boolean),
+        discussionPointsEn: book.discussionPointsEn?.filter(Boolean),
+        tags: book.tags?.filter(Boolean),
+        links: book.links,
+      };
+
+      const response = await fetch(`/api/admin/book-v2/${book.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadBook),
+      });
+
+      const payload = await response.json().catch(() => ({ error: 'Unable to update book.' }));
+      if (!response.ok) {
+        throw new Error(payload.error || `Unable to update book ${book.id}.`);
+      }
+    }
+
+    // Reload books from database
+    const listResponse = await fetch('/api/admin/books-v2');
+    const listPayload = await listResponse.json().catch(() => ({ error: 'Unable to load books.' }));
+    if (!listResponse.ok) {
+      throw new Error(listPayload.error || 'Unable to load books.');
+    }
+
+    setBooks(sortBooksDescending(listPayload.books as Book[]));
     setMessage(successMessage);
-  }
-
-  async function saveEvents(nextEventsOverride?: EventContentMap, successMessage = 'Event content and posters updated. Public event pages were revalidated.') {
-    resetFlash();
-
-    const response = await fetch('/api/admin/events', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ events: nextEventsOverride || events, expectedUpdatedAt: documentVersionsRef.current.events }),
-    });
-
-    const payload = await response.json().catch(() => ({ error: 'Unable to save events.' }));
-    if (!response.ok) {
-      throw new Error(payload.error || 'Unable to save events.');
-    }
-
-    const nextUpdatedAt = (payload.updatedAt as string | null | undefined) ?? documentVersionsRef.current.events;
-    setEvents(payload.events as EventContentMap);
-    documentVersionsRef.current = { ...documentVersionsRef.current, events: nextUpdatedAt ?? null };
-    setDocumentVersions((currentVersions) => ({ ...currentVersions, events: nextUpdatedAt ?? currentVersions.events }));
-    setMessage(successMessage);
-  }
-
-  async function saveCapacity() {
-    resetFlash();
-
-    const response = await fetch('/api/admin/capacity', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ capacity, expectedUpdatedAt: documentVersionsRef.current.capacity }),
-    });
-
-    const payload = await response.json().catch(() => ({ error: 'Unable to save capacity settings.' }));
-    if (!response.ok) {
-      throw new Error(payload.error || 'Unable to save capacity settings.');
-    }
-
-    const nextUpdatedAt = (payload.updatedAt as string | null | undefined) ?? documentVersionsRef.current.capacity;
-    setCapacity(payload.capacity as CapacityConfigFile);
-    documentVersionsRef.current = { ...documentVersionsRef.current, capacity: nextUpdatedAt ?? null };
-    setDocumentVersions((currentVersions) => ({ ...currentVersions, capacity: nextUpdatedAt ?? currentVersions.capacity }));
-    setMessage('Signup windows and capacity settings updated.');
-
-    const refreshedStatus = await Promise.all(CAPACITY_IDS.map(async (location) => {
-      const response = await fetch(buildCapacityStatusUrl(location), { cache: 'no-store' });
-      const payloadStatus = await response.json().catch(() => null);
-      return [location, {
-        enabled: payloadStatus?.enabled === true,
-        open: payloadStatus?.open !== false,
-        full: payloadStatus?.full === true,
-        count: typeof payloadStatus?.count === 'number' ? payloadStatus.count : 0,
-        max: typeof payloadStatus?.max === 'number' ? payloadStatus.max : null,
-        reason: payloadStatus?.reason === 'closed' || payloadStatus?.reason === 'full' ? payloadStatus.reason : 'ok',
-      } satisfies CapacityLiveStatus] as const;
-    }));
-    setCapacityStatus(Object.fromEntries(refreshedStatus));
   }
 
   async function saveRegistrationEmails() {
     resetFlash();
 
-    const response = await fetch('/api/admin/email', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ settings: registrationEmails, expectedUpdatedAt: documentVersionsRef.current.emails }),
-    });
-
-    const payload = await response.json().catch(() => ({ error: 'Unable to save registration email settings.' }));
-    if (!response.ok) {
-      throw new Error(payload.error || 'Unable to save registration email settings.');
-    }
-
-    const nextUpdatedAt = (payload.updatedAt as string | null | undefined) ?? documentVersionsRef.current.emails;
-    setRegistrationEmails(payload.settings as RegistrationSuccessEmailSettings);
-    documentVersionsRef.current = { ...documentVersionsRef.current, emails: nextUpdatedAt ?? null };
-    setDocumentVersions((currentVersions) => ({ ...currentVersions, emails: nextUpdatedAt ?? currentVersions.emails }));
-    setMessage('Registration success email settings updated.');
+    // TODO: Implement PUT endpoint for saving email settings per event
+    // Currently email settings are hardcoded in registration-success-email-config.ts
+    setMessage('Email settings save not yet implemented. Coming soon.');
   }
 
   async function logout() {
@@ -713,8 +620,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
     }
   }
 
-  const selectedEvent = events[selectedEventId];
-
   function addBook() {
     const draft = createDraftBook(books);
     setBooks((currentBooks) => normalizeLocalBookOrder([draft, ...currentBooks]));
@@ -739,7 +644,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {(['books', 'events', 'capacity', 'emails', 'registrations', 'reconciliation', 'assets'] as DashboardTab[]).map((tab) => (
+              {(['books', 'events', 'venues', 'emails', 'registrations', 'reconciliation', 'assets'] as DashboardTab[]).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -748,7 +653,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                     activeTab === tab ? 'bg-brand-pink text-brand-navy' : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
                   }`}
                 >
-                  {tab === 'books' ? 'Books' : tab === 'events' ? 'Events' : tab === 'capacity' ? 'Capacity' : tab === 'emails' ? 'Emails' : tab === 'registrations' ? 'Registrations' : tab === 'reconciliation' ? 'Reconciliation' : 'Assets'}
+                  {tab === 'books' ? 'Books' : tab === 'events' ? 'Events' : tab === 'venues' ? 'Venues' : tab === 'emails' ? 'Emails' : tab === 'registrations' ? 'Registrations' : tab === 'reconciliation' ? 'Reconciliation' : 'Assets'}
                 </button>
               ))}
               <button
@@ -800,9 +705,9 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
                       const fromIndex = books.findIndex((candidate) => candidate.id === draggedBookId);
                       moveBook(fromIndex, absoluteIndex);
-                      setDraggedBookId(null);
+                      setDraggedBookId(undefined);
                     }}
-                    onDragEnd={() => setDraggedBookId(null)}
+                    onDragEnd={() => setDraggedBookId(undefined)}
                     className={`w-full rounded-2xl px-4 py-3 text-left transition ${
                       selectedBookId === book.id ? 'bg-brand-pink text-brand-navy' : 'bg-black/10 text-white/85 hover:bg-white/10'
                     }`}
@@ -930,11 +835,11 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <label className="block">
                   <span className="mb-2 block text-sm text-white/70">Extra covers (ZH, one per line)</span>
-                  <textarea value={arrayToLines(selectedBook.coverUrls)} onChange={(event) => updateSelectedBook({ coverUrls: linesToArray(event.target.value) })} rows={4} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
+                  <textarea value={arrayToLines(selectedBook.additionalCovers?.zh)} onChange={(event) => updateSelectedBook({ additionalCovers: { ...selectedBook.additionalCovers, zh: linesToArray(event.target.value) } })} rows={4} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
                 </label>
                 <label className="block">
                   <span className="mb-2 block text-sm text-white/70">Extra covers (EN, one per line)</span>
-                  <textarea value={arrayToLines(selectedBook.coverUrlsEn)} onChange={(event) => updateSelectedBook({ coverUrlsEn: linesToArray(event.target.value) })} rows={4} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
+                  <textarea value={arrayToLines(selectedBook.additionalCovers?.en)} onChange={(event) => updateSelectedBook({ additionalCovers: { ...selectedBook.additionalCovers, en: linesToArray(event.target.value) } })} rows={4} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
                 </label>
               </div>
 
@@ -1007,232 +912,11 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
         ) : null}
 
         {activeTab === 'events' ? (
-          <div aria-label="Events editor" className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-            <aside className="rounded-[28px] border border-white/10 bg-white/10 p-4">
-              <h2 className="mb-3 text-lg font-semibold font-outfit">Events</h2>
-              <div className="space-y-2">
-                {EVENT_IDS.map((eventId) => (
-                  <button
-                    key={eventId}
-                    type="button"
-                    onClick={() => setSelectedEventId(eventId)}
-                    className={`w-full rounded-2xl px-4 py-3 text-left transition ${
-                      selectedEventId === eventId ? 'bg-brand-pink text-brand-navy' : 'bg-black/10 text-white/85 hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="font-medium">{events[eventId].title.en}</div>
-                    <div className="text-xs opacity-70">{eventId}</div>
-                  </button>
-                ))}
-              </div>
-            </aside>
-
-            <div className="rounded-[28px] border border-white/10 bg-white/10 p-6">
-              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h3 className="font-semibold">Poster asset</h3>
-                  <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/10">
-                    {uploadingAssetKey === 'event-poster' ? 'Processing…' : 'Upload poster'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        void handleAction(async () => {
-                          setUploadingAssetKey('event-poster');
-                          try {
-                            const asset = await uploadAsset('events', file);
-                            const nextEvents = {
-                              ...events,
-                              [selectedEventId]: {
-                                ...selectedEvent,
-                                posterSrc: asset.src,
-                                posterBlurDataURL: asset.blurDataURL,
-                              },
-                            };
-                            setEvents(nextEvents);
-                            await saveEvents(nextEvents, `Poster uploaded, optimized to ${asset.format || 'webp'}, and published.`);
-                          } finally {
-                            setUploadingAssetKey(null);
-                          }
-                        });
-                      }}
-                    />
-                  </label>
-                </div>
-                <input value={selectedEvent.posterSrc} onChange={(event) => updateEventField('posterSrc', event.target.value)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Title (ZH)</span>
-                  <input value={selectedEvent.title.zh} onChange={(event) => updateEventField('title', { ...selectedEvent.title, zh: event.target.value })} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Title (EN)</span>
-                  <input value={selectedEvent.title.en} onChange={(event) => updateEventField('title', { ...selectedEvent.title, en: event.target.value })} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Poster alt (ZH)</span>
-                  <input value={selectedEvent.posterAlt.zh} onChange={(event) => updateEventField('posterAlt', { ...selectedEvent.posterAlt, zh: event.target.value })} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Poster alt (EN)</span>
-                  <input value={selectedEvent.posterAlt.en} onChange={(event) => updateEventField('posterAlt', { ...selectedEvent.posterAlt, en: event.target.value })} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                </label>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Description (ZH)</span>
-                  <textarea value={selectedEvent.description.zh} onChange={(event) => updateEventField('description', { ...selectedEvent.description, zh: event.target.value })} rows={10} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Description (EN)</span>
-                  <textarea value={selectedEvent.description.en} onChange={(event) => updateEventField('description', { ...selectedEvent.description, en: event.target.value })} rows={10} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                </label>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Location name (ZH)</span>
-                  <input value={selectedEvent.locationName.zh} onChange={(event) => updateEventField('locationName', { ...selectedEvent.locationName, zh: event.target.value })} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Location name (EN)</span>
-                  <input value={selectedEvent.locationName.en} onChange={(event) => updateEventField('locationName', { ...selectedEvent.locationName, en: event.target.value })} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Signup path</span>
-                  <input value={selectedEvent.signupPath} onChange={(event) => updateEventField('signupPath', event.target.value)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Address country</span>
-                  <input value={selectedEvent.addressCountry || ''} onChange={(event) => updateEventField('addressCountry', event.target.value || undefined)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                </label>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Image position</span>
-                  <select value={selectedEvent.imagePosition} onChange={(event) => updateEventField('imagePosition', event.target.value as 'left' | 'right')} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
-                    <option value="left">Left</option>
-                    <option value="right">Right</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Attendance mode</span>
-                  <select value={selectedEvent.attendanceMode} onChange={(event) => updateEventField('attendanceMode', event.target.value as 'offline' | 'online')} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
-                    <option value="offline">Offline</option>
-                    <option value="online">Online</option>
-                  </select>
-                </label>
-                <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
-                  <input type="checkbox" checked={selectedEvent.comingSoon === true} onChange={(event) => updateEventField('comingSoon', event.target.checked)} className="h-4 w-4 rounded border-white/20" />
-                  <span className="text-sm text-white/85">Show coming soon state on signup page</span>
-                </label>
-              </div>
-
-              {selectedEvent.comingSoon ? (
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Coming soon copy (ZH)</span>
-                    <textarea value={selectedEvent.comingSoonBody?.zh || ''} onChange={(event) => updateEventField('comingSoonBody', { zh: event.target.value, en: selectedEvent.comingSoonBody?.en || '' })} rows={4} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                  </label>
-                  <label className="block">
-                    <span className="mb-2 block text-sm text-white/70">Coming soon copy (EN)</span>
-                    <textarea value={selectedEvent.comingSoonBody?.en || ''} onChange={(event) => updateEventField('comingSoonBody', { zh: selectedEvent.comingSoonBody?.zh || '', en: event.target.value })} rows={4} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                  </label>
-                </div>
-              ) : null}
-
-              <div className="mt-8">
-                <button type="button" onClick={() => void handleAction(saveEvents)} disabled={actionInFlight} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
-                  {actionInFlight ? 'Saving…' : 'Save events'}
-                </button>
-              </div>
-            </div>
-          </div>
+          <EventManager events={events} venues={venues} books={books.filter((book): book is Book => book.id !== undefined)} onEventsChange={setEvents} />
         ) : null}
 
-        {activeTab === 'capacity' ? (
-          <div aria-label="Capacity editor" className="rounded-[28px] border border-white/10 bg-white/10 p-6">
-            <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/75 lg:flex-row lg:items-center lg:justify-between">
-              <p>
-                Live counts come from the shared registrations source of truth used by the public form. In persistent mode that is the Supabase registrations table; locally it falls back to the file-backed registrations store.
-              </p>
-              <p>{capacityStatusLoading ? 'Refreshing live counts…' : 'Live counts loaded.'}</p>
-            </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              {CAPACITY_IDS.map((location) => {
-                const slot = capacity[location];
-                const liveStatus = capacityStatus[location];
-                if (!slot) {
-                  return null;
-                }
-
-                const configuredMax = typeof slot.max === 'number' ? slot.max : 0;
-                const currentCount = liveStatus?.count ?? 0;
-                const remaining = configuredMax > 0 ? Math.max(0, configuredMax - currentCount) : 0;
-
-                return (
-                  <div key={location} aria-label={`Capacity ${location}`} className="rounded-[24px] border border-white/10 bg-black/10 p-5">
-                    <div className="mb-4 flex items-center justify-between">
-                      <h2 className="text-xl font-semibold font-outfit">{location}</h2>
-                      <label className="flex items-center gap-2 text-sm text-white/80">
-                        <input type="checkbox" checked={slot.enabled === true} onChange={(event) => updateCapacityField(location, 'enabled', event.target.checked)} />
-                        Enabled
-                      </label>
-                    </div>
-
-                    <div className="mb-4 grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm md:grid-cols-3">
-                      <div>
-                        <p className="text-white/55">Successful signups</p>
-                        <p className="mt-1 text-lg font-semibold">{currentCount}</p>
-                      </div>
-                      <div>
-                        <p className="text-white/55">Remaining if saved now</p>
-                        <p className="mt-1 text-lg font-semibold">{remaining}</p>
-                      </div>
-                      <div>
-                        <p className="text-white/55">Live status</p>
-                        <p className="mt-1 text-lg font-semibold">
-                          {liveStatus?.enabled === false ? 'Disabled' : liveStatus?.reason === 'full' ? 'Full' : liveStatus?.reason === 'closed' ? 'Closed' : 'Open'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <label className="block">
-                        <span className="mb-2 block text-sm text-white/70">Start at</span>
-                        <input type="datetime-local" value={toLocalDateTimeInput(slot.startAt)} onChange={(event) => updateCapacityField(location, 'startAt', toIsoString(event.target.value))} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                      </label>
-                      <label className="block">
-                        <span className="mb-2 block text-sm text-white/70">End at</span>
-                        <input type="datetime-local" value={toLocalDateTimeInput(slot.endAt)} onChange={(event) => updateCapacityField(location, 'endAt', toIsoString(event.target.value))} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                      </label>
-                      <label className="block">
-                        <span className="mb-2 block text-sm text-white/70">Capacity</span>
-                        <input type="number" min={1} value={slot.max || 1} onChange={(event) => updateCapacityField(location, 'max', Number(event.target.value) || 1)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40" />
-                      </label>
-                      <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
-                        <input type="checkbox" checked={slot.forceFull === true} onChange={(event) => updateCapacityField(location, 'forceFull', event.target.checked)} />
-                        <span className="text-sm text-white/85">Force full immediately</span>
-                      </label>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-8">
-              <button type="button" onClick={() => void handleAction(saveCapacity)} disabled={actionInFlight} className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60">
-                {actionInFlight ? 'Saving…' : 'Save capacity settings'}
-              </button>
-            </div>
-          </div>
+        {activeTab === 'venues' ? (
+          <VenueManager venues={venues} onVenuesChange={setVenues} />
         ) : null}
 
         {activeTab === 'emails' ? (
@@ -1315,10 +999,19 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
 
               <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                 <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Location</span>
-                  <select value={registrationLocationFilter} onChange={(event) => setRegistrationLocationFilter(event.target.value as 'ALL' | SignupLocation)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
-                    <option value="ALL">All locations</option>
-                    {CAPACITY_IDS.map((location) => <option key={location} value={location}>{location}</option>)}
+                  <span className="mb-2 block text-sm text-white/70">Event</span>
+                  <select value={registrationEventFilter} onChange={(event) => setRegistrationEventFilter(event.target.value === 'ALL' ? 'ALL' : parseInt(event.target.value, 10))} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
+                    <option value="ALL">All events</option>
+                    {events.slice().sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()).map((event) => {
+                      const eventDate = new Date(event.eventDate);
+                      const isComplete = eventDate < new Date();
+                      const dateStr = eventDate.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                      return (
+                        <option key={event.id} value={event.id} style={{ color: isComplete ? '#888' : undefined }}>
+                          {dateStr} {event.title}{isComplete ? ' (complete)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
                 <label className="block">
@@ -1371,7 +1064,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                     <thead className="bg-white/5 text-left text-white/60">
                       <tr>
                         <th className="px-4 py-3 font-medium">Created</th>
-                        <th className="px-4 py-3 font-medium">Location</th>
+                        <th className="px-4 py-3 font-medium">Event</th>
                         <th className="px-4 py-3 font-medium">Name</th>
                         <th className="px-4 py-3 font-medium">Email</th>
                         <th className="px-4 py-3 font-medium">Status</th>
@@ -1384,7 +1077,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                       {registrations.map((registration) => (
                         <tr key={registration.id}>
                           <td className="px-4 py-3 text-white/75">{new Date(registration.createdAt).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-white">{registration.location}</td>
+                          <td className="px-4 py-3 text-white">{events.find((e) => e.id === registration.eventId)?.title || `Event #${registration.eventId}`}</td>
                           <td className="px-4 py-3 text-white">{registration.name}</td>
                           <td className="px-4 py-3 text-white/85">{registration.email}</td>
                           <td className="px-4 py-3"><span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{registration.status}</span></td>
@@ -1450,7 +1143,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
               {reconciliation ? (
                 <>
                   <div className="grid gap-4 md:grid-cols-6">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Source of truth</p><p className="mt-1 text-sm font-semibold">{reconciliation.summary.sourceOfTruth}</p></div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Matched</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.matched}</p></div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Missing in Notion</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.missingInNotion}</p></div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Field drift</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.mismatched}</p></div>
@@ -1472,7 +1164,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialCap
                               <p className="font-semibold text-white">{row.sourceRecord.name}</p>
                               <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{row.kind}</span>
                             </div>
-                            <p className="mt-2">{row.sourceRecord.email} · {row.sourceRecord.location}</p>
+                            <p className="mt-2">{row.sourceRecord.email} · Event #{row.sourceRecord.eventId}</p>
                             <p className="mt-2">Request ID: <span className="font-mono text-white">{row.sourceRecord.requestId || 'n/a'}</span></p>
                             {row.mismatchFields.length ? <p className="mt-2">Mismatched fields: <span className="font-mono text-white">{row.mismatchFields.join(', ')}</span></p> : null}
                             {row.notionRecord ? <p className="mt-2">Notion page: <span className="font-mono text-white">{row.notionRecord.id}</span></p> : null}

@@ -17,7 +17,7 @@ flowchart TD
   A[Sign in /admin] --> B[Books + cover hints]
   B --> C[Asset scan]
   C --> D[Events]
-  D --> E[Capacity]
+  D --> E[Venues]
   E --> F[Registration submission]
   F --> G[Registrations audit]
   G --> H[Reconciliation]
@@ -89,17 +89,18 @@ Expected result:
 1. Admin save succeeds.
 2. Public page reflects the updated title/poster.
 
-## 4. Capacity Controls
+## 4. Events And Per-Event Capacity
 
-1. Open `Capacity`.
-2. Set one location to `enabled` with a valid current time window.
-3. Set a small max, for example `2`.
+1. Open `Events`.
+2. Create or edit an event.
+3. Set a small capacity, for example `2`.
+4. Set valid registration dates.
 4. Save.
-5. Confirm the card shows live signup counts and remaining slots.
+5. Confirm the event detail shows live signup counts and remaining slots.
 
 Expected result:
 
-1. The location shows current live counts.
+1. The event shows current live counts.
 2. Remaining slots update after registrations.
 
 ## 5. Registration Submission
@@ -112,7 +113,7 @@ Expected result:
 
 1. The public flow succeeds.
 2. Capacity reflects the new signup.
-3. `public.registrations` gains a new row in Supabase mode.
+3. `public.registrations` gains a new row with `event_id` in Supabase mode.
 
 ## 6. Registrations Audit Viewer
 
@@ -120,7 +121,7 @@ Expected result:
 2. Confirm the new row appears.
 3. Filter by location.
 4. Filter by status.
-5. Filter by source.
+5. Filter by event.
 6. Set `Submitted after` / `Submitted before` to bracket the submission.
 7. Expand `Details` on the row.
 8. Export CSV.
@@ -173,16 +174,20 @@ Run these only when Supabase mode is active.
 1. Open Supabase Table Editor for `public.registrations`.
 2. Confirm new rows contain:
    - `request_id`
+   - `event_id`
    - `mirror_state`
    - `audit_trail`
 3. Confirm `timestamp` is populated.
 4. Confirm `external_id` is populated after a successful Notion mirror.
 5. Open `public.admin_documents` and confirm:
-   - `books.value` is a populated JSON array
-   - `events.value` contains `TW`, `NL`, `EN`, and `DETOX`
-   - `capacity.value` contains `TW`, `NL`, `EN`, and `DETOX`
    - `registration-success-email.value` contains `enabled`, `templates.zh`, and `templates.en`
-6. Run this query to inspect the key-value admin store correctly:
+6. Open `public.books` and confirm:
+   - Books are stored with columns: `id`, `slug`, `title`, `author`, etc.
+7. Open `public.events` and confirm:
+   - Events are stored with columns: `id`, `slug`, `title`, `date`, `venue_id`, `capacity`, etc.
+8. Open `public.venues` and confirm:
+   - Venues are stored with columns: `id`, `slug`, `name`, `capacity`, etc.
+9. Run this query to inspect the admin_documents table:
 
 ```sql
 select key, jsonb_typeof(value) as value_type, updated_at
@@ -190,14 +195,14 @@ from public.admin_documents
 order by key;
 ```
 
-7. If Vercel shows an empty homepage or books page, compare `books.value` against the repo seed in `data/books.json`.
-8. If Vercel shows an error on `/events`, compare `events.value` against the repo seed in `data/events-content.json` and verify every event still has localized `title` and `description` fields.
-9. Run `select created_at, updated_at, status, source, request_id from public.registrations order by updated_at desc limit 20;` and confirm the table uses snake_case audit columns.
-10. If Vercel logs mention `/var/task/data/books.json` or `/var/task/data/events-content.json`, treat that as a deployment bug in the server fallback path rather than a missing Supabase row.
-11. If Vercel logs mention missing columns such as `registrations.createdAt` or malformed filters such as `registrations.orstatus`, treat that as a server query bug in the Supabase registrations adapter.
-12. Open two admin tabs that both edit the same document, such as `Books`.
-13. Save a change in the first tab.
-14. Save a different change in the second tab without refreshing.
+10. If Vercel shows an empty books page, verify rows exist in `public.books` or that the fallback file `data/books-v2.json` is being read.
+11. If Vercel shows an error on `/events`, verify rows exist in `public.events` and `public.venues`.
+12. Run `select created_at, updated_at, status, source, request_id, event_id from public.registrations order by updated_at desc limit 20;` and confirm the table uses snake_case audit columns and includes `event_id`.
+13. If Vercel logs mention `/var/task/data/books-v2.json`, treat that as expected fallback behavior when Supabase is not configured.
+14. If Vercel logs mention missing columns such as `registrations.createdAt` or malformed filters such as `registrations.orstatus`, treat that as a server query bug in the Supabase registrations adapter.
+15. Open two admin tabs that both edit the same document, such as the registration success email settings.
+16. Save a change in the first tab.
+17. Save a different change in the second tab without refreshing.
 
 Expected result:
 

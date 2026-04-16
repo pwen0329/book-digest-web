@@ -2,20 +2,18 @@ import 'server-only';
 
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { getEventContent } from '@/lib/events-content';
 import { resolveWorkspacePath } from '@/lib/json-store';
 import {
   getRegistrationSuccessEmailSettings,
   type RegistrationEmailLocale,
   type RegistrationSuccessEmailSettings,
 } from '@/lib/registration-success-email-config';
-import type { SignupLocation } from '@/lib/signup-capacity-config';
-
 type SendRegistrationSuccessEmailInput = {
-  location: SignupLocation;
   locale: RegistrationEmailLocale;
   name: string;
   email: string;
+  eventTitle: string;
+  eventTitleEn: string;
 };
 
 type EmailDeliveryRecord = {
@@ -23,7 +21,6 @@ type EmailDeliveryRecord = {
   subject: string;
   text: string;
   locale: RegistrationEmailLocale;
-  location: SignupLocation;
   transport: 'resend' | 'file';
   createdAt: string;
 };
@@ -35,7 +32,6 @@ type SendEmailResult =
 type TemplateContext = {
   name: string;
   email: string;
-  location: SignupLocation;
   eventTitle: string;
   siteUrl: string;
 };
@@ -45,16 +41,11 @@ function getSiteUrl(): string {
 }
 
 function interpolateTemplate(template: string, context: TemplateContext): string {
-  return template.replace(/\{\{\s*(name|email|location|eventTitle|siteUrl)\s*\}\}/g, (_, key: keyof TemplateContext) => context[key]);
+  return template.replace(/\{\{\s*(name|email|eventTitle|siteUrl)\s*\}\}/g, (_, key: keyof TemplateContext) => context[key]);
 }
 
 function normalizeLocale(locale?: string): RegistrationEmailLocale {
   return locale === 'zh' ? 'zh' : 'en';
-}
-
-async function getLocalizedEventTitle(location: SignupLocation, locale: RegistrationEmailLocale): Promise<string> {
-  const event = await getEventContent(location);
-  return event.title[locale];
 }
 
 async function renderMessage(
@@ -63,11 +54,14 @@ async function renderMessage(
 ): Promise<{ subject: string; text: string; locale: RegistrationEmailLocale }> {
   const locale = normalizeLocale(input.locale);
   const template = settings.templates[locale];
+
+  // Choose title based on locale
+  const eventTitle = locale === 'en' ? input.eventTitleEn : input.eventTitle;
+
   const context: TemplateContext = {
     name: input.name,
     email: input.email,
-    location: input.location,
-    eventTitle: await getLocalizedEventTitle(input.location, locale),
+    eventTitle,
     siteUrl: getSiteUrl(),
   };
 
@@ -177,7 +171,6 @@ export async function sendRegistrationSuccessEmail(input: SendRegistrationSucces
       subject: message.subject,
       text: message.text,
       locale: message.locale,
-      location: input.location,
       transport: 'file',
       createdAt: new Date().toISOString(),
     });
@@ -198,7 +191,6 @@ export async function sendRegistrationSuccessEmail(input: SendRegistrationSucces
     console.error('[registration-success-email] Resend delivery failed', {
       error,
       to: input.email,
-      location: input.location,
       locale: message.locale,
       subject: message.subject,
     });

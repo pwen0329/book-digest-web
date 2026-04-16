@@ -97,7 +97,7 @@ export default function FloatingLangToggle() {
       data-right={position.right ?? ''}
       role="region"
       aria-label="Language selection"
-      className="fixed z-[70] max-w-[calc(100vw-24px)]"
+      className="fixed z-[102] max-w-[calc(100vw-24px)]"
       style={{
         top: `calc(env(safe-area-inset-top) + ${position.top}px)`,
         right: position.right,

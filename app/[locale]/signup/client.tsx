@@ -1,44 +1,82 @@
 'use client';
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import ActivitySignupFlow, { type ActivitySignupSlotStatus } from '@/components/ActivitySignupFlow';
-import type { LocalizedEventContentMap } from '@/types/event-content';
+import ActivitySignupFlow, { SignupStep } from '@/components/ActivitySignupFlow';
+import type { VenueLocation } from '@/types/venue';
+import { EventRegistrationStatus } from '@/types/event';
+import type { EventRegistrationStatus as EventRegistrationStatusType } from '@/types/event';
 
-function SignupContent({ initialLocation, events, initialSlotStatus }: { initialLocation?: string; events: LocalizedEventContentMap; initialSlotStatus: ActivitySignupSlotStatus }) {
+type EventData = {
+  id: number;
+  slug: string;
+  posterSrc: string;
+  posterAlt: string;
+  title: string;
+  description: string;
+  eventDate: string;
+  registrationOpensAt: string;
+  registrationClosesAt: string;
+  attendanceMode: 'offline' | 'online';
+  locationName: string;
+  venueLocation: VenueLocation;
+  addressCountry?: string;
+  registrationStatus: EventRegistrationStatusType;
+};
+
+type SignupClientProps = {
+  event: EventData;
+  locale: string;
+  showIntro?: boolean;
+};
+
+export default function SignupClient({ event, showIntro = false }: SignupClientProps) {
   const t = useTranslations('events');
-  const activeLocation: 'TW' | 'NL' = initialLocation === 'NL' ? 'NL' : 'TW';
-  const activeEvent = events[activeLocation];
-  const locationLocked = initialLocation === 'TW' || initialLocation === 'NL';
+
+  // Build event-based registration endpoint
+  const endpoint = `/api/event/${event.slug}/register`;
+
+  // Memoize registration status to prevent recalculation on every render
+  const comingSoonMessage = useMemo(() => {
+    let comingSoon: { title: string; body?: string } | undefined;
+
+    if (event.registrationStatus !== EventRegistrationStatus.OPEN) {
+      if (event.registrationStatus === EventRegistrationStatus.CLOSED) {
+        // Event has ended
+        comingSoon = {
+          title: t('registrationClosed'),
+          body: t('eventEnded'),
+        };
+      } else if (event.registrationStatus === EventRegistrationStatus.UPCOMING) {
+        // Registration not yet open
+        comingSoon = {
+          title: event.title,
+          body: undefined,
+        };
+      }
+    }
+
+    return comingSoon;
+  }, [event.registrationStatus, event.title, t]);
 
   return (
     <ActivitySignupFlow
-      activeTab={activeLocation}
-      location={activeLocation}
-      tabLabels={{ TW: events.TW.title, EN: events.EN.title, NL: events.NL.title, DETOX: events.DETOX.title }}
-      translationNamespace="signupFlow"
-      initialSlotStatus={initialSlotStatus}
-      endpoint={
-        activeLocation === 'TW'
-          ? process.env.NEXT_PUBLIC_FORMS_ENDPOINT_TW || '/api/submit?loc=TW'
-          : process.env.NEXT_PUBLIC_FORMS_ENDPOINT_NL || '/api/submit?loc=NL'
-      }
-      posterSrc={activeEvent.posterSrc}
-      posterBlurDataURL={activeEvent.posterBlurDataURL}
-      posterAlt={activeEvent.posterAlt}
-      comingSoon={activeEvent.comingSoon ? { title: activeEvent.title, body: activeEvent.comingSoonBody } : undefined}
-      renderIntro={(step) => !locationLocked && step === 0 ? (
+      eventSlug={event.slug}
+      endpoint={endpoint}
+      venueLocation={event.venueLocation}
+      posterSrc={event.posterSrc}
+      posterBlurDataURL={undefined}
+      posterAlt={event.posterAlt}
+      comingSoon={comingSoonMessage}
+      renderIntro={(step) => showIntro && step === SignupStep.INTRO ? (
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold font-outfit">
             {t('joinBookClub')}
           </h1>
           <p className="mt-2 text-white/70">
-            {t('chooseLocation')}
+            {event.title}
           </p>
         </div>
       ) : null}
     />
   );
-}
-
-export default function SignupClient({ initialLocation, events, initialSlotStatus }: { initialLocation?: string; events: LocalizedEventContentMap; initialSlotStatus: ActivitySignupSlotStatus }) {
-  return <SignupContent initialLocation={initialLocation} events={events} initialSlotStatus={initialSlotStatus} />;
 }

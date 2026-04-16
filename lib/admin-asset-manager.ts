@@ -1,11 +1,9 @@
 import 'server-only';
 
-import path from 'node:path';
-import { readdir, stat, unlink } from 'node:fs/promises';
 import type { Book } from '@/types/book';
-import type { EventContentMap } from '@/types/event-content';
-import { loadAdminDocument } from '@/lib/admin-content-store';
-import { isPersistentUploadStoreConfigured, resolveLocalAdminUploadPath } from '@/lib/admin-upload-storage';
+import type { Event } from '@/types/event';
+import { getAllBooksFromDB } from '@/lib/books-db';
+import { getAllEvents } from '@/lib/events';
 
 type UploadScope = 'books' | 'events';
 
@@ -13,7 +11,7 @@ export type ManagedAssetRecord = {
   url: string;
   scope: UploadScope;
   fileName: string;
-  storage: 'local' | 'supabase';
+  storage: 'supabase';
   modifiedAt?: string;
 };
 
@@ -31,8 +29,8 @@ export type ManagedAssetReport = {
 type AssetCleanupInput = {
   previousBooks: Book[];
   nextBooks: Book[];
-  previousEvents: EventContentMap;
-  nextEvents: EventContentMap;
+  previousEvents: Event[];
+  nextEvents: Event[];
 };
 
 function getSupabaseUrl(): string | null {
@@ -54,14 +52,6 @@ type ParsedManagedAsset = {
 };
 
 function parseManagedAssetUrl(url: string): ParsedManagedAsset | null {
-  const localMatch = url.match(/^\/uploads\/admin\/(books|events)\/([^/?#]+)$/);
-  if (localMatch) {
-    return {
-      scope: localMatch[1] as UploadScope,
-      fileName: localMatch[2],
-    };
-  }
-
   const supabaseUrl = getSupabaseUrl();
   if (!supabaseUrl) {
     return null;
@@ -85,7 +75,7 @@ function extractBookAssetUrls(books: Book[]): Set<string> {
   const urls = new Set<string>();
 
   for (const book of books) {
-    [book.coverUrl, book.coverUrlEn, ...(book.coverUrls || []), ...(book.coverUrlsEn || [])]
+    [book.coverUrl, book.coverUrlEn, ...(book.additionalCovers?.zh || []), ...(book.additionalCovers?.en || [])]
       .filter((value): value is string => Boolean(value))
       .forEach((value) => urls.add(value));
   }
@@ -93,11 +83,14 @@ function extractBookAssetUrls(books: Book[]): Set<string> {
   return urls;
 }
 
-function extractEventAssetUrls(events: EventContentMap): Set<string> {
+function extractEventAssetUrls(events: Event[]): Set<string> {
   const urls = new Set<string>();
-  for (const event of Object.values(events)) {
-    if (event.posterSrc) {
-      urls.add(event.posterSrc);
+  for (const event of events) {
+    if (event.coverUrl) {
+      urls.add(event.coverUrl);
+    }
+    if (event.coverUrlEn) {
+      urls.add(event.coverUrlEn);
     }
   }
   return urls;
@@ -105,12 +98,7 @@ function extractEventAssetUrls(events: EventContentMap): Set<string> {
 
 async function deleteManagedAsset(url: string) {
   const parsed = parseManagedAssetUrl(url);
-  if (!parsed) {
-    return;
-  }
-
-  if (!parsed.objectPath) {
-    await unlink(resolveLocalAdminUploadPath(parsed.scope, parsed.fileName)).catch(() => undefined);
+  if (!parsed || !parsed.objectPath) {
     return;
   }
 
@@ -142,23 +130,6 @@ export async function cleanupRemovedAdminAssets({ previousBooks, nextBooks, prev
 
   const orphanedAssets = [...previousAssets].filter((url) => !nextAssets.has(url));
   await Promise.all(orphanedAssets.map((url) => deleteManagedAsset(url)));
-}
-
-async function listLocalAssets(scope: UploadScope): Promise<ManagedAssetRecord[]> {
-  const directory = path.dirname(resolveLocalAdminUploadPath(scope, 'placeholder.txt'));
-  const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
-  const assets = await Promise.all(entries.filter((entry) => entry.isFile()).map(async (entry) => {
-    const entryStat = await stat(resolveLocalAdminUploadPath(scope, entry.name)).catch(() => null);
-    return {
-      url: `/uploads/admin/${scope}/${entry.name}`,
-      scope,
-      fileName: entry.name,
-      storage: 'local' as const,
-      modifiedAt: entryStat?.mtime.toISOString(),
-    };
-  }));
-
-  return assets;
 }
 
 async function listSupabaseAssets(scope: UploadScope): Promise<ManagedAssetRecord[]> {
@@ -221,14 +192,14 @@ async function listSupabaseAssets(scope: UploadScope): Promise<ManagedAssetRecor
 
 async function listStoredAssets(): Promise<ManagedAssetRecord[]> {
   const [bookAssets, eventAssets] = await Promise.all([
-    isPersistentUploadStoreConfigured() ? listSupabaseAssets('books') : listLocalAssets('books'),
-    isPersistentUploadStoreConfigured() ? listSupabaseAssets('events') : listLocalAssets('events'),
+    listSupabaseAssets('books'),
+    listSupabaseAssets('events'),
   ]);
 
   return [...bookAssets, ...eventAssets];
 }
 
-function getReferencedAssets(books: Book[], events: EventContentMap): ManagedAssetRecord[] {
+function getReferencedAssets(books: Book[], events: Event[]): ManagedAssetRecord[] {
   const urls = [
     ...extractBookAssetUrls(books),
     ...extractEventAssetUrls(events),
@@ -245,7 +216,7 @@ function getReferencedAssets(books: Book[], events: EventContentMap): ManagedAss
         url,
         scope: parsed.scope,
         fileName: parsed.fileName,
-        storage: parsed.objectPath ? 'supabase' : 'local',
+        storage: 'supabase',
       } satisfies ManagedAssetRecord;
     })
     .filter((item): item is ManagedAssetRecord => Boolean(item));
@@ -253,8 +224,8 @@ function getReferencedAssets(books: Book[], events: EventContentMap): ManagedAss
 
 export async function buildManagedAssetReport(gracePeriodHours = 168): Promise<ManagedAssetReport> {
   const [books, events, storedAssets] = await Promise.all([
-    loadAdminDocument<Book[]>({ key: 'books', fallbackFile: 'data/books.json' }),
-    loadAdminDocument<EventContentMap>({ key: 'events', fallbackFile: 'data/events-content.json' }),
+    getAllBooksFromDB(),
+    getAllEvents(),
     listStoredAssets(),
   ]);
 
