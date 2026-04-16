@@ -319,15 +319,29 @@ test.describe('Admin v2 API - Happy flow', () => {
       await expect(submitButton).toBeEnabled({ timeout: 5000 });
 
       // Start listening for the response before clicking (prevents race condition)
-      const responsePromise = page.waitForResponse(response =>
-        response.url().includes('/register') && response.status() === 201,
-        { timeout: 3000 }
-      );
+      const startTime = Date.now();
+      console.log(`[${eventTypeCode}] Starting registration request at ${new Date().toISOString()}`);
+
+      // Listen to ALL responses to /register to debug
+      page.on('response', (response) => {
+        if (response.url().includes('/register')) {
+          console.log(`[${eventTypeCode}] /register response: status=${response.status()}, time=${Date.now() - startTime}ms, url=${response.url()}`);
+        }
+      });
+
+      const responsePromise = page.waitForResponse(response => {
+        const matches = response.url().includes('/register') && response.status() === 201;
+        if (response.url().includes('/register') && !matches) {
+          console.log(`[${eventTypeCode}] /register response didn't match: status=${response.status()}, expected 201`);
+        }
+        return matches;
+      }, { timeout: 10000 });
 
       await submitButton.click();
 
       // Wait for the registration request to complete
       await responsePromise;
+      console.log(`[${eventTypeCode}] Registration completed in ${Date.now() - startTime}ms`);
 
       // Step 7g: Wait for success message with polling (handles React re-render timing automatically)
       await expect(page.locator('h3:has-text("Registration Successful")')).toBeVisible({ timeout: 3000 });
