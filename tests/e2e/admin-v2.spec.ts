@@ -321,7 +321,7 @@ test.describe('Admin v2 API - Happy flow', () => {
       // Start listening for the response before clicking (prevents race condition)
       const responsePromise = page.waitForResponse(response =>
         response.url().includes('/register') && response.status() === 201,
-        { timeout: 10000 }
+        { timeout: 3000 }
       );
 
       await submitButton.click();
@@ -330,7 +330,7 @@ test.describe('Admin v2 API - Happy flow', () => {
       await responsePromise;
 
       // Step 7g: Wait for success message with polling (handles React re-render timing automatically)
-      await expect(page.locator('h3:has-text("Registration Successful")')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('h3:has-text("Registration Successful")')).toBeVisible({ timeout: 3000 });
 
       // Step 8: Verify registration was created via API
       // First check all registrations without filter
