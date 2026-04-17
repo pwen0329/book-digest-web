@@ -52,9 +52,6 @@ Core variables:
 - `SUPABASE_SERVICE_ROLE_KEY`: server-side key used for admin document writes and storage uploads
 - `SUPABASE_REGISTRATIONS_TABLE`: optional persistent registrations table name, defaults to `registrations`
 - `SUPABASE_STORAGE_BUCKET`: optional asset bucket name, defaults to `admin-assets`
-- `TALLY_ENDPOINT_TW|NL|EN|DETOX`: optional upstream submission webhooks
-- `SUBMIT_SAVE_TO_NOTION=1`: additionally persist submissions to Notion
-- `NOTION_TOKEN`, `NOTION_DB_ID`: Notion persistence credentials
 - `RESEND_API_KEY`: enables real registration success emails
 - `REGISTRATION_EMAIL_FROM`: sender address used by Resend, for example `Book Digest <hello@example.com>`
 - `REGISTRATION_EMAIL_REPLY_TO`: optional reply-to address for success emails
@@ -127,8 +124,7 @@ How it works:
 1. Public signup pages post to `/api/event/[slug]/register`.
 2. The API validates payloads, Turnstile, and event capacity.
 3. Registration is stored in Supabase (or fallback JSON store).
-4. Optionally mirrors to Notion if configured.
-5. If the admin confirmation-email toggle is enabled, it renders the localized email template and sends it through Resend or the local outbox transport.
+4. If the admin confirmation-email toggle is enabled, it renders the localized email template and sends it through Resend or the local outbox transport.
 
 ## Admin dashboard
 
@@ -149,7 +145,6 @@ Current dashboard areas:
 - `Venues`: manage event locations and capacities
 - `Emails`: turn confirmation emails on or off and edit localized subject/body templates
 - `Registrations`: filter by event, status, source, and submission time; inspect request-aware audit trail; export CSV
-- `Reconciliation`: compare the source-of-truth registrations store against the optional Notion mirror
 - `Assets`: scan referenced uploads vs stored uploads and prune old orphaned assets safely
 
 Books tab notes:
@@ -196,8 +191,6 @@ Recommended production setup:
 - Vercel for the public site and `/admin`
 - Supabase for persistent admin documents and uploaded assets
 - Supabase `registrations` for derived capacity counts and audit history
-- optional Notion mirror only if your team wants a second human-facing review surface
-- optional Tally forwarding only if you still need an external webhook destination
 
 Supabase bootstrap:
 

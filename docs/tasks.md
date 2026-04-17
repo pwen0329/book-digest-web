@@ -137,13 +137,6 @@ T-070 TW/NL forms UI & validation (Zod) [Done | M]
 - EARS: F01.
 - Dependencies: T-001, T-020.
 
-T-071 External processor integration [Done | S]
-- Description: Wire to Formspree/Tally/Airtable endpoints via env; show success state; clear PII.
-- Outcome: 200/201 → success UI; log conversion (no PII).
-- EARS: F01, P01.
-- Dependencies: T-070.
-- Notes (2025-09-03): Added TALLY_ENDPOINT_TW/NL and SUBMIT_SAVE_TO_NOTION envs; enhanced `/api/submit` to forward payload with agreed column mapping to Tally; optional Notion persistence behind flag; kept Events page fallback to internal API.
-
 T-072 Optional: Custom API route (Phase 2) [Todo | M]
 - Description: `POST /api/registrations` + Supabase; email via Resend; rate limit; spam checks.
 - Outcome: Persisted submissions; confirmation email.
@@ -331,20 +324,6 @@ P2-204 Sentry integration [Todo | XS]
 - Global Header
 	- Reworked layout to absolutely center the logo independent of side nav widths. [Done]
 	- Adjusted bar height, nav spacing, and language toggle styling to better match front page design. [Done]
-
-	## 2025-09-03 Implementation Log (Forms: Tally proxy)
-
-	- Env & Config
-		- Added `.env.example` entries: `TALLY_ENDPOINT_TW`, `TALLY_ENDPOINT_NL`, `SUBMIT_SAVE_TO_NOTION`. [Done]
-	- API
-		- Enhanced `POST /api/submit?loc=TW|NL` to forward submissions to location-specific Tally endpoint with mapped columns: Name, Email, Age, Occupation, InstagramAccount, FindingUs, findingUsOthers, Purpose, Attendance, status, Owner, ID, Title, visitorId, bankAccount, Created Date, Updated Date. [Done]
-		- Optional Notion save controlled by `SUBMIT_SAVE_TO_NOTION=1`, using existing `lib/notion` mapping; added `visitorId` support. [Done]
-	- UI
-		- Verified `app/events/page.tsx` continues to pass external endpoints or fallback to `/api/submit`. No UI code change required. [Pass]
-	- Tests (ad-hoc)
-		- Lint/typecheck run: no errors (only Next `<img>` warnings remain; to be addressed by T-110/T-140). [Pass]
-	- Outcome
-		- T-071 marked Done.
 
 ---
 

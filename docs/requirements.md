@@ -138,7 +138,7 @@ Phase 1 — Fast UI validation
 - Animation: Framer Motion (counters, subtle transitions) with `prefers-reduced-motion` guards.
 - i18n: `next-intl` (file-based translations).
 - Data: Local JSON in `/data`; images in `/public` or uploaded to a simple asset host.
-- Forms: Formspree/Tally/Airtable (no-backend) OR a simple serverless endpoint with rate limit + honeypot.
+- Forms: A simple serverless endpoint with rate limit + honeypot.
 - Hosting: Vercel with preview deployments on PRs.
 
 Phase 2 — Production completeness
@@ -158,5 +158,4 @@ Phase 2 — Production completeness
 
 ## Open Questions
 - Copy length for "reading experiences"; per-book language availability.
-- Preferred form processor (Formspree/Tally/Airtable) vs custom backend.
 - Exact targets for counters (initial values and update cadence).

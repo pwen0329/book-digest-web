@@ -167,10 +167,7 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   visitor_id TEXT,
   request_id TEXT,
   timestamp TIMESTAMPTZ NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'cancelled')),
-  source TEXT NOT NULL CHECK (source IN ('pending', 'simulated', 'tally', 'notion')),
-  external_id TEXT,
-  mirror_state JSONB NOT NULL DEFAULT '{"notion":{"enabled":false,"status":"not_configured"},"tally":{"enabled":false,"status":"not_configured"},"email":{"enabled":false,"status":"not_configured"}}'::jsonb,
+  status TEXT NOT NULL CHECK (status IN ('created', 'pending', 'confirmed', 'cancelled')),
   audit_trail JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -182,7 +179,6 @@ CREATE INDEX IF NOT EXISTS idx_registrations_status ON public.registrations (sta
 CREATE INDEX IF NOT EXISTS idx_registrations_created_at ON public.registrations (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_registrations_updated_at ON public.registrations (updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_registrations_timestamp ON public.registrations (timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_registrations_external_id ON public.registrations (external_id);
 CREATE INDEX IF NOT EXISTS idx_registrations_request_id ON public.registrations (request_id);
 
 -- Foreign key constraints
@@ -200,8 +196,49 @@ BEFORE UPDATE ON public.registrations
 FOR EACH ROW
 EXECUTE FUNCTION public.set_updated_at();
 
--- Row level security
+-- ============================================================================
+-- ROW LEVEL SECURITY (RLS)
+-- ============================================================================
+-- Enable RLS on all tables to follow Supabase best practices.
+-- Service role key bypasses RLS, so these policies are primarily for:
+-- 1. Security posture (defense in depth)
+-- 2. Preventing accidental anon key exposure
+-- 3. Silencing Supabase warnings
+
+-- Enable RLS on all tables
+ALTER TABLE public.event_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.venues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.books ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow service role full access (bypasses RLS anyway, but explicit is good)
+-- Policy: Deny all anon access since we only use server-side API routes
+
+-- event_types: Read-only for all (reference data)
+CREATE POLICY "event_types_read_all" ON public.event_types
+  FOR SELECT USING (true);
+
+-- venues: Read-only for all
+CREATE POLICY "venues_read_all" ON public.venues
+  FOR SELECT USING (true);
+
+-- books: Read-only for all
+CREATE POLICY "books_read_all" ON public.books
+  FOR SELECT USING (true);
+
+-- events: Read-only for all
+CREATE POLICY "events_read_all" ON public.events
+  FOR SELECT USING (true);
+
+-- registrations: No public access (all operations through API)
+CREATE POLICY "registrations_no_public_access" ON public.registrations
+  FOR ALL USING (false);
+
+-- settings: No public access (admin only through API)
+CREATE POLICY "settings_no_public_access" ON public.settings
+  FOR ALL USING (false);
 
 -- ============================================================================
 -- TABLE: settings

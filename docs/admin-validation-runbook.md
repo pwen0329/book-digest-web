@@ -7,8 +7,7 @@ Use this file after deploys or major admin changes. The goal is to verify the fu
 1. `/admin` is reachable.
 2. `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` are configured.
 3. If you want persistent mode validation, Supabase is configured.
-4. If you want mirror validation, configure `SUBMIT_SAVE_TO_NOTION=1`, `NOTION_TOKEN`, and `NOTION_DB_ID`.
-5. If you want email validation, configure `RESEND_API_KEY` plus `REGISTRATION_EMAIL_FROM`, or use `EMAIL_OUTBOX_FILE` locally.
+4. If you want email validation, configure `RESEND_API_KEY` plus `REGISTRATION_EMAIL_FROM`, or use `EMAIL_OUTBOX_FILE` locally.
 
 ## Validation Order
 
@@ -20,8 +19,7 @@ flowchart TD
   D --> E[Venues]
   E --> F[Registration submission]
   F --> G[Registrations audit]
-  G --> H[Reconciliation]
-  H --> I[Observability / request id]
+  G --> H[Observability / request id]
 ```
 
 ## 1. Books And Canonical Cover Hints
@@ -130,27 +128,11 @@ Expected result:
 
 1. Filters narrow the dataset correctly.
 2. Expanded row shows:
-   - `requestId`
-   - sync states for Notion / Tally / Email
-   - audit trail entries such as reservation creation and confirmation
+   - `request_id`
+   - `audit_trail` entries such as reservation creation and confirmation
 3. CSV downloads and includes request/audit metadata.
 
-## 7. Reconciliation
-
-1. Open `Reconciliation` in `/admin`.
-2. Click `Refresh reconciliation`.
-3. Check the summary cards.
-4. Inspect any rows under:
-   - source rows with drift
-   - Notion-only rows
-
-Expected result:
-
-1. The page explicitly states whether the source of truth is Supabase or the local fallback store.
-2. If Notion is disabled, the summary still makes that clear.
-3. If Notion is enabled, mismatches are actionable and not hidden.
-
-## 8. Observability And Request IDs
+## 7. Observability And Request IDs
 
 1. Submit another test registration.
 2. Open server logs.
@@ -160,14 +142,14 @@ Expected result:
    - route
    - method
    - duration
-4. Confirm the registration row in the admin audit viewer shows the same `requestId`.
+4. Confirm the registration row in the admin audit viewer shows the same `request_id`.
 
 Expected result:
 
 1. A single request can be traced through logs and the admin audit trail.
 2. Failures include request-scoped context.
 
-## 9. Supabase-Specific Checks
+## 8. Supabase-Specific Checks
 
 Run these only when Supabase mode is active.
 
@@ -175,44 +157,39 @@ Run these only when Supabase mode is active.
 2. Confirm new rows contain:
    - `request_id`
    - `event_id`
-   - `mirror_state`
    - `audit_trail`
 3. Confirm `timestamp` is populated.
-4. Confirm `external_id` is populated after a successful Notion mirror.
-5. Open `public.admin_documents` and confirm:
-   - `registration-success-email.value` contains `enabled`, `templates.zh`, and `templates.en`
-6. Open `public.books` and confirm:
+4. Open `public.settings` and confirm:
+   - Settings are stored with columns: `id`, `key`, `value`, etc.
+5. Open `public.books` and confirm:
    - Books are stored with columns: `id`, `slug`, `title`, `author`, etc.
-7. Open `public.events` and confirm:
+6. Open `public.events` and confirm:
    - Events are stored with columns: `id`, `slug`, `title`, `date`, `venue_id`, `capacity`, etc.
-8. Open `public.venues` and confirm:
+7. Open `public.venues` and confirm:
    - Venues are stored with columns: `id`, `slug`, `name`, `capacity`, etc.
-9. Run this query to inspect the admin_documents table:
+8. Run this query to inspect the tables:
 
 ```sql
-select key, jsonb_typeof(value) as value_type, updated_at
-from public.admin_documents
-order by key;
+select id, slug, title from public.books order by id limit 10;
+select id, slug, title from public.events order by id limit 10;
+select id, name, location from public.venues order by id limit 10;
 ```
 
-10. If Vercel shows an empty books page, verify rows exist in `public.books` or that the fallback file `data/books-v2.json` is being read.
-11. If Vercel shows an error on `/events`, verify rows exist in `public.events` and `public.venues`.
-12. Run `select created_at, updated_at, status, source, request_id, event_id from public.registrations order by updated_at desc limit 20;` and confirm the table uses snake_case audit columns and includes `event_id`.
-13. If Vercel logs mention `/var/task/data/books-v2.json`, treat that as expected fallback behavior when Supabase is not configured.
-14. If Vercel logs mention missing columns such as `registrations.createdAt` or malformed filters such as `registrations.orstatus`, treat that as a server query bug in the Supabase registrations adapter.
-15. Open two admin tabs that both edit the same document, such as the registration success email settings.
-16. Save a change in the first tab.
-17. Save a different change in the second tab without refreshing.
+9. If Vercel shows an empty books page, verify rows exist in `public.books`.
+10. If Vercel shows an error on `/events`, verify rows exist in `public.events` and `public.venues`.
+11. Run `select created_at, updated_at, status, request_id, event_id from public.registrations order by updated_at desc limit 20;` and confirm the table uses snake_case audit columns and includes `event_id`.
+12. If Vercel logs mention missing columns such as `registrations.createdAt` or malformed filters such as `registrations.orstatus`, treat that as a server query bug in the Supabase registrations adapter.
+13. Open two admin tabs that both edit the same entity, such as a book or event.
+14. Save a change in the first tab.
+15. Save a different change in the second tab without refreshing.
 
 Expected result:
 
 1. The second save is rejected with a conflict instead of silently overwriting newer server state.
 2. The operator is told to refresh before saving again.
-3. No production route should require runtime access to `/data/*.json` after deploy; bundled seed fallbacks or Supabase rows should be sufficient.
 
-## 10. Recommended Automation After Manual Signoff
+## 9. Recommended Automation After Manual Signoff
 
 1. Weekly asset cleanup with a 168-hour grace period.
-2. Reconciliation review after enabling or changing Notion mapping.
-3. Build verification with `NEXT_DIST_DIR=.next-verify npm run build`.
-4. Full regression with `npm run test:components` and `npx playwright test --workers=1`.
+2. Build verification with `NEXT_DIST_DIR=.next-verify npm run build`.
+3. Full regression with `npm run test:components` and `npx playwright test --workers=1`.

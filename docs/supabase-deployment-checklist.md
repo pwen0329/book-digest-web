@@ -97,34 +97,27 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 8. Optional: `RESEND_API_KEY`
 9. Optional: `REGISTRATION_EMAIL_FROM`
 10. Optional: `REGISTRATION_EMAIL_REPLY_TO`
-11. Optional: `NOTION_TOKEN`
-12. Optional: `NOTION_DB_ID`
-13. Optional: `SUBMIT_SAVE_TO_NOTION=1`
-14. Optional: `TALLY_ENDPOINT_TW`, `TALLY_ENDPOINT_NL`, `TALLY_ENDPOINT_EN`, `TALLY_ENDPOINT_DETOX`
-16. Optional: `NEXT_PUBLIC_SENTRY_DSN`
-17. Optional: `SENTRY_AUTH_TOKEN`
-18. Recommended for Supabase-first setup: leave `NEXT_PUBLIC_FORMS_ENDPOINT_*` empty so public forms keep posting to the built-in `/api/submit` route.
+11. Optional: `NEXT_PUBLIC_SENTRY_DSN`
+12. Optional: `SENTRY_AUTH_TOKEN`
 
 ## Secrets And Where To Store Them
 
-1. Store `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `ADMIN_API_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `NOTION_TOKEN`, `TURNSTILE_SECRET_KEY`, and `SENTRY_AUTH_TOKEN` only in Vercel project environment variables or another server-side secret manager.
+1. Store `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `ADMIN_API_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `TURNSTILE_SECRET_KEY`, and `SENTRY_AUTH_TOKEN` only in Vercel project environment variables or another server-side secret manager.
 2. Store the Supabase project password only in your password manager. Do not put it in `.env` unless you explicitly add a direct database client later.
 3. Store the Supabase account login only in your password manager, not inside repo docs or `.env.local`.
-4. `NEXT_PUBLIC_*` values are browser-visible by design, so never put passwords, service-role keys, Notion tokens, or admin secrets in them.
+4. `NEXT_PUBLIC_*` values are browser-visible by design, so never put passwords, service-role keys, or admin secrets in them.
 5. If you use local development, put runtime secrets in `.env.local`; do not commit `.env.local`.
 6. Recommended split:
-   - password manager: Supabase account login, Supabase DB password, Notion workspace/admin notes
+   - password manager: Supabase account login, Supabase DB password
    - Vercel env: runtime keys and tokens used by the app
    - `.env.local`: only local-dev copies of the same runtime keys
 
 ## Recommended Setup
 
-1. For the simplest production stack, use Supabase plus the built-in `/api/submit` route.
-2. In that setup, Supabase becomes the source of truth for admin documents, registrations, and uploaded assets.
-3. Notion becomes optional. Only enable it if you want a secondary mirror for manual ops or CRM workflows.
-4. Tally also becomes optional. Only enable it if you still need to forward submissions to an external form endpoint or legacy workflow.
-5. For the integration logic and decision tree, read [docs/admin-data-flow.md](/data/yy/book-digest-web/docs/admin-data-flow.md).
-6. For manual verification after deploy, read [docs/admin-validation-runbook.md](/data/yy/book-digest-web/docs/admin-validation-runbook.md).
+1. Supabase is the single source of truth for books, events, venues, registrations, and uploaded assets.
+2. The built-in `/api/event/[slug]/register` route handles all event registrations.
+3. For the integration logic and decision tree, read [docs/admin-data-flow.md](/data/yy/book-digest-web/docs/admin-data-flow.md).
+4. For manual verification after deploy, read [docs/admin-validation-runbook.md](/data/yy/book-digest-web/docs/admin-validation-runbook.md).
 
 ## Release Gate
 
@@ -148,14 +141,12 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 7. Update one event poster and confirm the change appears on `/events`.
 8. Submit one registration and verify:
    - a row is added to `public.registrations`
-   - `/api/submit?loc=...` count increases
    - the `Registrations` tab shows the row
-   - the row has a `requestId` and at least one `auditTrail` event
-   - the capacity card in `/admin` reflects the new count
-9. If Notion mirror is enabled, open `Reconciliation` and confirm the new row is either matched or shows an actionable diff.
-10. If `/`, `/books`, or `/events` look wrong only on Vercel, inspect `public.admin_documents` first before suspecting build output:
-   - empty `books` value can blank the homepage and books page
-   - malformed `events` value can break `/events`
+   - the row has a `request_id` and `audit_trail` event
+   - the capacity count in `/admin` reflects the new registration
+9. If `/`, `/books`, or `/events` look wrong only on Vercel, inspect Supabase tables first before suspecting build output:
+   - empty `books` table can blank the homepage and books page
+   - malformed `events` data can break `/events`
 11. Useful SQL spot-checks in the Supabase SQL editor:
 
 ```sql

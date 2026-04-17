@@ -11,6 +11,21 @@
 -- ============================================================================
 
 -- ============================================================================
+-- CLEANUP: Truncate all tables to ensure clean test data
+-- ============================================================================
+-- Truncate in order to handle foreign key constraints:
+-- 1. registrations (depends on events)
+-- 2. events (depends on venues, event_types, books)
+-- 3. books, venues, event_types, settings (no dependencies)
+
+TRUNCATE TABLE public.registrations CASCADE;
+TRUNCATE TABLE public.events CASCADE;
+TRUNCATE TABLE public.books CASCADE;
+TRUNCATE TABLE public.venues CASCADE;
+TRUNCATE TABLE public.event_types CASCADE;
+TRUNCATE TABLE public.settings CASCADE;
+
+-- ============================================================================
 -- SEED: event_types
 -- ============================================================================
 
