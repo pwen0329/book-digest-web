@@ -94,7 +94,6 @@ Tests for POST /api/event/[slug]/register:
 - **Honeypot**: Silent success for bot requests
 - **Turnstile verification**: 403 for failed verification
 - **Successful registration**: Creating reservations, firstName/lastName support
-- **Tally forwarding**: Forwarding to external endpoint, handling failures (502)
 
 ## Configuration Changes
 

@@ -167,10 +167,7 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   visitor_id TEXT,
   request_id TEXT,
   timestamp TIMESTAMPTZ NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'cancelled')),
-  source TEXT NOT NULL CHECK (source IN ('pending', 'simulated', 'tally', 'notion')),
-  external_id TEXT,
-  mirror_state JSONB NOT NULL DEFAULT '{"notion":{"enabled":false,"status":"not_configured"},"tally":{"enabled":false,"status":"not_configured"},"email":{"enabled":false,"status":"not_configured"}}'::jsonb,
+  status TEXT NOT NULL CHECK (status IN ('created', 'pending', 'confirmed', 'cancelled')),
   audit_trail JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -182,7 +179,6 @@ CREATE INDEX IF NOT EXISTS idx_registrations_status ON public.registrations (sta
 CREATE INDEX IF NOT EXISTS idx_registrations_created_at ON public.registrations (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_registrations_updated_at ON public.registrations (updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_registrations_timestamp ON public.registrations (timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_registrations_external_id ON public.registrations (external_id);
 CREATE INDEX IF NOT EXISTS idx_registrations_request_id ON public.registrations (request_id);
 
 -- Foreign key constraints

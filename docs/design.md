@@ -19,7 +19,7 @@ Two-phase approach.
 - Framework: Next.js (App Router) + React + Tailwind CSS.
 - i18n: next-intl (file-based).
 - Data: Local JSON files (`/data/books.json`, `/data/stats.json`).
-- Forms: External form processor (Formspree/Tally/Airtable) or a minimal serverless endpoint.
+- Forms: Minimal serverless endpoint.
 - Hosting: Vercel (preview on PR).
 
 ```mermaid
@@ -27,7 +27,7 @@ flowchart TD
   U[Visitor Browser] -->|HTTP/HTTPS| NX[Next.js on Vercel]
   NX -->|Static + ISR| PG[Pages/Routes]
   PG -->|read| JD[(JSON data\n/books.json, /stats.json)]
-  PG -->|submit| FP["Form Processor\n(Formspree/Tally/Airtable)"]
+  PG -->|submit| FP["Form API\n(/api/event/[slug]/register)"]
   subgraph Client
     U
   end

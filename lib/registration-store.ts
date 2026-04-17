@@ -4,10 +4,8 @@ import { cryptoRandomId } from '@/lib/crypto-id';
 import type { VenueLocation } from '@/types/venue';
 import { getVenueLocations } from '@/types/venue';
 
-export type RegistrationRecordStatus = 'pending' | 'confirmed' | 'cancelled';
-export type RegistrationRecordSource = 'pending' | 'simulated' | 'tally' | 'notion';
-
-export type RegistrationSyncStatus = 'pending' | 'mirrored' | 'forwarded' | 'failed' | 'skipped' | 'not_configured';
+export const REGISTRATION_STATUSES = ['created', 'pending', 'confirmed', 'cancelled'] as const;
+export type RegistrationRecordStatus = typeof REGISTRATION_STATUSES[number];
 
 export type RegistrationAuditEntry = {
   at: string;
@@ -15,36 +13,15 @@ export type RegistrationAuditEntry = {
     | 'reservation_created'
     | 'reservation_confirmed'
     | 'reservation_cancelled'
-    | 'tally_forward_attempted'
-    | 'tally_forwarded'
-    | 'tally_forward_failed'
-    | 'notion_mirror_attempted'
-    | 'notion_mirrored'
-    | 'notion_mirror_failed'
     | 'email_attempted'
     | 'email_sent'
     | 'email_skipped'
     | 'email_failed'
     | 'admin_updated';
-  actor: 'system' | 'tally' | 'notion' | 'email' | 'admin';
+  actor: 'system' | 'email' | 'admin';
   summary: string;
   requestId?: string;
   details?: Record<string, unknown>;
-};
-
-export type RegistrationSyncChannelState = {
-  enabled: boolean;
-  status: RegistrationSyncStatus;
-  lastAttemptAt?: string;
-  lastSuccessAt?: string;
-  externalId?: string;
-  error?: string;
-};
-
-export type RegistrationMirrorState = {
-  notion: RegistrationSyncChannelState;
-  tally: RegistrationSyncChannelState;
-  email: RegistrationSyncChannelState;
 };
 
 export type RegistrationRecord = {
@@ -63,9 +40,6 @@ export type RegistrationRecord = {
   requestId?: string;
   timestamp: string;
   status: RegistrationRecordStatus;
-  source: RegistrationRecordSource;
-  externalId?: string;
-  mirrorState?: RegistrationMirrorState;
   auditTrail?: RegistrationAuditEntry[];
   createdAt: string;
   updatedAt: string;
@@ -75,7 +49,6 @@ export type RegistrationListFilters = {
   limit: number;
   eventId?: number;
   status?: RegistrationRecordStatus;
-  source?: RegistrationRecordSource;
   search?: string;
   createdAfter?: string;
   createdBefore?: string;
@@ -85,16 +58,13 @@ export type RegistrationAuditSummary = {
   total: number;
   byStatus: Record<RegistrationRecordStatus, number>;
   byVenueLocation: Record<VenueLocation, Record<RegistrationRecordStatus, number> & { total: number }>;
-  notionMirrored: number;
-  failedMirrors: number;
 };
 
 type CreateRegistrationInput = Omit<RegistrationRecord, 'id' | 'createdAt' | 'updatedAt'> & {
   id?: string;
 };
 
-type UpdateRegistrationPatch = Partial<Pick<RegistrationRecord, 'status' | 'source' | 'externalId' | 'bankAccount' | 'visitorId' | 'requestId'>> & {
-  mirrorState?: Partial<RegistrationMirrorState>;
+type UpdateRegistrationPatch = Partial<Pick<RegistrationRecord, 'status' | 'bankAccount' | 'visitorId' | 'requestId'>> & {
   auditEntry?: RegistrationAuditEntry;
   auditEntries?: RegistrationAuditEntry[];
 };
@@ -115,9 +85,6 @@ type SupabaseRegistrationRow = {
   request_id?: string | null;
   timestamp: string;
   status: RegistrationRecordStatus;
-  source: RegistrationRecordSource;
-  external_id?: string | null;
-  mirror_state?: RegistrationMirrorState | null;
   audit_trail?: RegistrationAuditEntry[] | null;
   created_at: string;
   updated_at: string;
@@ -131,36 +98,9 @@ const OPTIONAL_SUPABASE_MUTATION_COLUMNS = new Set([
   'bank_account',
   'visitor_id',
   'request_id',
-  'external_id',
-  'mirror_state',
-  'audit_trail',
-  'created_at',
-  'updated_at',
 ]);
 
 const unsupportedSupabaseMutationColumns = new Set<string>();
-
-function createDefaultMirrorState(): RegistrationMirrorState {
-  return {
-    notion: { enabled: process.env.SUBMIT_SAVE_TO_NOTION === '1', status: process.env.SUBMIT_SAVE_TO_NOTION === '1' ? 'pending' : 'not_configured' },
-    tally: { enabled: Boolean(process.env.TALLY_ENDPOINT_TW || process.env.TALLY_ENDPOINT_NL || process.env.TALLY_ENDPOINT_EN || process.env.TALLY_ENDPOINT_DETOX), status: 'not_configured' },
-    email: { enabled: Boolean(process.env.RESEND_API_KEY || process.env.EMAIL_OUTBOX_FILE), status: 'not_configured' },
-  };
-}
-
-function mergeMirrorState(current?: RegistrationMirrorState, patch?: Partial<RegistrationMirrorState>): RegistrationMirrorState {
-  const base = current || createDefaultMirrorState();
-
-  if (!patch) {
-    return base;
-  }
-
-  return {
-    notion: { ...base.notion, ...(patch.notion || {}) },
-    tally: { ...base.tally, ...(patch.tally || {}) },
-    email: { ...base.email, ...(patch.email || {}) },
-  };
-}
 
 function normalizeAuditTrail(value?: RegistrationAuditEntry[] | null): RegistrationAuditEntry[] {
   return (value || []).filter((entry) => Boolean(entry?.at && entry?.event && entry?.actor && entry?.summary));
@@ -173,8 +113,6 @@ function normalizeRecord(record: RegistrationRecord): RegistrationRecord {
     bankAccount: record.bankAccount || undefined,
     visitorId: record.visitorId || undefined,
     requestId: record.requestId || undefined,
-    externalId: record.externalId || undefined,
-    mirrorState: mergeMirrorState(record.mirrorState),
     auditTrail: normalizeAuditTrail(record.auditTrail),
   };
 }
@@ -199,7 +137,9 @@ function buildSupabaseInsertPayload(record: RegistrationRecord): Record<string, 
     referral: normalized.referral,
     timestamp: normalized.timestamp,
     status: normalized.status,
-    source: normalized.source,
+    audit_trail: normalized.auditTrail || [],
+    created_at: normalized.createdAt,
+    updated_at: normalized.updatedAt,
   };
 
   if (supported.has('instagram') && normalized.instagram) payload.instagram = normalized.instagram;
@@ -207,11 +147,6 @@ function buildSupabaseInsertPayload(record: RegistrationRecord): Record<string, 
   if (supported.has('bank_account') && normalized.bankAccount) payload.bank_account = normalized.bankAccount;
   if (supported.has('visitor_id') && normalized.visitorId) payload.visitor_id = normalized.visitorId;
   if (supported.has('request_id') && normalized.requestId) payload.request_id = normalized.requestId;
-  if (supported.has('external_id') && normalized.externalId) payload.external_id = normalized.externalId;
-  if (supported.has('mirror_state')) payload.mirror_state = normalized.mirrorState || createDefaultMirrorState();
-  if (supported.has('audit_trail')) payload.audit_trail = normalized.auditTrail || [];
-  if (supported.has('created_at')) payload.created_at = normalized.createdAt;
-  if (supported.has('updated_at')) payload.updated_at = normalized.updatedAt;
 
   return payload;
 }
@@ -220,16 +155,13 @@ function buildSupabaseUpdatePayload(record: RegistrationRecord): Record<string, 
   const supported = getSupportedSupabaseMutationColumns();
   const payload: Record<string, unknown> = {
     status: record.status,
-    source: record.source,
+    audit_trail: record.auditTrail || [],
+    updated_at: record.updatedAt,
   };
 
-  if (supported.has('external_id')) payload.external_id = record.externalId || null;
   if (supported.has('bank_account')) payload.bank_account = record.bankAccount || null;
   if (supported.has('visitor_id')) payload.visitor_id = record.visitorId || null;
   if (supported.has('request_id')) payload.request_id = record.requestId || null;
-  if (supported.has('mirror_state')) payload.mirror_state = record.mirrorState || createDefaultMirrorState();
-  if (supported.has('audit_trail')) payload.audit_trail = record.auditTrail || [];
-  if (supported.has('updated_at')) payload.updated_at = record.updatedAt;
 
   return payload;
 }
@@ -275,9 +207,6 @@ function fromSupabaseRow(row: SupabaseRegistrationRow): RegistrationRecord {
     requestId: row.request_id || undefined,
     timestamp: row.timestamp,
     status: row.status,
-    source: row.source,
-    externalId: row.external_id || undefined,
-    mirrorState: row.mirror_state || undefined,
     auditTrail: row.audit_trail || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -361,7 +290,6 @@ export async function createRegistrationReservation(input: CreateRegistrationInp
   const record = normalizeRecord({
     ...input,
     id: input.id || cryptoRandomId(),
-    mirrorState: mergeMirrorState(input.mirrorState),
     auditTrail: [
       ...normalizeAuditTrail(input.auditTrail),
       {
@@ -370,7 +298,7 @@ export async function createRegistrationReservation(input: CreateRegistrationInp
         actor: 'system',
         summary: 'Registration reservation created.',
         requestId: input.requestId,
-        details: { status: input.status, source: input.source, eventId: input.eventId },
+        details: { status: input.status, eventId: input.eventId },
       },
     ],
     createdAt: now,
@@ -418,7 +346,6 @@ export async function updateRegistrationReservation(id: string, patch: UpdateReg
   const updated = normalizeRecord({
     ...current,
     ...patch,
-    mirrorState: mergeMirrorState(current.mirrorState, patch.mirrorState),
     auditTrail,
     updatedAt,
   });
@@ -489,13 +416,12 @@ export async function listStoredRegistrations(filters: RegistrationListFilters):
     limit: filters.limit,
     event_id: filters.eventId ? `eq.${filters.eventId}` : undefined,
     status: filters.status ? `eq.${filters.status}` : undefined,
-    source: filters.source ? `eq.${filters.source}` : undefined,
     timestamp: timestampFilters.length ? timestampFilters : undefined,
   };
 
   if (filters.search?.trim()) {
     const token = `*${filters.search.trim()}*`;
-    queryParams.or = `(name.ilike.${token},email.ilike.${token},profession.ilike.${token},external_id.ilike.${token},request_id.ilike.${token})`;
+    queryParams.or = `(name.ilike.${token},email.ilike.${token},profession.ilike.${token},request_id.ilike.${token})`;
   }
 
   const response = await fetch(buildSupabaseQuery(queryParams), {
@@ -513,52 +439,19 @@ export async function listStoredRegistrations(filters: RegistrationListFilters):
   return rows.map((row) => fromSupabaseRow(row));
 }
 
-async function countStoredRegistrations(filters: Omit<RegistrationListFilters, 'limit' | 'search'>): Promise<number> {
-  const timestampFilters = [
-    filters.createdAfter ? `gte.${filters.createdAfter}` : undefined,
-    filters.createdBefore ? `lte.${filters.createdBefore}` : undefined,
-  ].filter((value): value is string => Boolean(value));
-
-  const queryParams: Record<string, string | Array<string> | undefined> = {
-    select: 'id',
-    event_id: filters.eventId ? `eq.${filters.eventId}` : undefined,
-    status: filters.status ? `eq.${filters.status}` : undefined,
-    source: filters.source ? `eq.${filters.source}` : undefined,
-    timestamp: timestampFilters.length ? timestampFilters : undefined,
-  };
-
-  const response = await fetch(buildSupabaseQuery(queryParams), {
-    method: 'GET',
-    headers: getSupabaseHeaders({ Prefer: 'count=exact' }),
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    const reason = await response.text().catch(() => 'unknown');
-    throw new Error(`Supabase registration count failed: ${response.status} ${reason}`);
-  }
-
-  const countHeader = response.headers.get('content-range');
-  if (countHeader?.includes('/')) {
-    const total = Number(countHeader.split('/').pop());
-    if (Number.isFinite(total)) {
-      return total;
-    }
-  }
-
-  const rows = await response.json() as Array<{ id: string }>;
-  return rows.length;
-}
-
 export async function summarizeStoredRegistrations(): Promise<RegistrationAuditSummary> {
   const venueLocations = getVenueLocations();
 
+  const initialStatusCounts = Object.fromEntries(
+    REGISTRATION_STATUSES.map(status => [status, 0])
+  ) as Record<RegistrationRecordStatus, number>;
+
   const byVenueLocation = Object.fromEntries(venueLocations.map((location) => [
     location,
-    { total: 0, pending: 0, confirmed: 0, cancelled: 0 },
+    { total: 0, ...initialStatusCounts },
   ])) as RegistrationAuditSummary['byVenueLocation'];
 
-  const byStatus = { pending: 0, confirmed: 0, cancelled: 0 } satisfies RegistrationAuditSummary['byStatus'];
+  const byStatus = { ...initialStatusCounts };
 
   // Fetch all registrations with event and venue data joined
   const query = buildSupabaseQuery({
@@ -593,17 +486,10 @@ export async function summarizeStoredRegistrations(): Promise<RegistrationAuditS
     byStatus[status]++;
   }
 
-  const notionMirrored = await countStoredRegistrations({ source: 'notion' });
-  const failedMirrors = (await listStoredRegistrations({ limit: 1000 })).filter(
-    (record) => record.mirrorState?.notion?.status === 'failed' || record.mirrorState?.tally?.status === 'failed'
-  ).length;
-
   return {
     total: byStatus.pending + byStatus.confirmed + byStatus.cancelled,
     byStatus,
     byVenueLocation,
-    notionMirrored,
-    failedMirrors,
   };
 }
 
@@ -638,11 +524,6 @@ export function serializeRegistrationsCsv(records: RegistrationRecord[]): string
     'visitorId',
     'requestId',
     'status',
-    'source',
-    'externalId',
-    'notionStatus',
-    'tallyStatus',
-    'emailStatus',
     'auditTrail',
   ];
 
@@ -664,11 +545,6 @@ export function serializeRegistrationsCsv(records: RegistrationRecord[]): string
     record.visitorId,
     record.requestId,
     record.status,
-    record.source,
-    record.externalId,
-    record.mirrorState?.notion?.status,
-    record.mirrorState?.tally?.status,
-    record.mirrorState?.email?.status,
     record.auditTrail,
   ]);
 

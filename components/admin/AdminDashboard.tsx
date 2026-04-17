@@ -18,9 +18,13 @@ type AdminDashboardProps = {
   initialRegistrationEmails: RegistrationSuccessEmailSettings;
 };
 
-type DashboardTab = 'books' | 'events' | 'venues' | 'emails' | 'registrations' | 'reconciliation' | 'assets';
+type DashboardTab = 'books' | 'events' | 'venues' | 'emails' | 'registrations' | 'assets';
 
-const REGISTRATION_SOURCES = ['pending', 'simulated', 'tally', 'notion'] as const;
+type RegistrationsResponse = {
+  items: RegistrationRecord[];
+  summary: RegistrationAuditSummary;
+  viewerSource: string;
+};
 
 function linesToArray(value: string): string[] | undefined {
   const items = value.split('\n').map((item) => item.trim()).filter(Boolean);
@@ -55,71 +59,6 @@ type UploadedAsset = {
   height?: number;
   format?: string;
   blurDataURL?: string;
-};
-
-type RegistrationsResponse = {
-  items: RegistrationRecord[];
-  summary: RegistrationAuditSummary;
-  viewerSource: string;
-  notionMirrorEnabled: boolean;
-};
-
-type ReconciliationRow = {
-  kind: 'matched' | 'missing_in_notion' | 'field_mismatch';
-  sourceRecord: RegistrationRecord;
-  notionRecord?: {
-    id: string;
-    registrationId: string;
-    title: string;
-    name: string;
-    email: string;
-    location: string;
-    age: number | null;
-    occupation: string;
-    instagram: string;
-    findingUs: string;
-    findingUsOthers: string;
-    visitorId: string;
-    bankAccount: string;
-    createdTime: string;
-    lastEditedTime: string;
-  };
-  mismatchFields: string[];
-};
-
-type ReconciliationResponse = {
-  summary: {
-    notionConfigured: boolean;
-    notionMirrorEnabled: boolean;
-    totalSourceRecords: number;
-    totalNotionRecords: number;
-    matched: number;
-    missingInNotion: number;
-    missingInSource: number;
-    mismatched: number;
-    comparedAt: string;
-  };
-  rows: ReconciliationRow[];
-  notionOnlyRows: Array<{
-    kind: 'missing_in_source';
-    notionRecord: {
-      id: string;
-      registrationId: string;
-      title: string;
-      name: string;
-      email: string;
-      location: string;
-      age: number | null;
-      occupation: string;
-      instagram: string;
-      findingUs: string;
-      findingUsOthers: string;
-      visitorId: string;
-      bankAccount: string;
-      createdTime: string;
-      lastEditedTime: string;
-    };
-  }>;
 };
 
 type AssetReportResponse = {
@@ -192,15 +131,11 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
   const [registrationsSummary, setRegistrationsSummary] = useState<RegistrationAuditSummary | null>(null);
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
   const [registrationsViewerSource, setRegistrationsViewerSource] = useState<string>('registration-store');
-  const [registrationsMirrorEnabled, setRegistrationsMirrorEnabled] = useState(false);
   const [registrationEventFilter, setRegistrationEventFilter] = useState<'ALL' | number>('ALL');
   const [registrationStatusFilter, setRegistrationStatusFilter] = useState<'ALL' | RegistrationRecordStatus>('ALL');
-  const [registrationSourceFilter, setRegistrationSourceFilter] = useState<'ALL' | RegistrationRecord['source']>('ALL');
   const [registrationSearch, setRegistrationSearch] = useState('');
   const [registrationCreatedAfter, setRegistrationCreatedAfter] = useState('');
   const [registrationCreatedBefore, setRegistrationCreatedBefore] = useState('');
-  const [reconciliation, setReconciliation] = useState<ReconciliationResponse | null>(null);
-  const [reconciliationLoading, setReconciliationLoading] = useState(false);
   const [assetReport, setAssetReport] = useState<AssetReportResponse | null>(null);
   const [assetReportLoading, setAssetReportLoading] = useState(false);
   const [assetGracePeriodHours, setAssetGracePeriodHours] = useState('168');
@@ -355,9 +290,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
       if (registrationStatusFilter !== 'ALL') {
         params.set('status', registrationStatusFilter);
       }
-      if (registrationSourceFilter !== 'ALL') {
-        params.set('source', registrationSourceFilter);
-      }
       if (registrationSearch.trim()) {
         params.set('search', registrationSearch.trim());
       }
@@ -377,38 +309,12 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
       setRegistrations(payload.items || []);
       setRegistrationsSummary(payload.summary || null);
       setRegistrationsViewerSource(payload.viewerSource || 'registration-store');
-      setRegistrationsMirrorEnabled(payload.notionMirrorEnabled === true);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : 'Unable to load registrations.');
     } finally {
       setRegistrationsLoading(false);
     }
-  }, [registrationCreatedAfter, registrationCreatedBefore, registrationEventFilter, registrationSearch, registrationSourceFilter, registrationStatusFilter]);
-
-  const refreshReconciliation = useCallback(async () => {
-    setReconciliationLoading(true);
-    try {
-      const response = await fetch('/api/admin/reconciliation?limit=500', { cache: 'no-store' });
-      const payload = await response.json().catch(() => null) as ReconciliationResponse | null;
-      if (!response.ok || !payload) {
-        throw new Error(payload && 'error' in payload ? String((payload as { error?: unknown }).error) : 'Unable to load reconciliation report.');
-      }
-
-      setReconciliation(payload);
-    } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : 'Unable to load reconciliation report.');
-    } finally {
-      setReconciliationLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (activeTab !== 'reconciliation') {
-      return;
-    }
-
-    void refreshReconciliation();
-  }, [activeTab, refreshReconciliation]);
+  }, [registrationCreatedAfter, registrationCreatedBefore, registrationEventFilter, registrationSearch, registrationStatusFilter]);
 
   const refreshAssetReport = useCallback(async () => {
     setAssetReportLoading(true);
@@ -453,9 +359,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
     }
     if (registrationStatusFilter !== 'ALL') {
       params.set('status', registrationStatusFilter);
-    }
-    if (registrationSourceFilter !== 'ALL') {
-      params.set('source', registrationSourceFilter);
     }
     if (registrationSearch.trim()) {
       params.set('search', registrationSearch.trim());
@@ -644,7 +547,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {(['books', 'events', 'venues', 'emails', 'registrations', 'reconciliation', 'assets'] as DashboardTab[]).map((tab) => (
+              {(['books', 'events', 'venues', 'emails', 'registrations', 'assets'] as DashboardTab[]).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -653,7 +556,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                     activeTab === tab ? 'bg-brand-pink text-brand-navy' : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
                   }`}
                 >
-                  {tab === 'books' ? 'Books' : tab === 'events' ? 'Events' : tab === 'venues' ? 'Venues' : tab === 'emails' ? 'Emails' : tab === 'registrations' ? 'Registrations' : tab === 'reconciliation' ? 'Reconciliation' : 'Assets'}
+                  {tab === 'books' ? 'Books' : tab === 'events' ? 'Events' : tab === 'venues' ? 'Venues' : tab === 'emails' ? 'Emails' : tab === 'registrations' ? 'Registrations' : 'Assets'}
                 </button>
               ))}
               <button
@@ -997,7 +900,7 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+              <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
                 <label className="block">
                   <span className="mb-2 block text-sm text-white/70">Event</span>
                   <select value={registrationEventFilter} onChange={(event) => setRegistrationEventFilter(event.target.value === 'ALL' ? 'ALL' : parseInt(event.target.value, 10))} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
@@ -1018,16 +921,10 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                   <span className="mb-2 block text-sm text-white/70">Status</span>
                   <select value={registrationStatusFilter} onChange={(event) => setRegistrationStatusFilter(event.target.value as 'ALL' | RegistrationRecordStatus)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
                     <option value="ALL">All statuses</option>
+                    <option value="created">Created</option>
                     <option value="pending">Pending</option>
                     <option value="confirmed">Confirmed</option>
                     <option value="cancelled">Cancelled</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm text-white/70">Source</span>
-                  <select value={registrationSourceFilter} onChange={(event) => setRegistrationSourceFilter(event.target.value as 'ALL' | RegistrationRecord['source'])} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
-                    <option value="ALL">All sources</option>
-                    {REGISTRATION_SOURCES.map((source) => <option key={source} value={source}>{source}</option>)}
                   </select>
                 </label>
                 <label className="block">
@@ -1045,17 +942,15 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
               </div>
 
               {registrationsSummary ? (
-                <div className="grid gap-4 md:grid-cols-5">
+                <div className="grid gap-4 md:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Total</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.total}</p></div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Confirmed</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.byStatus.confirmed}</p></div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Pending</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.byStatus.pending}</p></div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Mirrored to Notion</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.notionMirrored}</p></div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Failed mirrors</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.failedMirrors}</p></div>
                 </div>
               ) : null}
 
               <div className="rounded-2xl border border-white/10 bg-brand-navy/50 p-4 text-sm text-white/70">
-                Viewer source: <span className="font-mono text-white">{registrationsViewerSource}</span>. Notion mirror: <span className="font-mono text-white">{registrationsMirrorEnabled ? 'enabled' : 'disabled'}</span>.
+                Viewer source: <span className="font-mono text-white">{registrationsViewerSource}</span>
               </div>
 
               <div className="overflow-hidden rounded-2xl border border-white/10">
@@ -1068,7 +963,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                         <th className="px-4 py-3 font-medium">Name</th>
                         <th className="px-4 py-3 font-medium">Email</th>
                         <th className="px-4 py-3 font-medium">Status</th>
-                        <th className="px-4 py-3 font-medium">Source</th>
                         <th className="px-4 py-3 font-medium">Profession</th>
                         <th className="px-4 py-3 font-medium">Audit</th>
                       </tr>
@@ -1081,7 +975,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                           <td className="px-4 py-3 text-white">{registration.name}</td>
                           <td className="px-4 py-3 text-white/85">{registration.email}</td>
                           <td className="px-4 py-3"><span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{registration.status}</span></td>
-                          <td className="px-4 py-3 text-white/85">{registration.source}</td>
                           <td className="px-4 py-3 text-white/75">{registration.profession}</td>
                           <td className="px-4 py-3 text-white/75">
                             <details className="rounded-2xl border border-white/10 bg-white/5 p-3">
@@ -1090,10 +983,6 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                                 <p>Request ID: <span className="font-mono text-white">{registration.requestId || 'n/a'}</span></p>
                                 <p>Visitor ID: <span className="font-mono text-white">{registration.visitorId || 'n/a'}</span></p>
                                 <p>Bank account: <span className="font-mono text-white">{registration.bankAccount || 'n/a'}</span></p>
-                                <p>External ID: <span className="font-mono text-white">{registration.externalId || 'n/a'}</span></p>
-                                <p>Notion: <span className="font-mono text-white">{registration.mirrorState?.notion?.status || 'n/a'}</span></p>
-                                <p>Tally: <span className="font-mono text-white">{registration.mirrorState?.tally?.status || 'n/a'}</span></p>
-                                <p>Email: <span className="font-mono text-white">{registration.mirrorState?.email?.status || 'n/a'}</span></p>
                                 <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                                   <p className="mb-2 text-white/85">Audit trail</p>
                                   <div className="space-y-2">
@@ -1114,88 +1003,13 @@ export default function AdminDashboard({ initialBooks, initialEvents, initialVen
                       ))}
                       {!registrations.length ? (
                         <tr>
-                          <td colSpan={8} className="px-4 py-8 text-center text-white/60">No registrations matched the current filters.</td>
+                          <td colSpan={7} className="px-4 py-8 text-center text-white/60">No registrations matched the current filters.</td>
                         </tr>
                       ) : null}
                     </tbody>
                   </table>
                 </div>
               </div>
-            </div>
-          </div>
-        ) : null}
-
-        {activeTab === 'reconciliation' ? (
-          <div aria-label="Reconciliation viewer" className="rounded-[28px] border border-white/10 bg-white/10 p-6">
-            <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-black/10 p-5">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold font-outfit">Notion vs source-of-truth reconciliation</h2>
-                  <p className="mt-2 max-w-3xl text-sm text-white/70">
-                    This page compares the app registration store against the optional Notion mirror and highlights where the mirror is missing, where fields drifted, and where Notion contains rows the app does not know about.
-                  </p>
-                </div>
-                <button type="button" onClick={() => void refreshReconciliation()} disabled={reconciliationLoading} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
-                  {reconciliationLoading ? 'Refreshing…' : 'Refresh reconciliation'}
-                </button>
-              </div>
-
-              {reconciliation ? (
-                <>
-                  <div className="grid gap-4 md:grid-cols-6">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Matched</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.matched}</p></div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Missing in Notion</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.missingInNotion}</p></div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Field drift</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.mismatched}</p></div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Notion only</p><p className="mt-1 text-2xl font-semibold">{reconciliation.summary.missingInSource}</p></div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Mirror enabled</p><p className="mt-1 text-sm font-semibold">{reconciliation.summary.notionMirrorEnabled ? 'enabled' : 'disabled'}</p></div>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-brand-navy/50 p-4 text-sm text-white/70">
-                    Compared at {new Date(reconciliation.summary.comparedAt).toLocaleString()}. Notion configured: <span className="font-mono text-white">{reconciliation.summary.notionConfigured ? 'yes' : 'no'}</span>.
-                  </div>
-
-                  <div className="grid gap-6 xl:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                      <h3 className="text-lg font-semibold font-outfit">Source rows with drift</h3>
-                      <div className="mt-4 space-y-3">
-                        {reconciliation.rows.filter((row) => row.kind !== 'matched').map((row) => (
-                          <div key={row.sourceRecord.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <p className="font-semibold text-white">{row.sourceRecord.name}</p>
-                              <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{row.kind}</span>
-                            </div>
-                            <p className="mt-2">{row.sourceRecord.email} · Event #{row.sourceRecord.eventId}</p>
-                            <p className="mt-2">Request ID: <span className="font-mono text-white">{row.sourceRecord.requestId || 'n/a'}</span></p>
-                            {row.mismatchFields.length ? <p className="mt-2">Mismatched fields: <span className="font-mono text-white">{row.mismatchFields.join(', ')}</span></p> : null}
-                            {row.notionRecord ? <p className="mt-2">Notion page: <span className="font-mono text-white">{row.notionRecord.id}</span></p> : null}
-                          </div>
-                        ))}
-                        {!reconciliation.rows.some((row) => row.kind !== 'matched') ? <p className="text-sm text-white/60">No reconciliation differences found.</p> : null}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                      <h3 className="text-lg font-semibold font-outfit">Notion-only rows</h3>
-                      <div className="mt-4 space-y-3">
-                        {reconciliation.notionOnlyRows.map((row) => (
-                          <div key={row.notionRecord.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <p className="font-semibold text-white">{row.notionRecord.name || row.notionRecord.title}</p>
-                              <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">missing_in_source</span>
-                            </div>
-                            <p className="mt-2">{row.notionRecord.email} · {row.notionRecord.location}</p>
-                            <p className="mt-2">Registration ID: <span className="font-mono text-white">{row.notionRecord.registrationId || 'n/a'}</span></p>
-                            <p className="mt-2">Notion page: <span className="font-mono text-white">{row.notionRecord.id}</span></p>
-                          </div>
-                        ))}
-                        {!reconciliation.notionOnlyRows.length ? <p className="text-sm text-white/60">No Notion-only rows found.</p> : null}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-white/60">No reconciliation report loaded yet.</p>
-              )}
             </div>
           </div>
         ) : null}

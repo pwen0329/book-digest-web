@@ -1,21 +1,17 @@
 # Admin Data Flow
 
-Use this file when you want the shortest developer explanation of how Supabase, Notion, and Tally relate to each other in Book Digest.
+Use this file when you want the shortest developer explanation of how Supabase powers Book Digest.
 
 ## TL;DR
 
-1. If Supabase is configured, the app does not need Notion to function.
-2. If Supabase is configured, the app also does not need Tally to function.
-3. Supabase is the recommended source of truth.
-4. Notion is an optional mirror for humans and workflow visibility.
-5. Tally is an optional forward target for external form pipelines.
+1. Supabase is the single source of truth for all data.
+2. All registrations, books, events, and settings are stored in Supabase.
+3. No external mirroring or forwarding systems are used.
 
 ## Mental Model
 
 ```text
-Supabase = truth the app trusts
-Notion    = optional mirror for people
-Tally     = optional outbound copy for legacy/external flows
+Supabase = single source of truth for all data
 ```
 
 ## System Map
@@ -24,7 +20,6 @@ Tally     = optional outbound copy for legacy/external flows
 flowchart TD
   User[Reader submits form] --> Api[/api/event/slug/register]
   Api --> Truth[(Supabase registrations)]
-  Api -. optional mirror .-> Notion[(Notion database)]
   Admin[/admin] --> Truth
   Admin --> Books[(Supabase books table)]
   Admin --> Events[(Supabase events table)]
@@ -39,31 +34,12 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  A{Is Supabase configured?} -->|yes| B[Supabase becomes source of truth]
+  A{Is Supabase configured?} -->|yes| B[Supabase is source of truth]
   A -->|no| C[Cannot run - Supabase required]
   B --> D[/admin reads Supabase tables]
   B --> E[Public pages read Supabase books/events]
   B --> F[Capacity and registrations read Supabase]
-  G[Notion mirror enabled] -. does not replace truth .-> B
 ```
-
-## Do I Still Need Notion?
-
-No, not for app correctness.
-
-Use Notion only if you want one of these:
-
-1. non-technical teammates reviewing submissions in a familiar UI
-2. manual annotations or lightweight CRM-style triage
-3. an explicit mirror you can compare against from `/admin`
-
-Do not use Notion as the operational source of truth for capacity, registration counts, or admin rendering.
-
-## Do I Still Need Tally?
-
-No. Tally integration has been removed in favor of direct event-based registrations through `/api/event/[slug]/register`.
-
-If you want Supabase-first behavior, frontend forms post directly to the event registration endpoint.
 
 ## Registration Lifecycle
 
@@ -72,36 +48,20 @@ sequenceDiagram
   participant Browser as Browser
   participant API as /api/event/[slug]/register
   participant Truth as Registration store
-  participant Notion as Notion mirror
-  participant Email as Email transport
 
   Browser->>API: POST registration for event
-  API->>Truth: create pending reservation with eventId
+  API->>Truth: create reservation with 'created' status
   API->>Truth: append requestId + audit trail
-  alt Notion mirror enabled
-    API->>Notion: mirror payload
-    API->>Truth: store notion sync state
-  end
-  API->>Email: send confirmation (optional)
-  API->>Truth: confirm or cancel + append audit events
+  API-->>Browser: Return success with registration ID
 ```
 
 ## What `/admin` Shows Now
 
 ### Registrations
 
-1. Reads the registration store, not Notion directly.
-2. Supports time-range filters, activity filters, CSV export, and detailed audit trail.
-3. Shows request id, mirror statuses, and lifecycle events.
-
-### Reconciliation
-
-1. Compares source-of-truth registrations against the optional Notion mirror.
-2. Shows three classes of differences:
-   - missing in Notion
-   - field mismatch
-   - present in Notion but missing in source
-3. Makes the source of truth explicit in the UI.
+1. Reads the registration store from Supabase.
+2. Supports time-range filters, event filters, status filters, CSV export, and detailed audit trail.
+3. Shows request id and lifecycle events.
 
 ### Assets
 
@@ -112,9 +72,9 @@ sequenceDiagram
 
 ## Developer Decision Guide
 
-1. Simplest production stack: Supabase only.
-2. Need human-friendly mirror: add Notion.
-3. Event-based registration system with per-event capacity tracking.
+1. Production stack: Supabase for all data storage.
+2. Event-based registration system with per-event capacity tracking.
+3. Registrations start with 'created' status, progress to 'pending' after payment, then 'confirmed' after verification.
 
 ## Secret Placement
 
@@ -126,12 +86,11 @@ sequenceDiagram
 | `SUPABASE_SERVICE_ROLE_KEY` | Vercel env / `.env.local` | browser, public repo |
 | Supabase DB password | password manager | public repo, client env |
 | Supabase account login | password manager | repo docs, browser env |
-| `NOTION_TOKEN` | Vercel env / `.env.local` | browser, public repo |
 | `RESEND_API_KEY` | Vercel env / `.env.local` | browser, public repo |
 | `TURNSTILE_SECRET_KEY` | Vercel env / `.env.local` | browser, public repo |
 | `SENTRY_AUTH_TOKEN` | Vercel env / `.env.local` | browser, public repo |
 
-## Minimal Supabase-Only Env
+## Minimal Supabase Env
 
 ```bash
 ADMIN_PASSWORD=...
@@ -148,13 +107,9 @@ SUPABASE_EVENT_TYPES_TABLE=event_types
 SUPABASE_STORAGE_BUCKET=admin-assets
 ```
 
-## Optional Mirrors And Extensions
+## Optional Extensions
 
 ```bash
-SUBMIT_SAVE_TO_NOTION=1
-NOTION_TOKEN=...
-NOTION_DB_ID=...
-
 NEXT_PUBLIC_SENTRY_DSN=...
 SENTRY_AUTH_TOKEN=...
 ```
@@ -162,6 +117,5 @@ SENTRY_AUTH_TOKEN=...
 ## Operations Notes
 
 1. Structured tracing and request IDs are always useful, even if Sentry is disabled.
-2. Sentry is now treated as optional monitoring bootstrap, not the core request-tracing layer.
-3. The admin reconciliation page is where you verify Notion is still a mirror, not an accidental second source of truth.
-4. The asset cleanup endpoint is safe to automate only if you keep a non-zero grace period.
+2. Sentry is treated as optional monitoring, not the core request-tracing layer.
+3. The asset cleanup endpoint is safe to automate only if you keep a non-zero grace period.

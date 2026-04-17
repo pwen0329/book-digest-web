@@ -63,7 +63,6 @@ const nextConfig = {
       { protocol: 'https', hostname: 'bookdigest.club' },
       { protocol: 'https', hostname: '*.bookdigest.club' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: '*.notion.so' },
       { protocol: 'https', hostname: '*.amazonaws.com' },
       ...(supabaseImageHostname ? [{ protocol: 'https', hostname: supabaseImageHostname }] : []),
     ],

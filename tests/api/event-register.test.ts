@@ -31,13 +31,6 @@ vi.mock('@/lib/observability', () => ({
   logServerError: vi.fn(),
 }));
 
-vi.mock('@/lib/fetch-with-timeout', () => ({
-  fetchWithTimeout: vi.fn(),
-}));
-
-vi.mock('@/lib/crypto-id', () => ({
-  cryptoRandomId: vi.fn(() => 'random-id-123'),
-}));
 
 vi.mock('@/lib/http-response', () => ({
   getRetryAfterSeconds: vi.fn((ms) => String(Math.ceil(ms / 1000))),
@@ -56,7 +49,6 @@ import {
 } from '@/lib/registration-store';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 import { sendRegistrationSuccessEmail } from '@/lib/registration-success-email';
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 import { EventRegistrationStatus } from '@/types/event';
 import type { Event } from '@/types/event';
 import type { Venue } from '@/types/venue';
@@ -101,8 +93,6 @@ describe('/api/event/[slug]/register', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('TURNSTILE_SECRET_KEY', '');
-    vi.stubEnv('SUBMIT_SAVE_TO_NOTION', '0');
-    vi.stubEnv('TALLY_ENDPOINT_TW', '');
   });
 
   describe('Rate limiting', () => {
@@ -367,13 +357,10 @@ describe('/api/event/[slug]/register', () => {
         age: 25,
         referral: 'Instagram',
         timestamp: '2026-01-01T00:00:00Z',
-        status: 'confirmed',
-        source: 'simulated',
+        status: 'created',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
       });
-      vi.mocked(updateRegistrationReservation).mockResolvedValue(null);
-      vi.mocked(sendRegistrationSuccessEmail).mockResolvedValueOnce({ status: 'skipped', reason: 'Not configured' });
 
       const request = new NextRequest('http://localhost/api/event/test-event/register', {
         method: 'POST',
@@ -387,7 +374,7 @@ describe('/api/event/[slug]/register', () => {
   });
 
   describe('Successful registration', () => {
-    it('creates reservation and returns 201 when simulated', async () => {
+    it('creates reservation and returns 201', async () => {
       vi.mocked(rateLimit).mockResolvedValueOnce({ allowed: true, remaining: 10, retryAfterMs: 0 });
       vi.mocked(getEventBySlug).mockResolvedValueOnce(mockEvent);
       vi.mocked(countActiveRegistrationsByEventId).mockResolvedValueOnce(0);
@@ -400,13 +387,10 @@ describe('/api/event/[slug]/register', () => {
         age: 25,
         referral: 'Instagram',
         timestamp: '2026-01-01T00:00:00Z',
-        status: 'confirmed',
-        source: 'simulated',
+        status: 'created',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
       });
-      vi.mocked(updateRegistrationReservation).mockResolvedValue(null);
-      vi.mocked(sendRegistrationSuccessEmail).mockResolvedValueOnce({ status: 'skipped', reason: 'Not configured' });
 
       const request = new NextRequest('http://localhost/api/event/test-event/register', {
         method: 'POST',
@@ -417,7 +401,7 @@ describe('/api/event/[slug]/register', () => {
 
       expect(response.status).toBe(201);
       expect(data.ok).toBe(true);
-      expect(data.simulated).toBe(true);
+      expect(data.id).toBe('reg-123');
       expect(createRegistrationReservation).toHaveBeenCalled();
     });
 
@@ -436,13 +420,10 @@ describe('/api/event/[slug]/register', () => {
         email: 'test@example.com',
         referral: 'Instagram',
         timestamp: '2026-01-01T00:00:00Z',
-        status: 'confirmed',
-        source: 'simulated',
+        status: 'created',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
       });
-      vi.mocked(updateRegistrationReservation).mockResolvedValue(null);
-      vi.mocked(sendRegistrationSuccessEmail).mockResolvedValueOnce({ status: 'skipped', reason: 'Not configured' });
 
       const request = new NextRequest('http://localhost/api/event/test-event/register', {
         method: 'POST',
@@ -461,82 +442,6 @@ describe('/api/event/[slug]/register', () => {
           name: 'John Doe',
         })
       );
-    });
-
-    it('forwards to Tally when endpoint is configured', async () => {
-      vi.stubEnv('TALLY_ENDPOINT_TW', 'https://tally.test/api/submit');
-      vi.mocked(rateLimit).mockResolvedValueOnce({ allowed: true, remaining: 10, retryAfterMs: 0 });
-      vi.mocked(getEventBySlug).mockResolvedValueOnce(mockEvent);
-      vi.mocked(countActiveRegistrationsByEventId).mockResolvedValueOnce(0);
-      vi.mocked(calculateRegistrationStatus).mockResolvedValueOnce(EventRegistrationStatus.OPEN);
-      vi.mocked(createRegistrationReservation).mockResolvedValueOnce({
-        id: 'reg-123',
-        eventId: 1,
-        ...validPayload,
-        locale: 'en' as 'en' | 'zh',
-        age: 25,
-        referral: 'Instagram',
-        timestamp: '2026-01-01T00:00:00Z',
-        status: 'confirmed',
-        source: 'tally',
-        createdAt: '2026-01-01T00:00:00Z',
-        updatedAt: '2026-01-01T00:00:00Z',
-      });
-      vi.mocked(updateRegistrationReservation).mockResolvedValue(null);
-      vi.mocked(fetchWithTimeout).mockResolvedValueOnce({ ok: true } as Response);
-      vi.mocked(sendRegistrationSuccessEmail).mockResolvedValueOnce({ status: 'skipped', reason: 'Not configured' });
-
-      const request = new NextRequest('http://localhost/api/event/test-event/register', {
-        method: 'POST',
-        body: JSON.stringify(validPayload),
-      });
-      const response = await POST(request, { params: Promise.resolve({ slug: 'test-event' }) });
-      const data = await response.json();
-
-      expect(response.status).toBe(201);
-      expect(data.ok).toBe(true);
-      expect(data.forwarded).toBe(true);
-      expect(fetchWithTimeout).toHaveBeenCalledWith(
-        'https://tally.test/api/submit',
-        expect.objectContaining({ method: 'POST' })
-      );
-    });
-
-    it('returns 502 when Tally forwarding fails', async () => {
-      vi.stubEnv('TALLY_ENDPOINT_TW', 'https://tally.test/api/submit');
-      vi.mocked(rateLimit).mockResolvedValueOnce({ allowed: true, remaining: 10, retryAfterMs: 0 });
-      vi.mocked(getEventBySlug).mockResolvedValueOnce(mockEvent);
-      vi.mocked(countActiveRegistrationsByEventId).mockResolvedValueOnce(0);
-      vi.mocked(calculateRegistrationStatus).mockResolvedValueOnce(EventRegistrationStatus.OPEN);
-      vi.mocked(createRegistrationReservation).mockResolvedValueOnce({
-        id: 'reg-123',
-        eventId: 1,
-        ...validPayload,
-        locale: 'en' as 'en' | 'zh',
-        age: 25,
-        referral: 'Instagram',
-        timestamp: '2026-01-01T00:00:00Z',
-        status: 'pending',
-        source: 'pending',
-        createdAt: '2026-01-01T00:00:00Z',
-        updatedAt: '2026-01-01T00:00:00Z',
-      });
-      vi.mocked(updateRegistrationReservation).mockResolvedValue(null);
-      vi.mocked(fetchWithTimeout).mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        text: async () => 'Internal Server Error',
-      } as Response);
-
-      const request = new NextRequest('http://localhost/api/event/test-event/register', {
-        method: 'POST',
-        body: JSON.stringify(validPayload),
-      });
-      const response = await POST(request, { params: Promise.resolve({ slug: 'test-event' }) });
-      const data = await response.json();
-
-      expect(response.status).toBe(502);
-      expect(data.error).toBe('Upstream processor error');
     });
   });
 });

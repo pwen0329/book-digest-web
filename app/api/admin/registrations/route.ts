@@ -8,7 +8,7 @@ import { logServerError, runWithRequestTrace } from '@/lib/observability';
 // Force dynamic rendering (API routes are not suitable for static generation)
 export const dynamic = 'force-dynamic';
 
-// GET /api/admin/registrations?limit=50&eventId=1&status=confirmed&source=notion&search=alice&createdAfter=...&createdBefore=...&format=csv
+// GET /api/admin/registrations?limit=50&eventId=1&status=confirmed&search=alice&createdAfter=...&createdBefore=...&format=csv
 export async function GET(req: NextRequest) {
   return runWithRequestTrace(req, 'registrations.list', async () => {
     try {
@@ -49,18 +49,13 @@ export async function GET(req: NextRequest) {
       ? statusParam
       : undefined;
 
-    const sourceParam = req.nextUrl.searchParams.get('source');
-    const source = sourceParam === 'pending' || sourceParam === 'simulated' || sourceParam === 'tally' || sourceParam === 'notion'
-      ? sourceParam
-      : undefined;
-
     const search = req.nextUrl.searchParams.get('search') || undefined;
     const createdAfter = req.nextUrl.searchParams.get('createdAfter') || undefined;
     const createdBefore = req.nextUrl.searchParams.get('createdBefore') || undefined;
     const format = req.nextUrl.searchParams.get('format') || 'json';
 
     const [items, summary] = await Promise.all([
-      listStoredRegistrations({ limit, eventId, status, source, search, createdAfter, createdBefore }),
+      listStoredRegistrations({ limit, eventId, status, search, createdAfter, createdBefore }),
       summarizeStoredRegistrations(),
     ]);
 
@@ -78,7 +73,6 @@ export async function GET(req: NextRequest) {
       items,
       summary,
       viewerSource: 'registration-store',
-      notionMirrorEnabled: process.env.SUBMIT_SAVE_TO_NOTION === '1' && Boolean(process.env.NOTION_DB_ID && process.env.NOTION_TOKEN),
     }, { status: 200 });
     } catch (err) {
       await logServerError('registrations.list_failed', err, { url: req.url });
