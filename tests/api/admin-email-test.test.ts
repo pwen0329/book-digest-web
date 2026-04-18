@@ -12,17 +12,21 @@ vi.mock('@/lib/email-service', () => ({
   sendTestEmail: vi.fn(),
 }));
 
+vi.mock('@/lib/admin-auth', () => ({
+  isAuthorizedAdminRequest: vi.fn(),
+}));
+
 import { sendTestEmail } from '@/lib/email-service';
+import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 
 describe('POST /api/admin/email-test', () => {
-  const ADMIN_PASSWORD = 'test-admin-password';
-
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.ADMIN_PASSWORD = ADMIN_PASSWORD;
   });
 
-  it('should return 401 if no authorization header', async () => {
+  it('should return 401 if not authorized', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(false);
+
     const req = new NextRequest('http://localhost:3000/api/admin/email-test', {
       method: 'POST',
       body: JSON.stringify({ recipientEmail: 'test@example.com' }),
@@ -35,6 +39,8 @@ describe('POST /api/admin/email-test', () => {
   });
 
   it('should return 401 if invalid token', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(false);
+
     const req = new NextRequest('http://localhost:3000/api/admin/email-test', {
       method: 'POST',
       headers: { Authorization: 'Bearer wrong-token' },
@@ -46,9 +52,10 @@ describe('POST /api/admin/email-test', () => {
   });
 
   it('should return 400 if recipientEmail missing', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
+
     const req = new NextRequest('http://localhost:3000/api/admin/email-test', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({ emailType: 'payment_confirmation' }),
     });
 
@@ -59,9 +66,10 @@ describe('POST /api/admin/email-test', () => {
   });
 
   it('should return 400 if invalid email format', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
+
     const req = new NextRequest('http://localhost:3000/api/admin/email-test', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({ recipientEmail: 'invalid-email' }),
     });
 
@@ -72,6 +80,7 @@ describe('POST /api/admin/email-test', () => {
   });
 
   it('should send test email successfully', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(sendTestEmail).mockResolvedValue({
       status: 'sent',
       emailId: 'test-email-id',
@@ -79,7 +88,6 @@ describe('POST /api/admin/email-test', () => {
 
     const req = new NextRequest('http://localhost:3000/api/admin/email-test', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({
         recipientEmail: 'test@example.com',
         emailType: 'payment_confirmation',
@@ -99,6 +107,7 @@ describe('POST /api/admin/email-test', () => {
   });
 
   it('should default to reservation_confirmation if emailType invalid', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(sendTestEmail).mockResolvedValue({
       status: 'sent',
       emailId: 'test-email-id',
@@ -106,7 +115,6 @@ describe('POST /api/admin/email-test', () => {
 
     const req = new NextRequest('http://localhost:3000/api/admin/email-test', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({
         recipientEmail: 'test@example.com',
         emailType: 'invalid_type',
@@ -123,6 +131,7 @@ describe('POST /api/admin/email-test', () => {
   });
 
   it('should return 503 if email skipped', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(sendTestEmail).mockResolvedValue({
       status: 'skipped',
       reason: 'Resend API key not configured',
@@ -130,7 +139,6 @@ describe('POST /api/admin/email-test', () => {
 
     const req = new NextRequest('http://localhost:3000/api/admin/email-test', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({ recipientEmail: 'test@example.com' }),
     });
 
@@ -142,6 +150,7 @@ describe('POST /api/admin/email-test', () => {
   });
 
   it('should return 500 if email failed', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(sendTestEmail).mockResolvedValue({
       status: 'failed',
       reason: 'SMTP error',
@@ -149,7 +158,6 @@ describe('POST /api/admin/email-test', () => {
 
     const req = new NextRequest('http://localhost:3000/api/admin/email-test', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({ recipientEmail: 'test@example.com' }),
     });
 

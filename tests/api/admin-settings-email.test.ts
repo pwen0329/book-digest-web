@@ -13,17 +13,21 @@ vi.mock('@/lib/email-service', () => ({
   updateEmailSettings: vi.fn(),
 }));
 
+vi.mock('@/lib/admin-auth', () => ({
+  isAuthorizedAdminRequest: vi.fn(),
+}));
+
 import { getEmailSettings, updateEmailSettings } from '@/lib/email-service';
+import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 
 describe('GET /api/admin/settings/email', () => {
-  const ADMIN_PASSWORD = 'test-admin-password';
-
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.ADMIN_PASSWORD = ADMIN_PASSWORD;
   });
 
-  it('should return 401 if no authorization header', async () => {
+  it('should return 401 if not authorized', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(false);
+
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'GET',
     });
@@ -35,6 +39,8 @@ describe('GET /api/admin/settings/email', () => {
   });
 
   it('should return 401 if invalid token', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(false);
+
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'GET',
       headers: { Authorization: 'Bearer wrong-token' },
@@ -45,13 +51,14 @@ describe('GET /api/admin/settings/email', () => {
   });
 
   it('should return email settings successfully', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(getEmailSettings).mockResolvedValue({
       reservationConfirmationEnabled: false,
+      resendConfigured: true,
     });
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'GET',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
     });
 
     const response = await GET(req);
@@ -60,17 +67,18 @@ describe('GET /api/admin/settings/email', () => {
     expect(data.ok).toBe(true);
     expect(data.settings).toEqual({
       reservationConfirmationEnabled: false,
+      resendConfigured: true,
     });
 
     expect(getEmailSettings).toHaveBeenCalledOnce();
   });
 
   it('should return 500 if getEmailSettings fails', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(getEmailSettings).mockRejectedValue(new Error('Database error'));
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'GET',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
     });
 
     const response = await GET(req);
@@ -82,14 +90,13 @@ describe('GET /api/admin/settings/email', () => {
 });
 
 describe('PUT /api/admin/settings/email', () => {
-  const ADMIN_PASSWORD = 'test-admin-password';
-
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.ADMIN_PASSWORD = ADMIN_PASSWORD;
   });
 
-  it('should return 401 if no authorization header', async () => {
+  it('should return 401 if not authorized', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(false);
+
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
       body: JSON.stringify({ reservationConfirmationEnabled: true }),
@@ -102,6 +109,8 @@ describe('PUT /api/admin/settings/email', () => {
   });
 
   it('should return 401 if invalid token', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(false);
+
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
       headers: { Authorization: 'Bearer wrong-token' },
@@ -113,9 +122,10 @@ describe('PUT /api/admin/settings/email', () => {
   });
 
   it('should return 400 if reservationConfirmationEnabled missing', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
+
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({}),
     });
 
@@ -126,9 +136,10 @@ describe('PUT /api/admin/settings/email', () => {
   });
 
   it('should return 400 if reservationConfirmationEnabled is not boolean', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
+
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({ reservationConfirmationEnabled: 'true' }),
     });
 
@@ -139,11 +150,11 @@ describe('PUT /api/admin/settings/email', () => {
   });
 
   it('should update settings to enabled successfully', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(updateEmailSettings).mockResolvedValue();
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({ reservationConfirmationEnabled: true }),
     });
 
@@ -159,11 +170,11 @@ describe('PUT /api/admin/settings/email', () => {
   });
 
   it('should update settings to disabled successfully', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(updateEmailSettings).mockResolvedValue();
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({ reservationConfirmationEnabled: false }),
     });
 
@@ -178,11 +189,11 @@ describe('PUT /api/admin/settings/email', () => {
   });
 
   it('should return 500 if updateEmailSettings fails', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(updateEmailSettings).mockRejectedValue(new Error('Database error'));
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
       body: JSON.stringify({ reservationConfirmationEnabled: true }),
     });
 

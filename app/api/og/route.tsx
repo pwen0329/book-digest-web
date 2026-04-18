@@ -1,7 +1,8 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
+import { CLIENT_ENV } from '@/lib/env';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
+const siteUrl = CLIENT_ENV.SITE_URL;
 
 function truncate(value: string | null, maxLength: number, fallback = '') {
   return (value || fallback).trim().slice(0, maxLength);

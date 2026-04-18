@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useCallback } from 'react';
+import { CLIENT_ENV } from '@/lib/env';
 
 let turnstileScriptRequested = false;
 
@@ -31,7 +32,7 @@ type TurnstileProps = {
   size?: 'normal' | 'compact';
 };
 
-const TURNSTILE_SITEKEY = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY || '';
+const TURNSTILE_SITEKEY = CLIENT_ENV.TURNSTILE_SITEKEY;
 
 function getTurnstileScriptNonce(): string | null {
   return document.querySelector('meta[name="csp-nonce"]')?.getAttribute('content') || null;

@@ -1,6 +1,8 @@
 import 'server-only';
 
 import { cryptoRandomId } from '@/lib/crypto-id';
+import { SUPABASE_CONFIG } from '@/lib/env';
+import { getSupabaseUrl, getSupabaseHeaders } from '@/lib/supabase-utils';
 import type { VenueLocation } from '@/types/venue';
 import { getVenueLocations } from '@/types/venue';
 
@@ -90,7 +92,7 @@ type SupabaseRegistrationRow = {
   updated_at: string;
 };
 
-const SUPABASE_REGISTRATIONS_TABLE = process.env.SUPABASE_REGISTRATIONS_TABLE || 'registrations';
+const SUPABASE_REGISTRATIONS_TABLE = SUPABASE_CONFIG.TABLES.REGISTRATIONS;
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const OPTIONAL_SUPABASE_MUTATION_COLUMNS = new Set([
   'instagram',
@@ -211,32 +213,6 @@ function fromSupabaseRow(row: SupabaseRegistrationRow): RegistrationRecord {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   });
-}
-
-function getSupabaseUrl(): string {
-  const url = process.env.SUPABASE_URL;
-  if (!url) {
-    throw new Error('SUPABASE_URL is not configured.');
-  }
-  return url;
-}
-
-function getSupabaseServiceRoleKey(): string {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
-  }
-  return key;
-}
-
-function getSupabaseHeaders(extraHeaders?: Record<string, string>): HeadersInit {
-  const key = getSupabaseServiceRoleKey();
-  return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    'Content-Type': 'application/json',
-    ...extraHeaders,
-  };
 }
 
 function getSupabaseTableUrl(): string {

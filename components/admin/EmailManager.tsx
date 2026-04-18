@@ -19,6 +19,7 @@ export default function EmailManager({ initialRegistrationEmails }: EmailManager
   // Email settings state
   const [emailSettingsLoading, setEmailSettingsLoading] = useState(false);
   const [reservationEmailEnabled, setReservationEmailEnabled] = useState(false);
+  const [resendConfigured, setResendConfigured] = useState(true); // Optimistic default
 
   // Payment confirmation email templates
   const [paymentEmails, setPaymentEmails] = useState({
@@ -105,6 +106,7 @@ Book Digest Team
         const data = await response.json();
         if (response.ok && data.ok) {
           setReservationEmailEnabled(data.settings.reservationConfirmationEnabled);
+          setResendConfigured(data.settings.resendConfigured);
         }
       } catch (error) {
         console.error('Failed to load email settings:', error);
@@ -221,6 +223,17 @@ Book Digest Team
 
   return (
     <div aria-label="Email management" className="space-y-6">
+      {/* Resend API Key Warning */}
+      {!resendConfigured && (
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <strong>⚠️ Email sending is not configured.</strong>
+          <p className="mt-1">
+            The <code className="rounded bg-black/20 px-1 py-0.5 font-mono text-xs">RESEND_API_KEY</code> environment variable is not set.
+            Email features are disabled until this is configured.
+          </p>
+        </div>
+      )}
+
       {/* Message/Error notifications */}
       {message && (
         <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
@@ -253,11 +266,12 @@ Book Digest Team
                 </div>
                 <button
                   onClick={() => void handleAction(handleToggleReservationEmail)}
-                  disabled={actionInFlight}
+                  disabled={actionInFlight || !resendConfigured}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-pink/40 disabled:opacity-50 ${
                     reservationEmailEnabled ? 'bg-brand-pink' : 'bg-white/20'
                   }`}
                   aria-label="Toggle reservation confirmation emails"
+                  title={!resendConfigured ? 'Email sending is not configured' : undefined}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -404,54 +418,60 @@ Book Digest Team
           <h2 className="text-xl font-semibold font-outfit">Send Test Email</h2>
           <p className="mt-2 text-sm text-white/70">Send a test email to verify your email configuration is working correctly.</p>
 
-          <form onSubmit={handleSendTestEmail} className="mt-6 space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-sm text-white/70">Recipient Email</span>
-              <input
-                type="email"
-                value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
-                placeholder="recipient@example.com"
-                className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
+          {!resendConfigured ? (
+            <div className="mt-6 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              Test email feature is disabled. Please configure <code className="rounded bg-black/20 px-1 py-0.5 font-mono text-xs">RESEND_API_KEY</code> to enable email sending.
+            </div>
+          ) : (
+            <form onSubmit={handleSendTestEmail} className="mt-6 space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-sm text-white/70">Recipient Email</span>
+                <input
+                  type="email"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  placeholder="recipient@example.com"
+                  className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
+                  disabled={testEmailStatus === 'sending'}
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm text-white/70">Email Type</span>
+                <select
+                  value={testEmailType}
+                  onChange={(e) => setTestEmailType(e.target.value as 'reservation_confirmation' | 'payment_confirmation')}
+                  className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
+                  disabled={testEmailStatus === 'sending'}
+                >
+                  <option value="payment_confirmation">Payment Confirmation</option>
+                  <option value="reservation_confirmation">Reservation Confirmation</option>
+                </select>
+              </label>
+
+              <button
+                type="submit"
                 disabled={testEmailStatus === 'sending'}
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-sm text-white/70">Email Type</span>
-              <select
-                value={testEmailType}
-                onChange={(e) => setTestEmailType(e.target.value as 'reservation_confirmation' | 'payment_confirmation')}
-                className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
-                disabled={testEmailStatus === 'sending'}
+                className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60"
               >
-                <option value="payment_confirmation">Payment Confirmation</option>
-                <option value="reservation_confirmation">Reservation Confirmation</option>
-              </select>
-            </label>
+                {testEmailStatus === 'sending' ? 'Sending…' : 'Send Test Email'}
+              </button>
 
-            <button
-              type="submit"
-              disabled={testEmailStatus === 'sending'}
-              className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60"
-            >
-              {testEmailStatus === 'sending' ? 'Sending…' : 'Send Test Email'}
-            </button>
-
-            {testEmailMessage && (
-              <div
-                className={`rounded-2xl border px-4 py-3 text-sm ${
-                  testEmailStatus === 'success'
-                    ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
-                    : testEmailStatus === 'error'
-                      ? 'border-red-400/30 bg-red-500/10 text-red-100'
-                      : 'border-blue-400/30 bg-blue-500/10 text-blue-100'
-                }`}
-              >
-                {testEmailMessage}
-              </div>
-            )}
-          </form>
+              {testEmailMessage && (
+                <div
+                  className={`rounded-2xl border px-4 py-3 text-sm ${
+                    testEmailStatus === 'success'
+                      ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
+                      : testEmailStatus === 'error'
+                        ? 'border-red-400/30 bg-red-500/10 text-red-100'
+                        : 'border-blue-400/30 bg-blue-500/10 text-blue-100'
+                  }`}
+                >
+                  {testEmailMessage}
+                </div>
+              )}
+            </form>
+          )}
         </div>
       </div>
     </div>

@@ -2,40 +2,22 @@ import 'server-only';
 
 import { Resend } from 'resend';
 import { PAYMENT_CONFIRMATION_TEMPLATES, interpolatePaymentConfirmationTemplate } from '@/lib/payment-confirmation-email-config';
+import { EMAIL_CONFIG, CLIENT_ENV } from '@/lib/env';
+import { getSupabaseUrl, getSupabaseHeaders } from '@/lib/supabase-utils';
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@bookdigest.app';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.app';
-
-function getSupabaseUrl(): string {
-  const url = process.env.SUPABASE_URL;
-  if (!url) {
-    throw new Error('SUPABASE_URL is not configured.');
-  }
-  return url;
-}
-
-function getSupabaseServiceRoleKey(): string {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
-  }
-  return key;
-}
-
-function getSupabaseHeaders(): HeadersInit {
-  const key = getSupabaseServiceRoleKey();
-  return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    'Content-Type': 'application/json',
-  };
-}
+const RESEND_API_KEY = EMAIL_CONFIG.RESEND_API_KEY;
+const FROM_EMAIL = EMAIL_CONFIG.FROM_EMAIL;
+const SITE_URL = CLIENT_ENV.SITE_URL;
 
 // Email Settings
 
+export function isResendConfigured(): boolean {
+  return !!RESEND_API_KEY;
+}
+
 export type EmailSettings = {
   reservationConfirmationEnabled: boolean;
+  resendConfigured: boolean;
 };
 
 export async function getEmailSettings(): Promise<EmailSettings> {
@@ -49,16 +31,20 @@ export async function getEmailSettings(): Promise<EmailSettings> {
   );
 
   if (!response.ok) {
-    return { reservationConfirmationEnabled: false };
+    return {
+      reservationConfirmationEnabled: false,
+      resendConfigured: isResendConfigured(),
+    };
   }
 
   const rows = await response.json() as Array<{ value: string }>;
   return {
     reservationConfirmationEnabled: rows[0]?.value === 'true',
+    resendConfigured: isResendConfigured(),
   };
 }
 
-export async function updateEmailSettings(settings: EmailSettings): Promise<void> {
+export async function updateEmailSettings(settings: { reservationConfirmationEnabled: boolean }): Promise<void> {
   const response = await fetch(
     `${getSupabaseUrl()}/rest/v1/settings?key=eq.email.reservation_confirmation_enabled`,
     {

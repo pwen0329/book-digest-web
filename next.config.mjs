@@ -60,8 +60,8 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 192, 256],
     // Configure external image sources here
     remotePatterns: [
-      { protocol: 'https', hostname: 'bookdigest.club' },
-      { protocol: 'https', hostname: '*.bookdigest.club' },
+      { protocol: 'https', hostname: 'bookdigest.dev' },
+      { protocol: 'https', hostname: '*.bookdigest.dev' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '*.amazonaws.com' },
       ...(supabaseImageHostname ? [{ protocol: 'https', hostname: supabaseImageHostname }] : []),

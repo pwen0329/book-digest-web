@@ -14,8 +14,9 @@ import {
 import { getVenueById } from '@/lib/venues';
 import { getBookById } from '@/lib/books';
 import { countActiveRegistrationsByEventId } from '@/lib/registration-store';
+import { SUPABASE_CONFIG } from '@/lib/env';
 
-const TABLE_NAME = process.env.SUPABASE_EVENTS_TABLE || 'events';
+const TABLE_NAME = SUPABASE_CONFIG.TABLES.EVENTS;
 
 /**
  * Calculate event registration status considering both time and venue capacity.

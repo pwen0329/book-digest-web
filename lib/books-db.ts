@@ -9,8 +9,9 @@ import {
   updateRow,
   deleteRow,
 } from '@/lib/supabase-utils';
+import { SUPABASE_CONFIG } from '@/lib/env';
 
-const TABLE_NAME = process.env.SUPABASE_BOOKS_TABLE || 'books';
+const TABLE_NAME = SUPABASE_CONFIG.TABLES.BOOKS;
 
 // Get all books from database
 export async function getAllBooksFromDB(orderBy: string = 'read_date.desc.nullslast,sort_order.asc.nullslast'): Promise<Book[]> {

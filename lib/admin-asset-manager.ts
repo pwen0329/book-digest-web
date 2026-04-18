@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { SUPABASE_CONFIG } from '@/lib/env';
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from '@/lib/supabase-utils';
 import type { Book } from '@/types/book';
 import type { Event } from '@/types/event';
 import { getAllBooksFromDB } from '@/lib/books-db';
@@ -33,16 +35,8 @@ type AssetCleanupInput = {
   nextEvents: Event[];
 };
 
-function getSupabaseUrl(): string | null {
-  return process.env.SUPABASE_URL || null;
-}
-
-function getSupabaseServiceRoleKey(): string | null {
-  return process.env.SUPABASE_SERVICE_ROLE_KEY || null;
-}
-
 function getStorageBucket(): string {
-  return process.env.SUPABASE_STORAGE_BUCKET || 'admin-assets';
+  return SUPABASE_CONFIG.STORAGE_BUCKET;
 }
 
 type ParsedManagedAsset = {
@@ -52,8 +46,10 @@ type ParsedManagedAsset = {
 };
 
 function parseManagedAssetUrl(url: string): ParsedManagedAsset | null {
-  const supabaseUrl = getSupabaseUrl();
-  if (!supabaseUrl) {
+  let supabaseUrl: string;
+  try {
+    supabaseUrl = getSupabaseUrl();
+  } catch {
     return null;
   }
 

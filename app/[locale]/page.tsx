@@ -4,8 +4,9 @@ import WhyUs from '@/components/WhyUs';
 import SectionDivider from '@/components/SectionDivider';
 import { setRequestLocale } from '@/lib/i18n';
 import { locales } from '@/lib/i18n';
+import { CLIENT_ENV } from '@/lib/env';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
+const siteUrl = CLIENT_ENV.SITE_URL;
 
 const organizationJsonLd = {
   '@context': 'https://schema.org',
@@ -15,7 +16,7 @@ const organizationJsonLd = {
   logo: `${siteUrl}/logo.svg`,
   description: 'A space to rest, read, and reconnect — one page at a time.',
   sameAs: [
-    'https://www.instagram.com/bookdigest.club/',
+    'https://www.instagram.com/bookdigest.dev/',
   ],
 };
 

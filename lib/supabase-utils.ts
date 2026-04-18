@@ -1,13 +1,14 @@
 import 'server-only';
+import { SUPABASE_CONFIG } from '@/lib/env';
 
 // Shared Supabase utility functions for direct REST API access
 
 export function isSupabaseConfigured(): boolean {
-  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return Boolean(SUPABASE_CONFIG.URL && SUPABASE_CONFIG.SERVICE_ROLE_KEY);
 }
 
 export function getSupabaseUrl(): string {
-  const url = process.env.SUPABASE_URL;
+  const url = SUPABASE_CONFIG.URL;
   if (!url) {
     throw new Error('SUPABASE_URL is not configured.');
   }
@@ -15,7 +16,7 @@ export function getSupabaseUrl(): string {
 }
 
 export function getSupabaseServiceRoleKey(): string {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = SUPABASE_CONFIG.SERVICE_ROLE_KEY;
   if (!key) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
   }

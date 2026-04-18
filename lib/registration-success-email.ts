@@ -3,6 +3,7 @@ import 'server-only';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { resolveWorkspacePath } from '@/lib/json-store';
+import { CLIENT_ENV, EMAIL_CONFIG, LEGACY_CONFIG } from '@/lib/env';
 import {
   getRegistrationSuccessEmailSettings,
   type RegistrationEmailLocale,
@@ -37,7 +38,7 @@ type TemplateContext = {
 };
 
 function getSiteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL || process.env.BASE_URL || 'http://127.0.0.1:3000';
+  return CLIENT_ENV.SITE_URL || LEGACY_CONFIG.BASE_URL || 'http://127.0.0.1:3000';
 }
 
 function interpolateTemplate(template: string, context: TemplateContext): string {
@@ -80,7 +81,7 @@ export function renderRegistrationSuccessEmailMessage(
 }
 
 function getOutboxPath(): string | null {
-  const configuredPath = process.env.EMAIL_OUTBOX_FILE;
+  const configuredPath = EMAIL_CONFIG.OUTBOX_FILE;
   if (!configuredPath) {
     return null;
   }
@@ -127,14 +128,14 @@ export function clearEmailOutbox(): void {
 }
 
 async function sendWithResend(payload: { to: string; subject: string; text: string }): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.REGISTRATION_EMAIL_FROM;
+  const apiKey = EMAIL_CONFIG.RESEND_API_KEY;
+  const from = EMAIL_CONFIG.REGISTRATION_EMAIL_FROM;
 
   if (!apiKey || !from) {
     throw new Error('RESEND_API_KEY or REGISTRATION_EMAIL_FROM is not configured.');
   }
 
-  const replyTo = process.env.REGISTRATION_EMAIL_REPLY_TO;
+  const replyTo = EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO;
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -177,7 +178,7 @@ export async function sendRegistrationSuccessEmail(input: SendRegistrationSucces
     return { status: 'sent', transport: 'file' };
   }
 
-  if (!process.env.RESEND_API_KEY || !process.env.REGISTRATION_EMAIL_FROM) {
+  if (!EMAIL_CONFIG.RESEND_API_KEY || !EMAIL_CONFIG.REGISTRATION_EMAIL_FROM) {
     return { status: 'skipped', reason: 'No email transport is configured.' };
   }
 

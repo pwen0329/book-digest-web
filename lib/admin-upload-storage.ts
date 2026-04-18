@@ -1,14 +1,13 @@
 import 'server-only';
 
-const SUPABASE_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'admin-assets';
+import { SUPABASE_CONFIG } from '@/lib/env';
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from '@/lib/supabase-utils';
+
+const SUPABASE_STORAGE_BUCKET = SUPABASE_CONFIG.STORAGE_BUCKET;
 
 export async function saveAdminUpload(scope: 'books' | 'events', fileName: string, contentType: string, buffer: Buffer): Promise<string> {
-  const baseUrl = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!baseUrl || !serviceRoleKey) {
-    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured');
-  }
+  const baseUrl = getSupabaseUrl();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
 
   const objectPath = `admin/${scope}/${fileName}`;
 
