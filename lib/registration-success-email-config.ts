@@ -20,11 +20,47 @@ export async function getRegistrationSuccessEmailSettings(): Promise<Registratio
     templates: {
       zh: {
         subject: 'Book Digest 報名成功｜{{eventTitle}}',
-        body: '嗨 {{name}}，\n\n你已成功完成 {{eventTitle}} 的報名。\n\n我們會以這個信箱 {{email}} 與你保持聯繫；若活動細節有更新，也會透過這裡通知你。\n\n活動類型：{{location}}\n官網：{{siteUrl}}\n\n期待在線下或線上和你見面。\nBook Digest',
+        body: `嗨 {{name}}，
+
+感謝您報名參加 Book Digest 活動！
+
+我們已收到您的報名，目前正在審核您的付款資訊。
+
+活動詳情：
+• 活動：{{eventTitle}}
+• 付款金額：{{paymentAmount}} {{paymentCurrency}}
+
+付款說明：
+{{paymentInstructions}}
+
+一旦確認付款，我們將發送確認郵件給您。
+
+如有任何問題，請隨時與我們聯繫。
+
+Book Digest 團隊
+{{siteUrl}}`,
       },
       en: {
-        subject: 'Book Digest registration confirmed | {{eventTitle}}',
-        body: 'Hi {{name}},\n\nYour registration for {{eventTitle}} is confirmed.\n\nWe will keep in touch through {{email}} if any event details change.\n\nActivity: {{location}}\nSite: {{siteUrl}}\n\nSee you soon,\nBook Digest',
+        subject: 'Book Digest Registration Received | {{eventTitle}}',
+        body: `Hi {{name}},
+
+Thank you for registering for Book Digest event!
+
+We have received your registration and are currently reviewing your payment information.
+
+Event Details:
+• Event: {{eventTitle}}
+• Payment Amount: {{paymentAmount}} {{paymentCurrency}}
+
+Payment Instructions:
+{{paymentInstructions}}
+
+Once payment is confirmed, we will send you a confirmation email.
+
+If you have any questions, please feel free to contact us.
+
+Book Digest Team
+{{siteUrl}}`,
       },
     },
   };

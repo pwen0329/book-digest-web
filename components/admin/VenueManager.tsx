@@ -4,8 +4,7 @@ import { useState } from 'react';
 import type { Venue } from '@/types/venue';
 
 type VenueManagerProps = {
-  venues: Venue[];
-  onVenuesChange: (venues: Venue[]) => void;
+  initialVenues: Venue[];
 };
 
 type DraftVenue = Omit<Venue, 'id' | 'createdAt' | 'updatedAt'> & {
@@ -14,8 +13,9 @@ type DraftVenue = Omit<Venue, 'id' | 'createdAt' | 'updatedAt'> & {
   updatedAt?: string;
 };
 
-export default function VenueManager({ venues, onVenuesChange }: VenueManagerProps) {
-  const [selectedVenueId, setSelectedVenueId] = useState<number | undefined>(venues[0]?.id);
+export default function VenueManager({ initialVenues }: VenueManagerProps) {
+  const [venues, setVenues] = useState<Venue[]>(initialVenues);
+  const [selectedVenueId, setSelectedVenueId] = useState<number | undefined>(initialVenues[0]?.id);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string>('');
 
@@ -33,14 +33,14 @@ export default function VenueManager({ venues, onVenuesChange }: VenueManagerPro
     const draft = createDraftVenue();
     // For drafts, we use undefined id temporarily
     const draftWithId: DraftVenue = { ...draft, id: undefined };
-    onVenuesChange([draftWithId as Venue, ...venues]);
+    setVenues([draftWithId as Venue, ...venues]);
     setSelectedVenueId(undefined);
   };
 
   const deleteVenue = async (id: number | undefined) => {
     if (id === undefined) {
       // Draft venue - just remove from list
-      onVenuesChange(venues.filter((v) => v.id !== undefined));
+      setVenues(venues.filter((v) => v.id !== undefined));
       setSelectedVenueId(venues.find((v) => v.id !== undefined)?.id);
       return;
     }
@@ -62,7 +62,7 @@ export default function VenueManager({ venues, onVenuesChange }: VenueManagerPro
         throw new Error(error.error || 'Delete failed');
       }
 
-      onVenuesChange(venues.filter((v) => v.id !== id));
+      setVenues(venues.filter((v) => v.id !== id));
       setSelectedVenueId(venues.find((v) => v.id !== id)?.id);
       setSaveStatus('Deleted');
       setTimeout(() => setSaveStatus(''), 2000);
@@ -94,7 +94,7 @@ export default function VenueManager({ venues, onVenuesChange }: VenueManagerPro
         }
 
         const { venue: newVenue } = await response.json();
-        onVenuesChange(venues.map((v) => (v.id === undefined ? newVenue : v)));
+        setVenues(venues.map((v) => (v.id === undefined ? newVenue : v)));
         setSelectedVenueId(newVenue.id);
         setSaveStatus('Created');
       } else {
@@ -111,7 +111,7 @@ export default function VenueManager({ venues, onVenuesChange }: VenueManagerPro
         }
 
         const { venue: updatedVenue } = await response.json();
-        onVenuesChange(venues.map((v) => (v.id === venue.id ? updatedVenue : v)));
+        setVenues(venues.map((v) => (v.id === venue.id ? updatedVenue : v)));
         setSaveStatus('Saved');
       }
       setTimeout(() => setSaveStatus(''), 2000);
@@ -129,7 +129,7 @@ export default function VenueManager({ venues, onVenuesChange }: VenueManagerPro
     if (value === undefined) return;
 
     const updated = { ...selectedVenue, [field]: value };
-    onVenuesChange(venues.map((v) => (v.id === selectedVenueId ? updated : v)));
+    setVenues(venues.map((v) => (v.id === selectedVenueId ? updated : v)));
   };
 
   const isMaxCapacityValid = (capacity: number | undefined): boolean => {

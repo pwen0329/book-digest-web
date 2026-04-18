@@ -16,6 +16,7 @@ export default function middleware(req: NextRequest) {
   requestHeaders.set('x-request-id', requestId);
 
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    requestHeaders.set('x-pathname', pathname);
     const response = NextResponse.next({
       request: {
         headers: requestHeaders,

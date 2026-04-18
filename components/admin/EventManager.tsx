@@ -7,10 +7,9 @@ import type { Venue } from '@/types/venue';
 import type { Book } from '@/types/book';
 
 type EventManagerProps = {
-  events: Event[];
-  venues: Venue[];
-  books: Book[];
-  onEventsChange: (events: Event[]) => void;
+  initialEvents: Event[];
+  initialVenues: Venue[];
+  initialBooks: Book[];
 };
 
 type DraftEvent = Omit<Event, 'id' | 'createdAt' | 'updatedAt' | 'venue' | 'book'> & {
@@ -33,8 +32,11 @@ function toIsoString(value: string): string {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 }
 
-export default function EventManager({ events, venues, books, onEventsChange }: EventManagerProps) {
-  const [selectedEventId, setSelectedEventId] = useState<number | undefined>(events[0]?.id);
+export default function EventManager({ initialEvents, initialVenues, initialBooks }: EventManagerProps) {
+  const [events, setEvents] = useState<Event[]>(initialEvents);
+  const [venues] = useState<Venue[]>(initialVenues);
+  const [books] = useState<Book[]>(initialBooks);
+  const [selectedEventId, setSelectedEventId] = useState<number | undefined>(initialEvents[0]?.id);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string>('');
   const [filterType, setFilterType] = useState<string | 'ALL'>('ALL');
@@ -125,13 +127,13 @@ export default function EventManager({ events, venues, books, onEventsChange }: 
   const addEvent = () => {
     const draft = createDraftEvent();
     const draftWithId: DraftEvent = { ...draft, id: undefined };
-    onEventsChange([draftWithId as Event, ...events]);
+    setEvents([draftWithId as Event, ...events]);
     setSelectedEventId(undefined);
   };
 
   const deleteEvent = async (id: number | undefined) => {
     if (id === undefined) {
-      onEventsChange(events.filter((e) => e.id !== undefined));
+      setEvents(events.filter((e) => e.id !== undefined));
       setSelectedEventId(events.find((e) => e.id !== undefined)?.id);
       return;
     }
@@ -153,7 +155,7 @@ export default function EventManager({ events, venues, books, onEventsChange }: 
         throw new Error(error.error || 'Delete failed');
       }
 
-      onEventsChange(events.filter((e) => e.id !== id));
+      setEvents(events.filter((e) => e.id !== id));
       setSelectedEventId(events.find((e) => e.id !== id)?.id);
       setSaveStatus('Deleted');
       setTimeout(() => setSaveStatus(''), 2000);
@@ -184,7 +186,7 @@ export default function EventManager({ events, venues, books, onEventsChange }: 
         }
 
         const { event: newEvent } = await response.json();
-        onEventsChange(events.map((e) => (e.id === undefined ? newEvent : e)));
+        setEvents(events.map((e) => (e.id === undefined ? newEvent : e)));
         setSelectedEventId(newEvent.id);
         setSaveStatus('Created');
       } else {
@@ -200,7 +202,7 @@ export default function EventManager({ events, venues, books, onEventsChange }: 
         }
 
         const { event: updatedEvent } = await response.json();
-        onEventsChange(events.map((e) => (e.id === event.id ? updatedEvent : e)));
+        setEvents(events.map((e) => (e.id === event.id ? updatedEvent : e)));
         setSaveStatus('Saved');
       }
       setTimeout(() => setSaveStatus(''), 2000);
@@ -216,7 +218,7 @@ export default function EventManager({ events, venues, books, onEventsChange }: 
   const updateEventField = (field: keyof DraftEvent, value: string | number | boolean | undefined) => {
     if (!selectedEvent) return;
     const updated = { ...selectedEvent, [field]: value };
-    onEventsChange(events.map((e) => (e.id === selectedEventId ? updated : e)));
+    setEvents(events.map((e) => (e.id === selectedEventId ? updated : e)));
   };
 
   const getVenueName = (venueId: number) => {
