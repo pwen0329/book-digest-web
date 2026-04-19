@@ -1,30 +1,12 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('server-only', () => ({}));
-
-import { readJsonFile, writeJsonFile } from '@/lib/json-store';
-import type { RegistrationSuccessEmailSettings } from '@/lib/registration-success-email-config';
-
-const originalSettings = readJsonFile<RegistrationSuccessEmailSettings>('data/registration-success-email.json');
+import { describe, expect, it } from 'vitest';
 
 describe('registration success email', () => {
-  afterEach(() => {
-    vi.resetModules();
-    writeJsonFile('data/registration-success-email.json', originalSettings);
-    delete process.env.RESEND_API_KEY;
-    delete process.env.REGISTRATION_EMAIL_FROM;
-    delete process.env.REGISTRATION_EMAIL_REPLY_TO;
-    delete process.env.GMAIL_USER;
-    delete process.env.GMAIL_APP_PASSWORD;
-    delete process.env.NEXT_PUBLIC_SITE_URL;
-  });
-
   it('renders the localized zh template with correct context', async () => {
     process.env.NEXT_PUBLIC_SITE_URL = 'http://127.0.0.1:3000';
 
-    const { getRegistrationSuccessEmailSettings } = await import('@/lib/registration-success-email-config');
-    const settings = await getRegistrationSuccessEmailSettings();
-    const template = settings.templates.zh;
+    const { getRegistrationSuccessEmailTemplates } = await import('@/lib/email-templates');
+    const templateConfig = await getRegistrationSuccessEmailTemplates();
+    const template = templateConfig.templates.zh;
 
     const context = {
       name: '測試讀者',
@@ -46,9 +28,9 @@ describe('registration success email', () => {
   it('renders the localized en template with correct context', async () => {
     process.env.NEXT_PUBLIC_SITE_URL = 'https://bookdigest.test';
 
-    const { getRegistrationSuccessEmailSettings } = await import('@/lib/registration-success-email-config');
-    const settings = await getRegistrationSuccessEmailSettings();
-    const template = settings.templates.en;
+    const { getRegistrationSuccessEmailTemplates } = await import('@/lib/email-templates');
+    const templateConfig = await getRegistrationSuccessEmailTemplates();
+    const template = templateConfig.templates.en;
 
     const context = {
       name: 'Detox Adventurer',

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 import { runWithRequestTrace } from '@/lib/observability';
-import { getRegistrationSuccessEmailSettings } from '@/lib/registration-success-email-config';
+import { getRegistrationSuccessEmailTemplates, getPaymentConfirmationEmailTemplates } from '@/lib/email-templates';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,14 +11,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const settings = await getRegistrationSuccessEmailSettings();
+    const [registrationTemplates, paymentTemplates] = await Promise.all([
+      getRegistrationSuccessEmailTemplates(),
+      getPaymentConfirmationEmailTemplates(),
+    ]);
 
     const response = {
-      settings,
-      updatedAt: null, // Hardcoded settings, no version tracking
+      registration: registrationTemplates,
+      payment: paymentTemplates,
+      updatedAt: null, // Hardcoded templates, no version tracking
     };
 
     return NextResponse.json(response, { status: 200 });
   });
 }
-

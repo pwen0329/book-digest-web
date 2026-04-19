@@ -58,7 +58,7 @@ export const EMAIL_CONFIG = {
   RESEND_API_KEY: process.env.RESEND_API_KEY || null,
   FROM_EMAIL: process.env.FROM_EMAIL || 'noreply@bookdigest.app',
   REGISTRATION_EMAIL_FROM: process.env.REGISTRATION_EMAIL_FROM || null,
-  REGISTRATION_EMAIL_REPLY_TO: process.env.REGISTRATION_EMAIL_REPLY_TO || null,
+  REGISTRATION_EMAIL_REPLY_TO: process.env.REGISTRATION_EMAIL_REPLY_TO || 'bookdigest2020@gmail.com',
 
   // Gmail provider (fallback)
   GMAIL_USER: process.env.GMAIL_USER || null,

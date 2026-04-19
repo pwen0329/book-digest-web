@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { verifyTurnstileToken } from '@/lib/turnstile';
-import { sendRegistrationSuccessEmail } from '@/lib/email-service';
 import { getRetryAfterSeconds } from '@/lib/http-response';
 import { parseApiReferral } from '@/lib/signup';
 import { createRegistrationReservation, updateRegistrationReservation, countActiveRegistrationsByEventId } from '@/lib/registration-store';
@@ -171,63 +170,4 @@ export async function POST(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
   });
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function sendEmailWithTracking(
-  reservationId: string,
-  locale: 'zh' | 'en',
-  name: string,
-  email: string,
-  eventTitle: string,
-  eventTitleEn: string,
-  requestId?: string
-) {
-  let emailResult: Awaited<ReturnType<typeof sendRegistrationSuccessEmail>> = { status: 'skipped', reason: 'Email transport not attempted.' };
-
-  try {
-    await updateRegistrationReservation(reservationId, {
-      auditEntry: {
-        at: new Date().toISOString(),
-        event: 'email_attempted',
-        actor: 'email',
-        summary: 'Attempting to send registration success email.',
-        requestId,
-      },
-    });
-
-    emailResult = await sendRegistrationSuccessEmail({
-      locale,
-      name,
-      email,
-      eventTitle,
-      eventTitleEn,
-    });
-
-    await updateRegistrationReservation(reservationId, {
-      auditEntry: {
-        at: new Date().toISOString(),
-        event: emailResult.status === 'sent' ? 'email_sent' : 'email_skipped',
-        actor: 'email',
-        summary: emailResult.status === 'sent' ? 'Registration success email sent.' : 'Registration success email skipped.',
-        requestId,
-        details: emailResult,
-      },
-    });
-  } catch (emailError) {
-    await updateRegistrationReservation(reservationId, {
-      auditEntry: {
-        at: new Date().toISOString(),
-        event: 'email_failed',
-        actor: 'email',
-        summary: 'Registration success email failed.',
-        requestId,
-        details: { error: emailError instanceof Error ? emailError.message : String(emailError) },
-      },
-    });
-    await logServerError('event.registration_email_failed', emailError, { email, locale });
-    emailResult = { status: 'skipped', reason: 'Registration succeeded but email delivery failed.' };
-  }
-
-  return emailResult;
 }

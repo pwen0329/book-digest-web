@@ -7,6 +7,18 @@ import { listStoredRegistrations } from '@/lib/registration-store';
 import { HttpError, BadRequestError, NotFoundError } from '@/lib/http-errors';
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+function getTestUserName(locale: 'zh' | 'en'): string {
+  const messages = {
+    zh: { testUser: '測試用戶' },
+    en: { testUser: 'Test User' },
+  };
+  return messages[locale].testUser;
+}
+
+// ============================================================================
 // Request Body Types
 // ============================================================================
 
@@ -99,30 +111,25 @@ export async function POST(req: NextRequest) {
       // Test mode: single recipient
       if (body.recipientEmail) {
         const locale = body.recipientLocale || 'en';
-        let result;
+        const testUserName = getTestUserName(locale);
 
-        if (body.emailType === 'reservation_confirmation') {
-          result = await sendRegistrationSuccessEmail({
-            locale,
-            name: 'Test User',
-            email: body.recipientEmail,
-            eventTitle: event.title,
-            eventTitleEn: event.titleEn,
-            eventId: event.id,
-          });
-        } else {
-          result = await sendPaymentConfirmationEmail({
-            locale,
-            name: 'Test User',
-            email: body.recipientEmail,
-            eventTitle: locale === 'en' ? event.titleEn : event.title,
-            eventDate: event.eventDate,
-            eventTime: event.eventTime,
-            eventLocation: event.venue.location,
-            registrationId: 'test',
-            eventId: event.id,
-          });
-        }
+        const emailInput = {
+          locale,
+          name: testUserName,
+          email: body.recipientEmail,
+          eventTitle: event.title,
+          eventTitleEn: event.titleEn,
+          eventDate: event.eventDate,
+          eventLocation: event.venue!.location,
+          venueName: event.venue!.name,
+          venueAddress: event.venue!.address,
+          registrationId: 'test',
+          eventId: event.id,
+        };
+
+        const result = body.emailType === 'reservation_confirmation'
+          ? await sendRegistrationSuccessEmail(emailInput)
+          : await sendPaymentConfirmationEmail(emailInput);
 
         return NextResponse.json({
           ok: true,
@@ -153,29 +160,23 @@ export async function POST(req: NextRequest) {
 
       const results = await Promise.all(
         registrations.map(async (registration) => {
-          if (body.emailType === 'reservation_confirmation') {
-            return await sendRegistrationSuccessEmail({
-              locale: registration.locale,
-              name: registration.name,
-              email: registration.email,
-              eventTitle: event.title,
-              eventTitleEn: event.titleEn,
-              registrationId: registration.id,
-              eventId: event.id,
-            });
-          } else {
-            return await sendPaymentConfirmationEmail({
-              locale: registration.locale,
-              name: registration.name,
-              email: registration.email,
-              eventTitle: registration.locale === 'en' ? event.titleEn : event.title,
-              eventDate: event.eventDate,
-              eventTime: event.eventTime,
-              eventLocation: event.venue.location,
-              registrationId: registration.id,
-              eventId: event.id,
-            });
-          }
+          const emailInput = {
+            locale: registration.locale,
+            name: registration.name,
+            email: registration.email,
+            eventTitle: event.title,
+            eventTitleEn: event.titleEn,
+            eventDate: event.eventDate,
+            eventLocation: event.venue!.location,
+            venueName: event.venue!.name,
+            venueAddress: event.venue!.address,
+            registrationId: registration.id,
+            eventId: event.id,
+          };
+
+          return body.emailType === 'reservation_confirmation'
+            ? await sendRegistrationSuccessEmail(emailInput)
+            : await sendPaymentConfirmationEmail(emailInput);
         })
       );
 

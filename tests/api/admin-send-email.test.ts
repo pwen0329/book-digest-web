@@ -207,8 +207,7 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: 'Test Event',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
       venue: undefined,
     } as any);
@@ -234,10 +233,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: '測試活動',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(sendRegistrationSuccessEmail).mockResolvedValue({
       status: 'sent',
@@ -268,6 +266,11 @@ describe('POST /api/admin/send-email', () => {
       email: 'test@example.com',
       eventTitle: '測試活動',
       eventTitleEn: 'Test Event',
+      eventDate: '2026-05-01T19:00:00Z',
+      eventLocation: 'TW',
+      venueName: 'Test Venue',
+      venueAddress: '123 Test St',
+      registrationId: 'test',
       eventId: 1,
     });
   });
@@ -278,10 +281,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: '測試活動',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(sendRegistrationSuccessEmail).mockResolvedValue({
       status: 'sent',
@@ -305,10 +307,15 @@ describe('POST /api/admin/send-email', () => {
 
     expect(sendRegistrationSuccessEmail).toHaveBeenCalledWith({
       locale: 'zh',
-      name: 'Test User',
+      name: '測試用戶',
       email: 'test@example.com',
       eventTitle: '測試活動',
       eventTitleEn: 'Test Event',
+      eventDate: '2026-05-01T19:00:00Z',
+      eventLocation: 'TW',
+      venueName: 'Test Venue',
+      venueAddress: '123 Test St',
+      registrationId: 'test',
       eventId: 1,
     });
   });
@@ -323,10 +330,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: '測試活動',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(sendPaymentConfirmationEmail).mockResolvedValue({
       status: 'sent',
@@ -353,10 +359,12 @@ describe('POST /api/admin/send-email', () => {
       locale: 'en',
       name: 'Test User',
       email: 'test@example.com',
-      eventTitle: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
-      eventLocation: 'tokyo',
+      eventTitle: '測試活動',
+      eventTitleEn: 'Test Event',
+      eventDate: '2026-05-01T19:00:00Z',
+      eventLocation: 'TW',
+      venueName: 'Test Venue',
+      venueAddress: '123 Test St',
       registrationId: 'test',
       eventId: 1,
     });
@@ -368,10 +376,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: '測試活動',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(sendPaymentConfirmationEmail).mockResolvedValue({
       status: 'sent',
@@ -393,12 +400,14 @@ describe('POST /api/admin/send-email', () => {
 
     expect(sendPaymentConfirmationEmail).toHaveBeenCalledWith({
       locale: 'zh',
-      name: 'Test User',
+      name: '測試用戶',
       email: 'test@example.com',
       eventTitle: '測試活動',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
-      eventLocation: 'tokyo',
+      eventTitleEn: 'Test Event',
+      eventDate: '2026-05-01T19:00:00Z',
+      eventLocation: 'TW',
+      venueName: 'Test Venue',
+      venueAddress: '123 Test St',
       registrationId: 'test',
       eventId: 1,
     });
@@ -410,10 +419,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: 'Test Event',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(sendRegistrationSuccessEmail).mockResolvedValue({
       status: 'failed',
@@ -444,10 +452,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: 'Test Event',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(sendRegistrationSuccessEmail).mockResolvedValue({
       status: 'skipped',
@@ -482,10 +489,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: '測試活動',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(listStoredRegistrations).mockResolvedValue([
       {
@@ -547,6 +553,10 @@ describe('POST /api/admin/send-email', () => {
       email: 'user1@example.com',
       eventTitle: '測試活動',
       eventTitleEn: 'Test Event',
+      eventDate: '2026-05-01T19:00:00Z',
+      eventLocation: 'TW',
+      venueName: 'Test Venue',
+      venueAddress: '123 Test St',
       registrationId: 'reg1',
       eventId: 1,
     });
@@ -556,6 +566,10 @@ describe('POST /api/admin/send-email', () => {
       email: 'user2@example.com',
       eventTitle: '測試活動',
       eventTitleEn: 'Test Event',
+      eventDate: '2026-05-01T19:00:00Z',
+      eventLocation: 'TW',
+      venueName: 'Test Venue',
+      venueAddress: '123 Test St',
       registrationId: 'reg2',
       eventId: 1,
     });
@@ -567,10 +581,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: '測試活動',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(listStoredRegistrations).mockResolvedValue([
       {
@@ -606,9 +619,11 @@ describe('POST /api/admin/send-email', () => {
       name: 'User 1',
       email: 'user1@example.com',
       eventTitle: '測試活動',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
-      eventLocation: 'tokyo',
+      eventTitleEn: 'Test Event',
+      eventDate: '2026-05-01T19:00:00Z',
+      eventLocation: 'TW',
+      venueName: 'Test Venue',
+      venueAddress: '123 Test St',
       registrationId: 'reg1',
       eventId: 1,
     });
@@ -620,10 +635,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: 'Test Event',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(listStoredRegistrations).mockResolvedValue([]);
 
@@ -652,10 +666,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: 'Test Event',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(listStoredRegistrations).mockResolvedValue([
       {
@@ -731,10 +744,9 @@ describe('POST /api/admin/send-email', () => {
       id: 1,
       title: 'Test Event',
       titleEn: 'Test Event',
-      eventDate: '2026-05-01',
-      eventTime: '19:00',
+      eventDate: '2026-05-01T19:00:00Z',
       venueId: 1,
-      venue: { id: 1, location: 'tokyo' },
+      venue: { id: 1, location: 'TW', name: 'Test Venue', address: '123 Test St' },
     } as any);
     vi.mocked(listStoredRegistrations).mockRejectedValue(new Error('Database error'));
 

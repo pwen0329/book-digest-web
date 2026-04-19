@@ -1,20 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { RegistrationEmailLocale, RegistrationSuccessEmailSettings } from '@/lib/registration-success-email-config';
+import type {
+  EmailLocale,
+  RegistrationSuccessEmailTemplates,
+  PaymentConfirmationEmailTemplates,
+} from '@/lib/email-templates';
 
 type EmailManagerProps = {
-  initialRegistrationEmails: RegistrationSuccessEmailSettings;
+  initialEmailTemplates: {
+    registration: RegistrationSuccessEmailTemplates;
+    payment: PaymentConfirmationEmailTemplates;
+  };
+  events: Array<{ id: number; title: string; titleEn: string }>;
 };
 
-export default function EmailManager({ initialRegistrationEmails }: EmailManagerProps) {
+export default function EmailManager({ initialEmailTemplates, events }: EmailManagerProps) {
   // Message/error state
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionInFlight, setActionInFlight] = useState(false);
 
   // Registration email templates state
-  const [registrationEmails, setRegistrationEmails] = useState(initialRegistrationEmails);
+  const [registrationEmails, setRegistrationEmails] = useState(initialEmailTemplates.registration);
 
   // Email settings state
   const [emailSettingsLoading, setEmailSettingsLoading] = useState(false);
@@ -22,52 +30,13 @@ export default function EmailManager({ initialRegistrationEmails }: EmailManager
   const [activeProvider, setActiveProvider] = useState<'resend' | 'gmail' | 'none'>('none');
 
   // Payment confirmation email templates
-  const [paymentEmails, setPaymentEmails] = useState({
-    templates: {
-      zh: {
-        subject: 'Book Digest 付款確認｜{{eventTitle}}',
-        body: `嗨 {{name}}，
-
-感謝您的付款！您的報名已確認。
-
-活動詳情：
-• 活動：{{eventTitle}}
-• 日期：{{eventDate}}
-• 時間：{{eventTime}}
-• 地點：{{eventLocation}}
-
-我們期待在活動中見到您！
-
-如有任何問題，請隨時與我們聯繫。
-
-Book Digest 團隊
-{{siteUrl}}`,
-      },
-      en: {
-        subject: 'Book Digest Payment Confirmed | {{eventTitle}}',
-        body: `Hi {{name}},
-
-Thank you for your payment! Your registration is now confirmed.
-
-Event Details:
-• Event: {{eventTitle}}
-• Date: {{eventDate}}
-• Time: {{eventTime}}
-• Location: {{eventLocation}}
-
-We look forward to seeing you at the event!
-
-If you have any questions, please feel free to contact us.
-
-Book Digest Team
-{{siteUrl}}`,
-      },
-    },
-  });
+  const [paymentEmails, setPaymentEmails] = useState(initialEmailTemplates.payment);
 
   // Test email state
   const [testEmail, setTestEmail] = useState('');
   const [testEmailType, setTestEmailType] = useState<'reservation_confirmation' | 'payment_confirmation'>('payment_confirmation');
+  const [testEmailLocale, setTestEmailLocale] = useState<'zh' | 'en'>('en');
+  const [testEmailEventId, setTestEmailEventId] = useState<number | null>(events.length > 0 ? events[0].id : null);
   const [testEmailStatus, setTestEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [testEmailMessage, setTestEmailMessage] = useState('');
 
@@ -140,7 +109,7 @@ Book Digest Team
     }
   };
 
-  const updateRegistrationEmailField = (locale: RegistrationEmailLocale, field: 'subject' | 'body', value: string) => {
+  const updateRegistrationEmailField = (locale: EmailLocale, field: 'subject' | 'body', value: string) => {
     setRegistrationEmails((current) => ({
       ...current,
       templates: {
@@ -171,7 +140,7 @@ Book Digest Team
     setMessage('Registration email settings saved');
   };
 
-  const updatePaymentEmailField = (locale: RegistrationEmailLocale, field: 'subject' | 'body', value: string) => {
+  const updatePaymentEmailField = (locale: EmailLocale, field: 'subject' | 'body', value: string) => {
     setPaymentEmails((current) => ({
       ...current,
       templates: {
@@ -196,24 +165,34 @@ Book Digest Team
       setTestEmailMessage('Invalid email format');
       return;
     }
+    if (!testEmailEventId) {
+      setTestEmailStatus('error');
+      setTestEmailMessage('Please select an event');
+      return;
+    }
     setTestEmailStatus('sending');
     setTestEmailMessage('');
     try {
-      const response = await fetch('/api/admin/email-test', {
+      const response = await fetch('/api/admin/send-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ recipientEmail: testEmail, emailType: testEmailType }),
+        body: JSON.stringify({
+          eventId: testEmailEventId,
+          emailType: testEmailType,
+          recipientEmail: testEmail,
+          recipientLocale: testEmailLocale,
+        }),
       });
       const data = await response.json();
       if (response.ok && data.ok) {
         setTestEmailStatus('success');
-        setTestEmailMessage(data.message || `Test email sent to ${testEmail}`);
+        setTestEmailMessage(`Test email sent to ${testEmail}`);
       } else {
         setTestEmailStatus('error');
-        setTestEmailMessage(data.message || data.error || 'Failed to send test email');
+        setTestEmailMessage(data.error || 'Failed to send test email');
       }
     } catch (err) {
       setTestEmailStatus('error');
@@ -313,7 +292,7 @@ Book Digest Team
             <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
               <input
                 type="checkbox"
-                checked={registrationEmails.enabled}
+                checked={reservationEmailEnabled}
                 onChange={(event) => setRegistrationEmails((currentSettings) => ({ ...currentSettings, enabled: event.target.checked }))}
               />
               <span className="text-sm text-white/85">Enable in templates</span>
@@ -328,7 +307,7 @@ Book Digest Team
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            {(['zh', 'en'] as RegistrationEmailLocale[]).map((locale) => (
+            {(['zh', 'en'] as EmailLocale[]).map((locale) => (
               <div key={locale} className="rounded-2xl border border-white/10 bg-black/10 p-5">
                 <h3 className="text-lg font-semibold font-outfit">{locale === 'zh' ? 'Template (ZH)' : 'Template (EN)'}</h3>
                 <label className="mt-4 block">
@@ -378,12 +357,12 @@ Book Digest Team
           <div className="mt-6 rounded-2xl border border-white/10 bg-brand-navy/60 p-4 text-sm text-white/70">
             Supported tokens: <span className="font-mono text-white">{'{{name}}'}</span>, <span className="font-mono text-white">{'{{email}}'}</span>,{' '}
             <span className="font-mono text-white">{'{{eventTitle}}'}</span>, <span className="font-mono text-white">{'{{eventDate}}'}</span>,{' '}
-            <span className="font-mono text-white">{'{{eventTime}}'}</span>, <span className="font-mono text-white">{'{{eventLocation}}'}</span>,{' '}
+            <span className="font-mono text-white">{'{{eventLocation}}'}</span>,{' '}
             <span className="font-mono text-white">{'{{siteUrl}}'}</span>
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            {(['zh', 'en'] as RegistrationEmailLocale[]).map((locale) => (
+            {(['zh', 'en'] as EmailLocale[]).map((locale) => (
               <div key={locale} className="rounded-2xl border border-white/10 bg-black/10 p-5">
                 <h3 className="text-lg font-semibold font-outfit">{locale === 'zh' ? 'Template (ZH)' : 'Template (EN)'}</h3>
                 <label className="mt-4 block">
@@ -433,15 +412,23 @@ Book Digest Team
           ) : (
             <form onSubmit={handleSendTestEmail} className="mt-6 space-y-4">
               <label className="block">
-                <span className="mb-2 block text-sm text-white/70">Recipient Email</span>
-                <input
-                  type="email"
-                  value={testEmail}
-                  onChange={(e) => setTestEmail(e.target.value)}
-                  placeholder="recipient@example.com"
+                <span className="mb-2 block text-sm text-white/70">Event</span>
+                <select
+                  value={testEmailEventId ?? ''}
+                  onChange={(e) => setTestEmailEventId(Number(e.target.value))}
                   className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
-                  disabled={testEmailStatus === 'sending'}
-                />
+                  disabled={testEmailStatus === 'sending' || events.length === 0}
+                >
+                  {events.length === 0 ? (
+                    <option value="">No events available</option>
+                  ) : (
+                    events.map((event) => (
+                      <option key={event.id} value={event.id}>
+                        {event.titleEn || event.title}
+                      </option>
+                    ))
+                  )}
+                </select>
               </label>
 
               <label className="block">
@@ -457,9 +444,34 @@ Book Digest Team
                 </select>
               </label>
 
+              <label className="block">
+                <span className="mb-2 block text-sm text-white/70">Locale</span>
+                <select
+                  value={testEmailLocale}
+                  onChange={(e) => setTestEmailLocale(e.target.value as 'zh' | 'en')}
+                  className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
+                  disabled={testEmailStatus === 'sending'}
+                >
+                  <option value="en">English</option>
+                  <option value="zh">中文</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm text-white/70">Recipient Email</span>
+                <input
+                  type="email"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  placeholder="recipient@example.com"
+                  className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
+                  disabled={testEmailStatus === 'sending'}
+                />
+              </label>
+
               <button
                 type="submit"
-                disabled={testEmailStatus === 'sending'}
+                disabled={testEmailStatus === 'sending' || !testEmailEventId}
                 className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60"
               >
                 {testEmailStatus === 'sending' ? 'Sending…' : 'Send Test Email'}

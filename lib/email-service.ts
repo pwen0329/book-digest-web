@@ -3,8 +3,13 @@ import 'server-only';
 import { createEmailProvider, type IEmailProvider } from '@/lib/email-providers';
 import { EMAIL_CONFIG, CLIENT_ENV } from '@/lib/env';
 import { getSupabaseUrl, getSupabaseHeaders } from '@/lib/supabase-utils';
-import { PAYMENT_CONFIRMATION_TEMPLATES, interpolatePaymentConfirmationTemplate } from '@/lib/payment-confirmation-email-config';
-import { getRegistrationSuccessEmailSettings, type RegistrationEmailLocale } from '@/lib/registration-success-email-config';
+import {
+  getRegistrationSuccessEmailTemplates,
+  getPaymentConfirmationEmailTemplates,
+  interpolateEmailTemplate,
+  type EmailLocale,
+} from '@/lib/email-templates';
+import { formatEventDate } from '@/lib/date-formatter';
 
 // ============================================================================
 // Email Provider
@@ -213,37 +218,42 @@ function getSiteUrl(): string {
   return CLIENT_ENV.SITE_URL;
 }
 
-function interpolateTemplate(template: string, context: Record<string, string>): string {
-  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key: string) => context[key] || '');
-}
-
-function normalizeLocale(locale?: string): RegistrationEmailLocale {
+function normalizeLocale(locale?: string): EmailLocale {
   return locale === 'zh' ? 'zh' : 'en';
 }
+
+// ============================================================================
+// Unified Email Input Type
+// ============================================================================
+
+export type SendEventEmailInput = {
+  locale: 'zh' | 'en';
+  name: string;
+  email: string;
+  eventTitle: string;
+  eventTitleEn?: string; // Optional, fallback to eventTitle if not provided
+  eventDate: string; // TIMESTAMPTZ in UTC
+  eventLocation: string; // Venue location code for timezone conversion (e.g., 'TW', 'NL', 'ONLINE')
+  venueName: string; // Human-readable venue name for email display
+  venueAddress?: string; // Optional venue address for email display
+  registrationId: string;
+  eventId: number;
+};
 
 // ============================================================================
 // Registration Success Email
 // ============================================================================
 
-export type SendRegistrationSuccessEmailInput = {
-  locale: RegistrationEmailLocale;
-  name: string;
-  email: string;
-  eventTitle: string;
-  eventTitleEn: string;
-  registrationId?: string;
-  eventId?: number;
-};
-
-export async function sendRegistrationSuccessEmail(input: SendRegistrationSuccessEmailInput): Promise<SendEmailResult> {
-  const settings = await getRegistrationSuccessEmailSettings();
-  if (!settings.enabled) {
+export async function sendRegistrationSuccessEmail(input: SendEventEmailInput): Promise<SendEmailResult> {
+  const settings = await getEmailSettings();
+  if (!settings.reservationConfirmationEnabled) {
     return { status: 'skipped', reason: 'Registration success emails are disabled.' };
   }
 
   const locale = normalizeLocale(input.locale);
-  const template = settings.templates[locale];
-  const eventTitle = locale === 'en' ? input.eventTitleEn : input.eventTitle;
+  const templateConfig = await getRegistrationSuccessEmailTemplates();
+  const template = templateConfig.templates[locale];
+  const eventTitle = locale === 'en' ? (input.eventTitleEn || input.eventTitle) : input.eventTitle;
 
   const context = {
     name: input.name,
@@ -252,8 +262,7 @@ export async function sendRegistrationSuccessEmail(input: SendRegistrationSucces
     siteUrl: getSiteUrl(),
   };
 
-  const subject = interpolateTemplate(template.subject, context);
-  const body = interpolateTemplate(template.body, context);
+  const { subject, body } = interpolateEmailTemplate(template, context);
   const replyTo = EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO || undefined;
 
   const result = await sendEmail(input.email, subject, body, replyTo);
@@ -277,28 +286,28 @@ export async function sendRegistrationSuccessEmail(input: SendRegistrationSucces
 // Payment Confirmation Email
 // ============================================================================
 
-export type SendPaymentConfirmationEmailInput = {
-  locale: 'zh' | 'en';
-  name: string;
-  email: string;
-  eventTitle: string;
-  eventDate: string;
-  eventTime: string;
-  eventLocation: string;
-  registrationId: string;
-  eventId: number;
-};
-
 export async function sendPaymentConfirmationEmail(
-  input: SendPaymentConfirmationEmailInput
+  input: SendEventEmailInput
 ): Promise<SendEmailResult> {
-  const template = PAYMENT_CONFIRMATION_TEMPLATES[input.locale];
-  const { subject, body } = interpolatePaymentConfirmationTemplate(template, {
+  const locale = input.locale;
+  const eventTitle = locale === 'en' ? (input.eventTitleEn || input.eventTitle) : input.eventTitle;
+
+  const templateConfig = await getPaymentConfirmationEmailTemplates();
+  const template = templateConfig.templates[locale];
+
+  // Format date to local time based on venue location
+  const formattedDate = formatEventDate(input.eventDate, locale, input.eventLocation);
+
+  // Format venue location for display
+  const venueDisplay = input.venueAddress
+    ? `${input.venueName}, ${input.venueAddress}`
+    : input.venueName;
+
+  const { subject, body } = interpolateEmailTemplate(template, {
     name: input.name,
-    eventTitle: input.eventTitle,
-    eventDate: input.eventDate,
-    eventTime: input.eventTime,
-    eventLocation: input.eventLocation,
+    eventTitle,
+    eventDate: formattedDate,
+    eventLocation: venueDisplay,
     siteUrl: getSiteUrl(),
   });
 
