@@ -19,7 +19,7 @@ export default function EmailManager({ initialRegistrationEmails }: EmailManager
   // Email settings state
   const [emailSettingsLoading, setEmailSettingsLoading] = useState(false);
   const [reservationEmailEnabled, setReservationEmailEnabled] = useState(false);
-  const [resendConfigured, setResendConfigured] = useState(true); // Optimistic default
+  const [activeProvider, setActiveProvider] = useState<'resend' | 'gmail' | 'none'>('none');
 
   // Payment confirmation email templates
   const [paymentEmails, setPaymentEmails] = useState({
@@ -106,7 +106,7 @@ Book Digest Team
         const data = await response.json();
         if (response.ok && data.ok) {
           setReservationEmailEnabled(data.settings.reservationConfirmationEnabled);
-          setResendConfigured(data.settings.resendConfigured);
+          setActiveProvider(data.settings.activeProvider);
         }
       } catch (error) {
         console.error('Failed to load email settings:', error);
@@ -223,14 +223,22 @@ Book Digest Team
 
   return (
     <div aria-label="Email management" className="space-y-6">
-      {/* Resend API Key Warning */}
-      {!resendConfigured && (
+      {/* Email Configuration Warning */}
+      {activeProvider === 'none' && (
         <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
           <strong>⚠️ Email sending is not configured.</strong>
           <p className="mt-1">
-            The <code className="rounded bg-black/20 px-1 py-0.5 font-mono text-xs">RESEND_API_KEY</code> environment variable is not set.
-            Email features are disabled until this is configured.
+            Configure either:
           </p>
+          <ul className="mt-2 ml-4 list-disc space-y-1">
+            <li><code className="rounded bg-black/20 px-1 py-0.5 font-mono text-xs">RESEND_API_KEY</code> + <code className="rounded bg-black/20 px-1 py-0.5 font-mono text-xs">REGISTRATION_EMAIL_FROM</code> (Resend provider), or</li>
+            <li><code className="rounded bg-black/20 px-1 py-0.5 font-mono text-xs">GMAIL_USER</code> + <code className="rounded bg-black/20 px-1 py-0.5 font-mono text-xs">GMAIL_PASSWORD</code> (Gmail provider)</li>
+          </ul>
+        </div>
+      )}
+      {activeProvider !== 'none' && (
+        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <strong>✓ Email configured</strong> (using <strong>{activeProvider === 'resend' ? 'Resend' : 'Gmail'}</strong>)
         </div>
       )}
 
@@ -266,12 +274,12 @@ Book Digest Team
                 </div>
                 <button
                   onClick={() => void handleAction(handleToggleReservationEmail)}
-                  disabled={actionInFlight || !resendConfigured}
+                  disabled={actionInFlight || activeProvider === 'none'}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-pink/40 disabled:opacity-50 ${
                     reservationEmailEnabled ? 'bg-brand-pink' : 'bg-white/20'
                   }`}
                   aria-label="Toggle reservation confirmation emails"
-                  title={!resendConfigured ? 'Email sending is not configured' : undefined}
+                  title={activeProvider === 'none' ? 'Email sending is not configured' : undefined}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -418,9 +426,9 @@ Book Digest Team
           <h2 className="text-xl font-semibold font-outfit">Send Test Email</h2>
           <p className="mt-2 text-sm text-white/70">Send a test email to verify your email configuration is working correctly.</p>
 
-          {!resendConfigured ? (
+          {activeProvider === 'none' ? (
             <div className="mt-6 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-              Test email feature is disabled. Please configure <code className="rounded bg-black/20 px-1 py-0.5 font-mono text-xs">RESEND_API_KEY</code> to enable email sending.
+              Test email feature is disabled. Please configure email provider (Resend or Gmail) to enable email sending.
             </div>
           ) : (
             <form onSubmit={handleSendTestEmail} className="mt-6 space-y-4">

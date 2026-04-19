@@ -56,6 +56,9 @@ describe('GET /api/admin/settings/email', () => {
       reservationConfirmationEnabled: false,
       emailConfigured: true,
       providerName: 'resend',
+      resendConfigured: true,
+      gmailConfigured: false,
+      activeProvider: 'resend',
     });
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
@@ -70,6 +73,9 @@ describe('GET /api/admin/settings/email', () => {
       reservationConfirmationEnabled: false,
       emailConfigured: true,
       providerName: 'resend',
+      resendConfigured: true,
+      gmailConfigured: false,
+      activeProvider: 'resend',
     });
 
     expect(getEmailSettings).toHaveBeenCalledOnce();

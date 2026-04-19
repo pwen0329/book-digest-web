@@ -58,7 +58,18 @@ export type EmailSettings = {
   reservationConfirmationEnabled: boolean;
   emailConfigured: boolean;
   providerName: string;
+  resendConfigured: boolean;
+  gmailConfigured: boolean;
+  activeProvider: 'resend' | 'gmail' | 'none';
 };
+
+function isResendConfigured(): boolean {
+  return !!(EMAIL_CONFIG.RESEND_API_KEY && EMAIL_CONFIG.REGISTRATION_EMAIL_FROM);
+}
+
+function isGmailConfigured(): boolean {
+  return !!(EMAIL_CONFIG.GMAIL_USER && EMAIL_CONFIG.GMAIL_PASSWORD);
+}
 
 export async function getEmailSettings(): Promise<EmailSettings> {
   const response = await fetch(
@@ -70,11 +81,18 @@ export async function getEmailSettings(): Promise<EmailSettings> {
     }
   );
 
+  const resendConfigured = isResendConfigured();
+  const gmailConfigured = isGmailConfigured();
+  const providerName = getEmailProviderName();
+
   if (!response.ok) {
     return {
       reservationConfirmationEnabled: false,
       emailConfigured: isEmailConfigured(),
-      providerName: getEmailProviderName(),
+      providerName,
+      resendConfigured,
+      gmailConfigured,
+      activeProvider: providerName === 'resend' ? 'resend' : providerName === 'gmail' ? 'gmail' : 'none',
     };
   }
 
@@ -82,7 +100,10 @@ export async function getEmailSettings(): Promise<EmailSettings> {
   return {
     reservationConfirmationEnabled: rows[0]?.value === 'true',
     emailConfigured: isEmailConfigured(),
-    providerName: getEmailProviderName(),
+    providerName,
+    resendConfigured,
+    gmailConfigured,
+    activeProvider: providerName === 'resend' ? 'resend' : providerName === 'gmail' ? 'gmail' : 'none',
   };
 }
 
@@ -294,57 +315,6 @@ export async function sendPaymentConfirmationEmail(
     subject,
     errorMessage: result.reason,
     metadata: { emailId: result.emailId, provider: getEmailProviderName() },
-  });
-
-  return result;
-}
-
-// ============================================================================
-// Test Email
-// ============================================================================
-
-export type SendTestEmailInput = {
-  recipientEmail: string;
-  emailType: 'reservation_confirmation' | 'payment_confirmation';
-};
-
-export async function sendTestEmail(input: SendTestEmailInput): Promise<SendEmailResult> {
-  const locale = 'en';
-  const testContext = {
-    name: 'Test User',
-    eventTitle: 'Sample Book Club Event',
-    eventDate: '2026-05-01',
-    eventTime: '19:00',
-    eventLocation: 'Book Digest Space',
-    siteUrl: getSiteUrl(),
-  };
-
-  let subject: string;
-  let body: string;
-
-  if (input.emailType === 'payment_confirmation') {
-    const template = PAYMENT_CONFIRMATION_TEMPLATES[locale];
-    const interpolated = interpolatePaymentConfirmationTemplate(template, testContext);
-    subject = interpolated.subject;
-    body = interpolated.body;
-  } else {
-    const settings = await getRegistrationSuccessEmailSettings();
-    const template = settings.templates[locale];
-    subject = interpolateTemplate(template.subject, testContext);
-    body = interpolateTemplate(template.body, testContext);
-  }
-
-  const replyTo = EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO || undefined;
-  const result = await sendEmail(input.recipientEmail, subject, body, replyTo);
-
-  await logEmailAudit({
-    recipientEmail: input.recipientEmail,
-    emailType: 'test',
-    status: result.status,
-    locale,
-    subject,
-    errorMessage: result.reason,
-    metadata: { emailId: result.emailId, testType: input.emailType, provider: getEmailProviderName() },
   });
 
   return result;

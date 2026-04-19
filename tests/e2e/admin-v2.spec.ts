@@ -457,4 +457,56 @@ test.describe('Admin v2 API - Happy flow', () => {
 
     // Cleanup happens in afterEach
   });
+
+  test('email settings toggle - reservation confirmation enabled/disabled', async ({ request }) => {
+    // Get current settings
+    const getResponse = await request.get('/api/admin/settings/email', {
+      headers: adminHeaders,
+    });
+    expect(getResponse.ok()).toBeTruthy();
+    const initialData = await getResponse.json();
+    expect(initialData.ok).toBe(true);
+    expect(initialData.settings).toBeDefined();
+
+    const initialState = initialData.settings.reservationConfirmationEnabled;
+
+    // Toggle to opposite state
+    const updateResponse = await request.put('/api/admin/settings/email', {
+      headers: adminHeaders,
+      data: {
+        reservationConfirmationEnabled: !initialState,
+      },
+    });
+    expect(updateResponse.ok()).toBeTruthy();
+    const updateData = await updateResponse.json();
+    expect(updateData.ok).toBe(true);
+    expect(updateData.message).toContain('Email settings updated successfully');
+
+    // Verify the change
+    const verifyResponse = await request.get('/api/admin/settings/email', {
+      headers: adminHeaders,
+    });
+    expect(verifyResponse.ok()).toBeTruthy();
+    const verifyData = await verifyResponse.json();
+    expect(verifyData.ok).toBe(true);
+    expect(verifyData.settings.reservationConfirmationEnabled).toBe(!initialState);
+
+    // Restore original state
+    const restoreResponse = await request.put('/api/admin/settings/email', {
+      headers: adminHeaders,
+      data: {
+        reservationConfirmationEnabled: initialState,
+      },
+    });
+    expect(restoreResponse.ok()).toBeTruthy();
+
+    // Verify restoration
+    const finalResponse = await request.get('/api/admin/settings/email', {
+      headers: adminHeaders,
+    });
+    expect(finalResponse.ok()).toBeTruthy();
+    const finalData = await finalResponse.json();
+    expect(finalData.ok).toBe(true);
+    expect(finalData.settings.reservationConfirmationEnabled).toBe(initialState);
+  });
 });
