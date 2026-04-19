@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runWithRequestTrace } from '@/lib/observability';
-import { sendTestEmail } from '@/lib/email-service';
+import { sendTestEmail } from '@/lib/unified-email-service';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 
 // POST /api/admin/email-test

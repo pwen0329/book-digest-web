@@ -22,7 +22,7 @@ vi.mock('@/lib/turnstile', () => ({
   verifyTurnstileToken: vi.fn(),
 }));
 
-vi.mock('@/lib/registration-success-email', () => ({
+vi.mock('@/lib/unified-email-service', () => ({
   sendRegistrationSuccessEmail: vi.fn(),
 }));
 
@@ -48,7 +48,7 @@ import {
   countActiveRegistrationsByEventId,
 } from '@/lib/registration-store';
 import { verifyTurnstileToken } from '@/lib/turnstile';
-import { sendRegistrationSuccessEmail } from '@/lib/registration-success-email';
+import { sendRegistrationSuccessEmail } from '@/lib/unified-email-service';
 import { EventRegistrationStatus } from '@/types/event';
 import type { Event } from '@/types/event';
 import type { Venue } from '@/types/venue';

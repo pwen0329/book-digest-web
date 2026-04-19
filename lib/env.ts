@@ -54,11 +54,15 @@ export const SUPABASE_CONFIG = {
 
 // Email Configuration
 export const EMAIL_CONFIG = {
+  // Resend provider (preferred)
   RESEND_API_KEY: process.env.RESEND_API_KEY || null,
   FROM_EMAIL: process.env.FROM_EMAIL || 'noreply@bookdigest.app',
   REGISTRATION_EMAIL_FROM: process.env.REGISTRATION_EMAIL_FROM || null,
   REGISTRATION_EMAIL_REPLY_TO: process.env.REGISTRATION_EMAIL_REPLY_TO || null,
-  OUTBOX_FILE: process.env.EMAIL_OUTBOX_FILE || null,
+
+  // Gmail provider (fallback)
+  GMAIL_USER: process.env.GMAIL_USER || null,
+  GMAIL_PASSWORD: process.env.GMAIL_APP_PASSWORD || null,
 } as const;
 
 // Admin Configuration

@@ -8,7 +8,7 @@ vi.mock('@/lib/observability', () => ({
   runWithRequestTrace: vi.fn((req, name, fn) => fn()),
 }));
 
-vi.mock('@/lib/email-service', () => ({
+vi.mock('@/lib/unified-email-service', () => ({
   getEmailSettings: vi.fn(),
   updateEmailSettings: vi.fn(),
 }));
@@ -17,7 +17,7 @@ vi.mock('@/lib/admin-auth', () => ({
   isAuthorizedAdminRequest: vi.fn(),
 }));
 
-import { getEmailSettings, updateEmailSettings } from '@/lib/email-service';
+import { getEmailSettings, updateEmailSettings } from '@/lib/unified-email-service';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 
 describe('GET /api/admin/settings/email', () => {
