@@ -40,7 +40,7 @@ export class GmailEmailProvider implements IEmailProvider {
 
       return {
         success: true,
-        messageId: info.messageId,
+        emailId: info.messageId,
       };
     } catch (error) {
       return {

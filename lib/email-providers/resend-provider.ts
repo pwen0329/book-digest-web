@@ -28,7 +28,7 @@ export class ResendEmailProvider implements IEmailProvider {
         to: params.to,
         subject: params.subject,
         text: params.text,
-        reply_to: params.replyTo,
+        replyTo: params.replyTo,
       });
 
       if (result.error) {
@@ -40,7 +40,7 @@ export class ResendEmailProvider implements IEmailProvider {
 
       return {
         success: true,
-        messageId: result.data?.id,
+        emailId: result.data?.id,
       };
     } catch (error) {
       return {

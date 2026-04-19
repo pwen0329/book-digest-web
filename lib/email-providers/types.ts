@@ -9,7 +9,7 @@ export type EmailParams = {
 
 export type EmailResult = {
   success: boolean;
-  messageId?: string;
+  emailId?: string;
   error?: string;
 };
 

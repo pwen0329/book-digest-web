@@ -8,7 +8,7 @@ vi.mock('@/lib/observability', () => ({
   runWithRequestTrace: vi.fn((req, name, fn) => fn()),
 }));
 
-vi.mock('@/lib/unified-email-service', () => ({
+vi.mock('@/lib/email-service', () => ({
   getEmailSettings: vi.fn(),
   updateEmailSettings: vi.fn(),
 }));
@@ -17,7 +17,7 @@ vi.mock('@/lib/admin-auth', () => ({
   isAuthorizedAdminRequest: vi.fn(),
 }));
 
-import { getEmailSettings, updateEmailSettings } from '@/lib/unified-email-service';
+import { getEmailSettings, updateEmailSettings } from '@/lib/email-service';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 
 describe('GET /api/admin/settings/email', () => {
@@ -54,7 +54,8 @@ describe('GET /api/admin/settings/email', () => {
     vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(getEmailSettings).mockResolvedValue({
       reservationConfirmationEnabled: false,
-      resendConfigured: true,
+      emailConfigured: true,
+      providerName: 'resend',
     });
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
@@ -67,7 +68,8 @@ describe('GET /api/admin/settings/email', () => {
     expect(data.ok).toBe(true);
     expect(data.settings).toEqual({
       reservationConfirmationEnabled: false,
-      resendConfigured: true,
+      emailConfigured: true,
+      providerName: 'resend',
     });
 
     expect(getEmailSettings).toHaveBeenCalledOnce();

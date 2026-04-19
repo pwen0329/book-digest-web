@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runWithRequestTrace } from '@/lib/observability';
-import { getEmailSettings, updateEmailSettings } from '@/lib/unified-email-service';
+import { getEmailSettings, updateEmailSettings } from '@/lib/email-service';
 import { isAuthorizedAdminRequest } from '@/lib/admin-auth';
 
 // GET /api/admin/settings/email

@@ -1,23 +1,63 @@
 import 'server-only';
 
-import { Resend } from 'resend';
-import { PAYMENT_CONFIRMATION_TEMPLATES, interpolatePaymentConfirmationTemplate } from '@/lib/payment-confirmation-email-config';
+import { createEmailProvider, type IEmailProvider } from '@/lib/email-providers';
 import { EMAIL_CONFIG, CLIENT_ENV } from '@/lib/env';
 import { getSupabaseUrl, getSupabaseHeaders } from '@/lib/supabase-utils';
+import { PAYMENT_CONFIRMATION_TEMPLATES, interpolatePaymentConfirmationTemplate } from '@/lib/payment-confirmation-email-config';
+import { getRegistrationSuccessEmailSettings, type RegistrationEmailLocale } from '@/lib/registration-success-email-config';
 
-const RESEND_API_KEY = EMAIL_CONFIG.RESEND_API_KEY;
-const FROM_EMAIL = EMAIL_CONFIG.FROM_EMAIL;
-const SITE_URL = CLIENT_ENV.SITE_URL;
+// ============================================================================
+// Email Provider
+// ============================================================================
 
-// Email Settings
+let cachedProvider: IEmailProvider | null = null;
 
-export function isResendConfigured(): boolean {
-  return !!RESEND_API_KEY;
+function getEmailProvider(): IEmailProvider {
+  if (!cachedProvider) {
+    cachedProvider = createEmailProvider({
+      resend: EMAIL_CONFIG.RESEND_API_KEY && EMAIL_CONFIG.REGISTRATION_EMAIL_FROM
+        ? {
+            apiKey: EMAIL_CONFIG.RESEND_API_KEY,
+            fromEmail: EMAIL_CONFIG.REGISTRATION_EMAIL_FROM,
+          }
+        : undefined,
+      gmail: EMAIL_CONFIG.GMAIL_USER && EMAIL_CONFIG.GMAIL_PASSWORD
+        ? {
+            user: EMAIL_CONFIG.GMAIL_USER,
+            password: EMAIL_CONFIG.GMAIL_PASSWORD,
+          }
+        : undefined,
+    });
+  }
+  return cachedProvider;
 }
+
+export function isEmailConfigured(): boolean {
+  try {
+    const provider = getEmailProvider();
+    return provider.isConfigured();
+  } catch {
+    return false;
+  }
+}
+
+export function getEmailProviderName(): string {
+  try {
+    const provider = getEmailProvider();
+    return provider.getProviderName();
+  } catch {
+    return 'none';
+  }
+}
+
+// ============================================================================
+// Email Settings
+// ============================================================================
 
 export type EmailSettings = {
   reservationConfirmationEnabled: boolean;
-  resendConfigured: boolean;
+  emailConfigured: boolean;
+  providerName: string;
 };
 
 export async function getEmailSettings(): Promise<EmailSettings> {
@@ -33,14 +73,16 @@ export async function getEmailSettings(): Promise<EmailSettings> {
   if (!response.ok) {
     return {
       reservationConfirmationEnabled: false,
-      resendConfigured: isResendConfigured(),
+      emailConfigured: isEmailConfigured(),
+      providerName: getEmailProviderName(),
     };
   }
 
   const rows = await response.json() as Array<{ value: string }>;
   return {
     reservationConfirmationEnabled: rows[0]?.value === 'true',
-    resendConfigured: isResendConfigured(),
+    emailConfigured: isEmailConfigured(),
+    providerName: getEmailProviderName(),
   };
 }
 
@@ -64,7 +106,9 @@ export async function updateEmailSettings(settings: { reservationConfirmationEna
   }
 }
 
+// ============================================================================
 // Email Audit
+// ============================================================================
 
 export type EmailAuditEntry = {
   recipientEmail: string;
@@ -102,7 +146,9 @@ export async function logEmailAudit(entry: EmailAuditEntry): Promise<void> {
   }
 }
 
-// Email Sending
+// ============================================================================
+// Email Sending Core
+// ============================================================================
 
 type SendEmailResult = {
   status: 'sent' | 'failed' | 'skipped';
@@ -110,25 +156,26 @@ type SendEmailResult = {
   emailId?: string;
 };
 
-async function sendEmailViaResend(to: string, subject: string, body: string): Promise<SendEmailResult> {
-  if (!RESEND_API_KEY) {
-    return { status: 'skipped', reason: 'Resend API key not configured' };
-  }
-
+async function sendEmail(to: string, subject: string, body: string, replyTo?: string): Promise<SendEmailResult> {
   try {
-    const resend = new Resend(RESEND_API_KEY);
-    const result = await resend.emails.send({
-      from: FROM_EMAIL,
+    const provider = getEmailProvider();
+
+    if (!provider.isConfigured()) {
+      return { status: 'skipped', reason: 'Email provider not configured' };
+    }
+
+    const result = await provider.sendEmail({
       to,
       subject,
       text: body,
+      replyTo,
     });
 
-    if (result.error) {
-      return { status: 'failed', reason: result.error.message };
+    if (!result.success) {
+      return { status: 'failed', reason: result.error };
     }
 
-    return { status: 'sent', emailId: result.data?.id };
+    return { status: 'sent', emailId: result.emailId };
   } catch (error) {
     return {
       status: 'failed',
@@ -137,7 +184,77 @@ async function sendEmailViaResend(to: string, subject: string, body: string): Pr
   }
 }
 
+// ============================================================================
+// Template Helpers
+// ============================================================================
+
+function getSiteUrl(): string {
+  return CLIENT_ENV.SITE_URL;
+}
+
+function interpolateTemplate(template: string, context: Record<string, string>): string {
+  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key: string) => context[key] || '');
+}
+
+function normalizeLocale(locale?: string): RegistrationEmailLocale {
+  return locale === 'zh' ? 'zh' : 'en';
+}
+
+// ============================================================================
+// Registration Success Email
+// ============================================================================
+
+export type SendRegistrationSuccessEmailInput = {
+  locale: RegistrationEmailLocale;
+  name: string;
+  email: string;
+  eventTitle: string;
+  eventTitleEn: string;
+  registrationId?: string;
+  eventId?: number;
+};
+
+export async function sendRegistrationSuccessEmail(input: SendRegistrationSuccessEmailInput): Promise<SendEmailResult> {
+  const settings = await getRegistrationSuccessEmailSettings();
+  if (!settings.enabled) {
+    return { status: 'skipped', reason: 'Registration success emails are disabled.' };
+  }
+
+  const locale = normalizeLocale(input.locale);
+  const template = settings.templates[locale];
+  const eventTitle = locale === 'en' ? input.eventTitleEn : input.eventTitle;
+
+  const context = {
+    name: input.name,
+    email: input.email,
+    eventTitle,
+    siteUrl: getSiteUrl(),
+  };
+
+  const subject = interpolateTemplate(template.subject, context);
+  const body = interpolateTemplate(template.body, context);
+  const replyTo = EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO || undefined;
+
+  const result = await sendEmail(input.email, subject, body, replyTo);
+
+  await logEmailAudit({
+    recipientEmail: input.email,
+    emailType: 'reservation_confirmation',
+    status: result.status,
+    registrationId: input.registrationId,
+    eventId: input.eventId,
+    locale,
+    subject,
+    errorMessage: result.reason,
+    metadata: { emailId: result.emailId, provider: getEmailProviderName() },
+  });
+
+  return result;
+}
+
+// ============================================================================
 // Payment Confirmation Email
+// ============================================================================
 
 export type SendPaymentConfirmationEmailInput = {
   locale: 'zh' | 'en';
@@ -161,10 +278,11 @@ export async function sendPaymentConfirmationEmail(
     eventDate: input.eventDate,
     eventTime: input.eventTime,
     eventLocation: input.eventLocation,
-    siteUrl: SITE_URL,
+    siteUrl: getSiteUrl(),
   });
 
-  const result = await sendEmailViaResend(input.email, subject, body);
+  const replyTo = EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO || undefined;
+  const result = await sendEmail(input.email, subject, body, replyTo);
 
   await logEmailAudit({
     recipientEmail: input.email,
@@ -175,13 +293,15 @@ export async function sendPaymentConfirmationEmail(
     locale: input.locale,
     subject,
     errorMessage: result.reason,
-    metadata: { emailId: result.emailId },
+    metadata: { emailId: result.emailId, provider: getEmailProviderName() },
   });
 
   return result;
 }
 
+// ============================================================================
 // Test Email
+// ============================================================================
 
 export type SendTestEmailInput = {
   recipientEmail: string;
@@ -196,10 +316,7 @@ export async function sendTestEmail(input: SendTestEmailInput): Promise<SendEmai
     eventDate: '2026-05-01',
     eventTime: '19:00',
     eventLocation: 'Book Digest Space',
-    paymentAmount: '200',
-    paymentCurrency: 'TWD',
-    paymentInstructions: 'Test payment instructions',
-    siteUrl: SITE_URL,
+    siteUrl: getSiteUrl(),
   };
 
   let subject: string;
@@ -211,12 +328,14 @@ export async function sendTestEmail(input: SendTestEmailInput): Promise<SendEmai
     subject = interpolated.subject;
     body = interpolated.body;
   } else {
-    // For reservation_confirmation, we'll add this after updating registration-success-email-config.ts
-    subject = 'Test Reservation Confirmation Email';
-    body = 'This is a test email. Full template will be implemented with reservation email updates.';
+    const settings = await getRegistrationSuccessEmailSettings();
+    const template = settings.templates[locale];
+    subject = interpolateTemplate(template.subject, testContext);
+    body = interpolateTemplate(template.body, testContext);
   }
 
-  const result = await sendEmailViaResend(input.recipientEmail, subject, body);
+  const replyTo = EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO || undefined;
+  const result = await sendEmail(input.recipientEmail, subject, body, replyTo);
 
   await logEmailAudit({
     recipientEmail: input.recipientEmail,
@@ -225,7 +344,7 @@ export async function sendTestEmail(input: SendTestEmailInput): Promise<SendEmai
     locale,
     subject,
     errorMessage: result.reason,
-    metadata: { emailId: result.emailId, testType: input.emailType },
+    metadata: { emailId: result.emailId, testType: input.emailType, provider: getEmailProviderName() },
   });
 
   return result;

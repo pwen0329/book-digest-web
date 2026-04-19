@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { verifyTurnstileToken } from '@/lib/turnstile';
-import { sendRegistrationSuccessEmail } from '@/lib/unified-email-service';
+import { sendRegistrationSuccessEmail } from '@/lib/email-service';
 import { getRetryAfterSeconds } from '@/lib/http-response';
 import { parseApiReferral } from '@/lib/signup';
 import { createRegistrationReservation, updateRegistrationReservation, countActiveRegistrationsByEventId } from '@/lib/registration-store';
