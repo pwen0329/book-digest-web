@@ -7,7 +7,10 @@ Use this file after deploys or major admin changes. The goal is to verify the fu
 1. `/admin` is reachable.
 2. `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` are configured.
 3. If you want persistent mode validation, Supabase is configured.
-4. If you want email validation, configure `RESEND_API_KEY` plus `REGISTRATION_EMAIL_FROM`, or use `EMAIL_OUTBOX_FILE` locally.
+4. If you want email validation, configure:
+   - Production: `RESEND_API_KEY` + `REGISTRATION_EMAIL_FROM` (via Resend)
+   - Alternative: `GMAIL_USER` + `GMAIL_PASSWORD` + `REGISTRATION_EMAIL_FROM` (via Gmail SMTP)
+   - Local testing: MailHog (see [Email Testing](../README.md#email-testing))
 
 ## Validation Order
 

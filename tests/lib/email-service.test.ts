@@ -21,8 +21,8 @@ vi.mock('@/lib/email-templates', () => ({
     },
   })),
   interpolateEmailTemplate: vi.fn((template, context) => ({
-    subject: template.subject.replace(/\{\{(\w+)\}\}/g, (_, key) => context[key] || ''),
-    body: template.body.replace(/\{\{(\w+)\}\}/g, (_, key) => context[key] || ''),
+    subject: template.subject.replace(/\{\{(\w+)\}\}/g, (_: string, key: string) => context[key] || ''),
+    body: template.body.replace(/\{\{(\w+)\}\}/g, (_: string, key: string) => context[key] || ''),
   })),
 }));
 

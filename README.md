@@ -52,13 +52,13 @@ Core variables:
 - `SUPABASE_SERVICE_ROLE_KEY`: server-side key used for admin document writes and storage uploads
 - `SUPABASE_REGISTRATIONS_TABLE`: optional persistent registrations table name, defaults to `registrations`
 - `SUPABASE_STORAGE_BUCKET`: optional asset bucket name, defaults to `admin-assets`
-- `RESEND_API_KEY`: enables real registration success emails
-- `REGISTRATION_EMAIL_FROM`: sender address used by Resend, for example `Book Digest <hello@example.com>`
+- `RESEND_API_KEY`: enables real registration success emails via Resend
+- `GMAIL_USER`, `GMAIL_PASSWORD`: Gmail SMTP credentials for sending emails (alternative to Resend)
+- `REGISTRATION_EMAIL_FROM`: sender address for emails, for example `Book Digest <hello@example.com>`
 - `REGISTRATION_EMAIL_REPLY_TO`: optional reply-to address for success emails
-- `EMAIL_OUTBOX_FILE`: optional local JSON outbox path for development or automated tests
 - `NEXT_PUBLIC_TURNSTILE_SITEKEY`, `TURNSTILE_SECRET_KEY`: Cloudflare Turnstile
 
-If neither `RESEND_API_KEY` nor `EMAIL_OUTBOX_FILE` is configured, submissions still succeed, but confirmation emails are skipped even if the admin toggle is enabled.
+If no email configuration is provided (neither Resend nor Gmail SMTP), submissions still succeed, but confirmation emails are skipped even if the admin toggle is enabled.
 
 If you use Supabase's free tier for production-like environments, remember that inactive projects can auto-pause. When that happens, Vercel may still deploy successfully while `/`, `/books`, or `/events` fail or render stale fallback content until Supabase resumes.
 
@@ -164,7 +164,10 @@ For the `Emails` tab:
 
 - enable the toggle to send confirmation emails after successful registration
 - edit the localized subject and body templates
-- configure either `RESEND_API_KEY` + `REGISTRATION_EMAIL_FROM` for real delivery, or `EMAIL_OUTBOX_FILE` for local/test delivery
+- configure email delivery:
+  - Production: `RESEND_API_KEY` + `REGISTRATION_EMAIL_FROM` (via Resend)
+  - Alternative: `GMAIL_USER` + `GMAIL_PASSWORD` + `REGISTRATION_EMAIL_FROM` (via Gmail SMTP)
+  - Testing: See [Email Testing](#email-testing) section for MailHog setup
 - save the email settings before testing a new signup
 
 ### File-backed vs persistent admin

@@ -43,6 +43,11 @@ describe('RegistrationReviewModal', () => {
     updatedAt: '2026-04-01T00:00:00Z',
   };
 
+  const mockEmailConfig = {
+    replyTo: 'test@bookdigest.com',
+    siteUrl: 'https://bookdigest.com',
+  };
+
   describe('Rendering with valid data', () => {
     it('should render modal with user information', () => {
       const onClose = vi.fn();
@@ -52,6 +57,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -73,6 +79,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -90,6 +97,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -110,6 +118,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={registrationWithoutBank}
           event={eventWithoutPayment}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -127,6 +136,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
           onCancel={onCancel}
@@ -147,6 +157,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={confirmedRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -167,6 +178,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={undefined}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -185,6 +197,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={undefined}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -205,6 +218,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -222,6 +236,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -243,6 +258,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -268,6 +284,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -300,6 +317,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -317,6 +335,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
@@ -335,6 +354,7 @@ describe('RegistrationReviewModal', () => {
         <RegistrationReviewModal
           registration={mockRegistration}
           event={mockEvent}
+          emailConfig={mockEmailConfig}
           onClose={onClose}
           onConfirm={onConfirm}
         />
