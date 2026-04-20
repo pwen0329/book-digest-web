@@ -57,7 +57,8 @@ export default function ActivitySignupFlow({
     const saved = sessionStorage.getItem(storageKey);
     if (saved) {
       const parsed = parseInt(saved, 10);
-      if (Object.values(SignupStep).includes(parsed)) {
+      // Don't restore SUCCESS step - if registration was completed, start fresh
+      if (Object.values(SignupStep).includes(parsed) && parsed !== SignupStep.SUCCESS) {
         setStepState(parsed as SignupStep);
       }
     }
@@ -90,6 +91,16 @@ export default function ActivitySignupFlow({
   useEffect(() => () => {
     submitRequestRef.current?.abort();
   }, []);
+
+  // Reset all session state and form values for a fresh start
+  const resetFlow = useCallback(() => {
+    sessionStorage.removeItem(storageKey);
+    sessionStorage.removeItem(`signup-form-${eventSlug}`);
+    setBankLast5('');
+    setFormValues(null);
+    setSendError(null);
+    setTurnstileToken(null);
+  }, [storageKey, eventSlug]);
 
   const formBgClass = 'bg-white/20 backdrop-blur-xl rounded-2xl';
   const cancelTitle = tSignup('cancelTitle');
@@ -221,7 +232,10 @@ export default function ActivitySignupFlow({
                       </div>
                       <div className="pt-6">
                         <button
-                          onClick={() => setStep(SignupStep.REGISTRATION_FORM)}
+                          onClick={() => {
+                            resetFlow();
+                            setStep(SignupStep.REGISTRATION_FORM);
+                          }}
                           className={`inline-flex items-center rounded-full bg-brand-pink text-white px-6 py-2.5 font-semibold shadow hover:brightness-110 transition-all ${locale === 'zh' ? 'tracking-widest' : ''}`}
                         >
                           {tSignup('agreeAndContinue')}

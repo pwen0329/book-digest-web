@@ -40,6 +40,22 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
   const [testEmailStatus, setTestEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [testEmailMessage, setTestEmailMessage] = useState('');
 
+  // Email history state
+  const [emailHistory, setEmailHistory] = useState<Array<{
+    id: string;
+    sentAt: string;
+    recipientEmail: string;
+    emailType: string;
+    status: string;
+    eventTitle: string | null;
+    subject: string | null;
+  }>>([]);
+  const [emailHistoryLoading, setEmailHistoryLoading] = useState(false);
+  const [emailHistoryTotal, setEmailHistoryTotal] = useState(0);
+  const [emailHistoryOffset, setEmailHistoryOffset] = useState(0);
+  const [emailHistoryLimit] = useState(50);
+  const [emailHistoryTypeFilter, setEmailHistoryTypeFilter] = useState<'all' | 'reservation_confirmation' | 'payment_confirmation' | 'test'>('all');
+
   // Auto-clear messages after 5 seconds
   useEffect(() => {
     if (message || error) {
@@ -106,6 +122,32 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error');
+    }
+  };
+
+  // Load email history
+  const loadEmailHistory = async () => {
+    setEmailHistoryLoading(true);
+    try {
+      const typeParam = emailHistoryTypeFilter !== 'all' ? `&type=${emailHistoryTypeFilter}` : '';
+      const response = await fetch(
+        `/api/admin/email-history?limit=${emailHistoryLimit}&offset=${emailHistoryOffset}${typeParam}`,
+        {
+          method: 'GET',
+          credentials: 'include',
+        }
+      );
+      const data = await response.json();
+      if (response.ok && data.ok) {
+        setEmailHistory(data.emails);
+        setEmailHistoryTotal(data.total);
+      } else {
+        console.error('Failed to load email history:', data.error);
+      }
+    } catch (error) {
+      console.error('Failed to load email history:', error);
+    } finally {
+      setEmailHistoryLoading(false);
     }
   };
 
@@ -190,6 +232,8 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
       if (response.ok && data.ok) {
         setTestEmailStatus('success');
         setTestEmailMessage(`Test email sent to ${testEmail}`);
+        // Refresh email history after successful send
+        await loadEmailHistory();
       } else {
         setTestEmailStatus('error');
         setTestEmailMessage(data.error || 'Failed to send test email');
@@ -492,6 +536,205 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
               )}
             </form>
           )}
+        </div>
+      </div>
+
+      {/* Section 5: Email History */}
+      <div className="rounded-[28px] border border-white/10 bg-white/10 p-6">
+        <div className="rounded-[24px] border border-white/10 bg-black/10 p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold font-outfit">Email History</h2>
+              <p className="mt-2 text-sm text-white/70">View all emails sent by the system with delivery status.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                value={emailHistoryTypeFilter}
+                onChange={async (e) => {
+                  const newType = e.target.value as typeof emailHistoryTypeFilter;
+                  setEmailHistoryTypeFilter(newType);
+                  setEmailHistoryOffset(0);
+                  // Load with the new filter immediately
+                  setEmailHistoryLoading(true);
+                  try {
+                    const typeParam = newType !== 'all' ? `&type=${newType}` : '';
+                    const response = await fetch(
+                      `/api/admin/email-history?limit=${emailHistoryLimit}&offset=0${typeParam}`,
+                      {
+                        method: 'GET',
+                        credentials: 'include',
+                      }
+                    );
+                    const data = await response.json();
+                    if (response.ok && data.ok) {
+                      setEmailHistory(data.emails);
+                      setEmailHistoryTotal(data.total);
+                    }
+                  } catch (error) {
+                    console.error('Failed to load email history:', error);
+                  } finally {
+                    setEmailHistoryLoading(false);
+                  }
+                }}
+                className="rounded-2xl bg-black/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-pink/40"
+                disabled={emailHistoryLoading}
+              >
+                <option value="all">All Types</option>
+                <option value="reservation_confirmation">Reservation Confirmation</option>
+                <option value="payment_confirmation">Payment Confirmation</option>
+                <option value="test">Test</option>
+              </select>
+              <button
+                onClick={() => void loadEmailHistory()}
+                disabled={emailHistoryLoading}
+                className="inline-flex min-h-10 items-center rounded-full bg-brand-pink px-5 py-2 text-sm font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60"
+              >
+                {emailHistoryLoading ? 'Loading…' : 'Refresh'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            {emailHistoryLoading && emailHistory.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-white/60">Loading email history...</div>
+              </div>
+            ) : emailHistory.length === 0 ? (
+              <div className="flex items-center justify-center rounded-2xl border border-white/10 bg-black/10 py-12">
+                <div className="text-center text-white/60">
+                  <p>No emails found</p>
+                  <p className="mt-1 text-sm">Try adjusting the filter or send a test email</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto rounded-2xl border border-white/10">
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-white/10 bg-black/20">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-medium text-white/70">Sent At</th>
+                        <th className="px-4 py-3 text-left font-medium text-white/70">Recipient</th>
+                        <th className="px-4 py-3 text-left font-medium text-white/70">Type</th>
+                        <th className="px-4 py-3 text-left font-medium text-white/70">Status</th>
+                        <th className="px-4 py-3 text-left font-medium text-white/70">Event</th>
+                        <th className="px-4 py-3 text-left font-medium text-white/70">Subject</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/10">
+                      {emailHistory.map((email) => (
+                        <tr key={email.id} className="hover:bg-white/5">
+                          <td className="px-4 py-3 text-white/90">
+                            {new Date(email.sentAt).toLocaleString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </td>
+                          <td className="px-4 py-3 text-white/90">{email.recipientEmail}</td>
+                          <td className="px-4 py-3">
+                            <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-medium text-white/80">
+                              {email.emailType === 'reservation_confirmation'
+                                ? 'Reservation'
+                                : email.emailType === 'payment_confirmation'
+                                  ? 'Payment'
+                                  : 'Test'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-medium ${
+                                email.status === 'sent'
+                                  ? 'bg-emerald-500/20 text-emerald-100'
+                                  : email.status === 'failed'
+                                    ? 'bg-red-500/20 text-red-100'
+                                    : 'bg-white/10 text-white/60'
+                              }`}
+                            >
+                              {email.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-white/70">{email.eventTitle || '—'}</td>
+                          <td className="px-4 py-3 text-white/70">{email.subject || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="mt-6 flex items-center justify-between text-sm">
+                  <div className="text-white/60">
+                    Showing {emailHistoryOffset + 1} - {Math.min(emailHistoryOffset + emailHistoryLimit, emailHistoryTotal)} of{' '}
+                    {emailHistoryTotal} emails
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        const newOffset = Math.max(0, emailHistoryOffset - emailHistoryLimit);
+                        setEmailHistoryOffset(newOffset);
+                        setEmailHistoryLoading(true);
+                        try {
+                          const typeParam = emailHistoryTypeFilter !== 'all' ? `&type=${emailHistoryTypeFilter}` : '';
+                          const response = await fetch(
+                            `/api/admin/email-history?limit=${emailHistoryLimit}&offset=${newOffset}${typeParam}`,
+                            {
+                              method: 'GET',
+                              credentials: 'include',
+                            }
+                          );
+                          const data = await response.json();
+                          if (response.ok && data.ok) {
+                            setEmailHistory(data.emails);
+                            setEmailHistoryTotal(data.total);
+                          }
+                        } catch (error) {
+                          console.error('Failed to load email history:', error);
+                        } finally {
+                          setEmailHistoryLoading(false);
+                        }
+                      }}
+                      disabled={emailHistoryLoading || emailHistoryOffset === 0}
+                      className="inline-flex items-center rounded-full bg-white/10 px-4 py-2 font-medium text-white transition hover:bg-white/20 disabled:opacity-40"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const newOffset = emailHistoryOffset + emailHistoryLimit;
+                        setEmailHistoryOffset(newOffset);
+                        setEmailHistoryLoading(true);
+                        try {
+                          const typeParam = emailHistoryTypeFilter !== 'all' ? `&type=${emailHistoryTypeFilter}` : '';
+                          const response = await fetch(
+                            `/api/admin/email-history?limit=${emailHistoryLimit}&offset=${newOffset}${typeParam}`,
+                            {
+                              method: 'GET',
+                              credentials: 'include',
+                            }
+                          );
+                          const data = await response.json();
+                          if (response.ok && data.ok) {
+                            setEmailHistory(data.emails);
+                            setEmailHistoryTotal(data.total);
+                          }
+                        } catch (error) {
+                          console.error('Failed to load email history:', error);
+                        } finally {
+                          setEmailHistoryLoading(false);
+                        }
+                      }}
+                      disabled={emailHistoryLoading || emailHistoryOffset + emailHistoryLimit >= emailHistoryTotal}
+                      className="inline-flex items-center rounded-full bg-white/10 px-4 py-2 font-medium text-white transition hover:bg-white/20 disabled:opacity-40"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

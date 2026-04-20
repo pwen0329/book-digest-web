@@ -73,6 +73,13 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+    services:
+      mailhog:
+        image: mailhog/mailhog
+        ports:
+          - 1025:1025
+          - 8025:8025
+
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -104,6 +111,13 @@ jobs:
           BASE_URL: ${{ steps.vercel-preview.outputs.url }}
           CAPACITY_GUARDRAILS_E2E: 1
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          SMTP_HOST: localhost
+          SMTP_PORT: 1025
+          GMAIL_USER: test@example.com
+          GMAIL_PASSWORD: test-password
+          REGISTRATION_EMAIL_FROM: test@bookdigest.com
+          REGISTRATION_EMAIL_REPLY_TO: reply@bookdigest.com
+          MAILHOG_API_URL: http://localhost:8025/api/v2
 
       - name: Upload Playwright report
         if: always()

@@ -372,11 +372,28 @@ test.describe('Admin v2 API - Happy flow', () => {
       expect(registration.bankAccount).toBe(testBankAccount);
       console.log('Registration test - bank account verified:', registration.bankAccount);
 
-      // TODO: Also verify via admin dashboard UI
-      // Currently the admin panel's Registrations tab doesn't properly render/update after clicking.
-      // The button shows [active] but the content area still displays the Books editor instead of
-      // the registrations list. This needs investigation into the admin panel's client-side
-      // routing/state management. Once fixed, add UI verification back.
+      // Step 9: Test payment confirmation flow via API
+      const confirmResponse = await request.post(`/api/admin/registrations/${registration.id}/confirm-payment`, {
+        headers: adminHeaders,
+      });
+      expect(confirmResponse.ok()).toBeTruthy();
+
+      // Step 10: Verify registration status was updated to confirmed
+      const updatedRegistrationsResponse = await request.get(`/api/admin/registrations?eventId=${eventId}`, {
+        headers: adminHeaders,
+      });
+      expect(updatedRegistrationsResponse.ok()).toBeTruthy();
+      const updatedRegistrationsData = await updatedRegistrationsResponse.json();
+      const updatedRegistration = updatedRegistrationsData.items.find((r: any) => r.email === testEmail);
+      expect(updatedRegistration).toBeDefined();
+      expect(updatedRegistration.status).toBe('confirmed');
+
+      // Verify audit trail includes confirmation event
+      expect(updatedRegistration.auditTrail).toBeDefined();
+      expect(updatedRegistration.auditTrail.length).toBeGreaterThan(1);
+      const confirmationAudit = updatedRegistration.auditTrail.find((entry: any) => entry.event === 'admin_confirmed_payment');
+      expect(confirmationAudit).toBeDefined();
+      expect(confirmationAudit.actor).toBe('admin');
 
       // Cleanup will happen in afterEach
     });

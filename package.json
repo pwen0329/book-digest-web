@@ -40,6 +40,7 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.5",
     "jsdom": "^28.1.0",
+    "libmime": "^5.3.8",
     "playwright": "^1.57.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.9",

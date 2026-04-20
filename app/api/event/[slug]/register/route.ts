@@ -7,6 +7,7 @@ import { createRegistrationReservation, updateRegistrationReservation, countActi
 import { logServerError, runWithRequestTrace } from '@/lib/observability';
 import { getEventBySlug, calculateRegistrationStatus } from '@/lib/events';
 import { EventRegistrationStatus } from '@/types/event';
+import { sendRegistrationSuccessEmail } from '@/lib/email-service';
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
@@ -146,6 +147,26 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       reservationRecordId = reservationRecord.id;
       registrationStored = true;
+
+      // Send confirmation email if enabled
+      try {
+        await sendRegistrationSuccessEmail({
+          locale,
+          name,
+          email,
+          eventTitle: event.title,
+          eventTitleEn: event.titleEn,
+          eventDate: event.eventDate,
+          eventLocation: event.venue?.location || 'TW',
+          venueName: event.venue?.name || 'TBD',
+          venueAddress: event.venue?.address,
+          registrationId: reservationRecord.id,
+          eventId: event.id,
+        });
+      } catch (emailError) {
+        // Log but don't fail the registration if email fails
+        console.error('Failed to send confirmation email:', emailError);
+      }
 
       return NextResponse.json({ ok: true, id: reservationRecord.id }, { status: 201 });
     } catch (err) {

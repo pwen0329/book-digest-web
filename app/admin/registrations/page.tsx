@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { RegistrationAuditSummary, RegistrationRecord, RegistrationRecordStatus } from '@/lib/registration-store';
 import type { Event } from '@/types/event';
+import PaymentReviewModal from '@/components/admin/RegistrationReviewModal';
 
 type RegistrationsResponse = {
   items: RegistrationRecord[];
@@ -32,6 +33,8 @@ export default function RegistrationsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [actionInFlight, setActionInFlight] = useState(false);
+  const [reviewingRegistration, setReviewingRegistration] = useState<RegistrationRecord | null>(null);
+  const [emailConfig, setEmailConfig] = useState<{ replyTo: string; siteUrl: string }>({ replyTo: '', siteUrl: '' });
 
   const refreshRegistrations = useCallback(async () => {
     setRegistrationsLoading(true);
@@ -75,15 +78,22 @@ export default function RegistrationsPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const eventsRes = await fetch('/api/admin/events-v2', {
-          credentials: 'include',
-        });
+        const [eventsRes, emailConfigRes] = await Promise.all([
+          fetch('/api/admin/events-v2', { credentials: 'include' }),
+          fetch('/api/email-config'),
+        ]);
+
         const eventsData = await eventsRes.json();
-        if (eventsData.ok) {
-          setEvents(eventsData.items);
+        if (eventsRes.ok && eventsData.events) {
+          setEvents(eventsData.events);
+        }
+
+        const emailConfigData = await emailConfigRes.json();
+        if (emailConfigRes.ok) {
+          setEmailConfig(emailConfigData);
         }
       } catch (error) {
-        console.error('Failed to load events:', error);
+        console.error('Failed to load data:', error);
       }
     };
     loadData();
@@ -144,6 +154,44 @@ export default function RegistrationsPage() {
     } finally {
       setActionInFlight(false);
     }
+  }
+
+  async function handleConfirmPayment(registrationId: string) {
+    const response = await fetch(`/api/admin/registrations/${registrationId}/confirm-payment`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({ error: 'Failed to confirm payment' }));
+      throw new Error(data.error || 'Failed to confirm payment');
+    }
+
+    // Refresh the registration list after confirmation
+    await refreshRegistrations();
+  }
+
+  async function handleCancelRegistration(registrationId: string, emailContent: string | null, emailSubject: string | null = null) {
+    const response = await fetch(`/api/admin/registrations/${registrationId}/cancel`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ emailContent, emailSubject }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({ error: 'Failed to cancel registration' }));
+      throw new Error(data.error || 'Failed to cancel registration');
+    }
+
+    // Refresh the registration list after cancellation
+    await refreshRegistrations();
   }
 
   return (
@@ -233,7 +281,7 @@ export default function RegistrationsPage() {
                     <th className="px-4 py-3 font-medium">Email</th>
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 font-medium">Profession</th>
-                    <th className="px-4 py-3 font-medium">Audit</th>
+                    <th className="px-4 py-3 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10 bg-black/10">
@@ -243,30 +291,19 @@ export default function RegistrationsPage() {
                       <td className="px-4 py-3 text-white">{events.find((e) => e.id === registration.eventId)?.title || `Event #${registration.eventId}`}</td>
                       <td className="px-4 py-3 text-white">{registration.name}</td>
                       <td className="px-4 py-3 text-white/85">{registration.email}</td>
-                      <td className="px-4 py-3"><span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">{registration.status}</span></td>
+                      <td className="px-4 py-3">
+                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">
+                          {registration.status}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-white/75">{registration.profession}</td>
-                      <td className="px-4 py-3 text-white/75">
-                        <details className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                          <summary className="cursor-pointer text-white">Details</summary>
-                          <div className="mt-3 space-y-2 text-xs text-white/70">
-                            <p>Request ID: <span className="font-mono text-white">{registration.requestId || 'n/a'}</span></p>
-                            <p>Visitor ID: <span className="font-mono text-white">{registration.visitorId || 'n/a'}</span></p>
-                            <p>Bank account: <span className="font-mono text-white">{registration.bankAccount || 'n/a'}</span></p>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                              <p className="mb-2 text-white/85">Audit trail</p>
-                              <div className="space-y-2">
-                                {(registration.auditTrail || []).map((entry) => (
-                                  <div key={`${registration.id}-${entry.at}-${entry.event}`} className="rounded-xl border border-white/10 bg-white/5 p-2">
-                                    <p className="text-white">{entry.event}</p>
-                                    <p>{new Date(entry.at).toLocaleString()} by {entry.actor}</p>
-                                    <p>{entry.summary}</p>
-                                  </div>
-                                ))}
-                                {!registration.auditTrail?.length ? <p>No audit entries recorded.</p> : null}
-                              </div>
-                            </div>
-                          </div>
-                        </details>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setReviewingRegistration(registration)}
+                          className="inline-flex items-center rounded-full bg-white/15 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-white shadow-[0_3px_0_0_rgba(0,0,0,0.3),0_4px_8px_-2px_rgba(0,0,0,0.2)] transition-all hover:shadow-[0_1px_0_0_rgba(0,0,0,0.3),0_2px_6px_-2px_rgba(0,0,0,0.2)] hover:translate-y-[2px] active:shadow-[0_0_0_0_rgba(0,0,0,0.3)] active:translate-y-[3px]"
+                        >
+                          Review
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -281,6 +318,24 @@ export default function RegistrationsPage() {
           </div>
         </div>
       </div>
+
+      {/* Payment Review Modal */}
+      {reviewingRegistration && (
+        <PaymentReviewModal
+          registration={reviewingRegistration}
+          event={events.find(e => e.id === reviewingRegistration.eventId)}
+          emailConfig={emailConfig}
+          onClose={() => setReviewingRegistration(null)}
+          onConfirm={async () => {
+            await handleConfirmPayment(reviewingRegistration.id);
+            setReviewingRegistration(null);
+          }}
+          onCancel={async (emailContent, emailSubject) => {
+            await handleCancelRegistration(reviewingRegistration.id, emailContent, emailSubject);
+            setReviewingRegistration(null);
+          }}
+        />
+      )}
     </>
   );
 }

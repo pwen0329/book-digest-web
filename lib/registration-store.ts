@@ -355,7 +355,7 @@ export async function countActiveRegistrationsByEventId(eventId: number): Promis
   const query = buildSupabaseQuery({
     select: 'id',
     event_id: `eq.${eventId}`,
-    or: `(status.eq.confirmed,and(status.eq.pending,updated_at.gte.${pendingCutoff}))`,
+    or: `(status.eq.confirmed,status.eq.created,and(status.eq.pending,updated_at.gte.${pendingCutoff}))`,
   });
   const response = await fetch(query, {
     method: 'GET',

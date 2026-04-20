@@ -241,3 +241,59 @@ npm run test:components
 export NEXT_DIST_DIR=.next-local-build && npm run build
 npx playwright test --workers=1
 ```
+
+## Email Testing
+
+For local development and e2e tests, we use [MailHog](https://github.com/mailhog/MailHog) - a fake SMTP server that captures emails and exposes them via HTTP API.
+
+### Quick Start
+
+```bash
+# Start MailHog
+docker-compose up -d mailhog
+
+# Ensure .env.test is configured (see below)
+
+# Run email e2e tests
+npx playwright test tests/e2e/email.spec.ts
+
+# View captured emails
+open http://localhost:8025
+```
+
+### Environment Setup
+
+Email tests require both MailHog and local Supabase configuration in `.env.test`:
+
+```env
+# Get these from: npx supabase status
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+
+# MailHog SMTP
+SMTP_HOST=localhost
+SMTP_PORT=1025
+
+# Other email settings (defaults)
+REGISTRATION_EMAIL_FROM=test@bookdigest.com
+MAILHOG_API_URL=http://localhost:8025/api/v2
+```
+
+MailHog runs on:
+- SMTP server: `localhost:1025`
+- Web UI + API: `http://localhost:8025`
+
+### Email Test Coverage
+
+The email e2e test suite (`tests/e2e/email.spec.ts`) comprehensively tests:
+1. **Registration + Payment Confirmation Flow** (both EN/ZH locales)
+   - Creates event, registers user, verifies registration confirmation email
+   - Admin confirms payment, verifies payment confirmation email
+2. **Admin Test Emails** (both EN/ZH locales)
+   - Sends test emails from admin panel with different email types and locales
+3. **Cancellation Emails** (both EN/ZH locales)
+   - Admin cancels registration with custom email notification
+4. **Negative Tests**
+   - Verifies no emails sent when notifications disabled
+
+See [docs/email-testing.md](docs/email-testing.md) for detailed usage and testing examples.

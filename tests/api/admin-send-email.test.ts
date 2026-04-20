@@ -270,7 +270,7 @@ describe('POST /api/admin/send-email', () => {
       eventLocation: 'TW',
       venueName: 'Test Venue',
       venueAddress: '123 Test St',
-      registrationId: 'test',
+      registrationId: null,
       eventId: 1,
     });
   });
@@ -315,7 +315,7 @@ describe('POST /api/admin/send-email', () => {
       eventLocation: 'TW',
       venueName: 'Test Venue',
       venueAddress: '123 Test St',
-      registrationId: 'test',
+      registrationId: null,
       eventId: 1,
     });
   });
@@ -365,7 +365,7 @@ describe('POST /api/admin/send-email', () => {
       eventLocation: 'TW',
       venueName: 'Test Venue',
       venueAddress: '123 Test St',
-      registrationId: 'test',
+      registrationId: null,
       eventId: 1,
     });
   });
@@ -408,7 +408,7 @@ describe('POST /api/admin/send-email', () => {
       eventLocation: 'TW',
       venueName: 'Test Venue',
       venueAddress: '123 Test St',
-      registrationId: 'test',
+      registrationId: null,
       eventId: 1,
     });
   });

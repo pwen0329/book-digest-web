@@ -62,7 +62,11 @@ export const EMAIL_CONFIG = {
 
   // Gmail provider (fallback)
   GMAIL_USER: process.env.GMAIL_USER || null,
-  GMAIL_PASSWORD: process.env.GMAIL_APP_PASSWORD || null,
+  GMAIL_PASSWORD: process.env.GMAIL_PASSWORD || null,
+
+  // SMTP configuration (for testing with MailHog)
+  SMTP_HOST: process.env.SMTP_HOST || null,
+  SMTP_PORT: process.env.SMTP_PORT ? Number.parseInt(process.env.SMTP_PORT, 10) : null,
 } as const;
 
 // Admin Configuration

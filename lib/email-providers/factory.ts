@@ -12,6 +12,8 @@ type EmailProviderConfig = {
   gmail?: {
     user: string;
     password: string;
+    smtpHost?: string;
+    smtpPort?: number;
   };
 };
 
@@ -22,7 +24,12 @@ export function createEmailProvider(config: EmailProviderConfig): IEmailProvider
   }
 
   if (config.gmail?.user && config.gmail?.password) {
-    return new GmailEmailProvider(config.gmail.user, config.gmail.password);
+    return new GmailEmailProvider(
+      config.gmail.user,
+      config.gmail.password,
+      config.gmail.smtpHost,
+      config.gmail.smtpPort
+    );
   }
 
   throw new Error('No email provider configured. Please set either RESEND or GMAIL credentials.');

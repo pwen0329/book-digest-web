@@ -30,6 +30,8 @@ function getEmailProvider(): IEmailProvider {
         ? {
             user: EMAIL_CONFIG.GMAIL_USER,
             password: EMAIL_CONFIG.GMAIL_PASSWORD,
+            smtpHost: EMAIL_CONFIG.SMTP_HOST || undefined,
+            smtpPort: EMAIL_CONFIG.SMTP_PORT || undefined,
           }
         : undefined,
     });
@@ -140,7 +142,7 @@ export type EmailAuditEntry = {
   recipientEmail: string;
   emailType: 'reservation_confirmation' | 'payment_confirmation' | 'test';
   status: 'sent' | 'failed' | 'skipped';
-  registrationId?: string;
+  registrationId?: string | null; // Optional, null for test emails
   eventId?: number;
   locale: string;
   subject: string;
@@ -148,7 +150,7 @@ export type EmailAuditEntry = {
   metadata?: Record<string, unknown>;
 };
 
-export async function logEmailAudit(entry: EmailAuditEntry): Promise<void> {
+async function logEmailAudit(entry: EmailAuditEntry): Promise<void> {
   const response = await fetch(`${getSupabaseUrl()}/rest/v1/email_audit`, {
     method: 'POST',
     headers: getSupabaseHeaders(),
@@ -182,7 +184,7 @@ type SendEmailResult = {
   emailId?: string;
 };
 
-async function sendEmail(to: string, subject: string, body: string, replyTo?: string): Promise<SendEmailResult> {
+export async function sendEmail(to: string, subject: string, body: string, replyTo?: string): Promise<SendEmailResult> {
   try {
     const provider = getEmailProvider();
 
@@ -236,7 +238,7 @@ export type SendEventEmailInput = {
   eventLocation: string; // Venue location code for timezone conversion (e.g., 'TW', 'NL', 'ONLINE')
   venueName: string; // Human-readable venue name for email display
   venueAddress?: string; // Optional venue address for email display
-  registrationId: string;
+  registrationId: string | null; // null for test emails
   eventId: number;
 };
 
@@ -269,7 +271,7 @@ export async function sendRegistrationSuccessEmail(input: SendEventEmailInput): 
 
   await logEmailAudit({
     recipientEmail: input.email,
-    emailType: 'reservation_confirmation',
+    emailType: input.registrationId ? 'reservation_confirmation' : 'test',
     status: result.status,
     registrationId: input.registrationId,
     eventId: input.eventId,
@@ -316,7 +318,7 @@ export async function sendPaymentConfirmationEmail(
 
   await logEmailAudit({
     recipientEmail: input.email,
-    emailType: 'payment_confirmation',
+    emailType: input.registrationId ? 'payment_confirmation' : 'test',
     status: result.status,
     registrationId: input.registrationId,
     eventId: input.eventId,

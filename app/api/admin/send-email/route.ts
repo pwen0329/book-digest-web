@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
           eventLocation: event.venue!.location,
           venueName: event.venue!.name,
           venueAddress: event.venue!.address,
-          registrationId: 'test',
+          registrationId: null, // Test emails don't have a real registration
           eventId: event.id,
         };
 

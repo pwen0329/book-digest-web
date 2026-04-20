@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import dynamic from 'next/dynamic';
+import dynamicImport from 'next/dynamic';
 import { getEventsByVenueAndType } from '@/lib/events';
 import { getEventTypes } from '@/lib/event-types';
 import { getLocales } from '@/lib/i18n';
@@ -9,7 +9,10 @@ import { getVenueLocations } from '@/types/venue';
 import VenueEventsClient from './client';
 
 // Counter is a client component; lazy-load it
-const Counter = dynamic(() => import('@/components/Counter'), { ssr: false });
+const Counter = dynamicImport(() => import('@/components/Counter'), { ssr: false });
+
+// Make this page dynamic to always show current registration status
+export const dynamic = 'force-dynamic';
 
 export async function generateStaticParams() {
   const locales = getLocales();
