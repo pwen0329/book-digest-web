@@ -20,13 +20,29 @@
  * - MailHog running (docker-compose up -d mailhog)
  * - SMTP_HOST=localhost, SMTP_PORT=1025
  * - MAILHOG_API_URL=http://localhost:8025/api/v2
+ *
+ * TODO: Enable these tests in CI with proper local stack
+ * Currently skipped in CI because:
+ * - Tests run against Vercel preview deployment (remote)
+ * - MailHog runs in GitHub Actions runner (local)
+ * - Vercel cannot reach localhost:1025 SMTP from remote
+ *
+ * To fix, add separate CI job that runs email tests with local stack:
+ * 1. Start Supabase locally (`npx supabase start`)
+ * 2. Start MailHog as service (already configured)
+ * 3. Run Next.js locally (playwright.config.ts handles when BASE_URL not set)
+ * 4. Run only email tests: `npx playwright test tests/e2e/email.spec.ts`
+ *
+ * For now, these tests only run locally where both Supabase and MailHog are available.
  */
 import { test, expect } from '@playwright/test';
 import { clearMailHogMessages, waitForEmail, getMailHogMessages, findEmailByRecipient } from './helpers/mailhog';
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('Email notifications', () => {
+// Skip email tests in CI until we have local Supabase + MailHog setup
+const runInCI = !process.env.CI;
+(runInCI ? test.describe : test.describe.skip)('Email notifications', () => {
   const adminHeaders = {
     'Authorization': 'Bearer test-admin',
   };
