@@ -90,7 +90,7 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
         });
         const data = await response.json();
         if (response.ok && data.ok) {
-          setReservationEmailEnabled(data.settings.reservationConfirmationEnabled);
+          setReservationEmailEnabled(data.settings.registrationEmailEnabled);
           setActiveProvider(data.settings.activeProvider);
         }
       } catch (error) {
@@ -111,7 +111,7 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ reservationConfirmationEnabled: newValue }),
+        body: JSON.stringify({ registrationEmailEnabled: newValue }),
       });
       const data = await response.json();
       if (response.ok && data.ok) {

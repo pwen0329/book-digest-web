@@ -62,7 +62,7 @@ export function getEmailProviderName(): string {
 // ============================================================================
 
 export type EmailSettings = {
-  reservationConfirmationEnabled: boolean;
+  registrationEmailEnabled: boolean;
   emailConfigured: boolean;
   providerName: string;
   resendConfigured: boolean;
@@ -80,7 +80,7 @@ function isGmailConfigured(): boolean {
 
 export async function getEmailSettings(): Promise<EmailSettings> {
   const response = await fetch(
-    `${getSupabaseUrl()}/rest/v1/settings?select=value&key=eq.email.reservation_confirmation_enabled&limit=1`,
+    `${getSupabaseUrl()}/rest/v1/settings?select=value&key=eq.registration_email_enabled&limit=1`,
     {
       method: 'GET',
       headers: getSupabaseHeaders(),
@@ -94,7 +94,7 @@ export async function getEmailSettings(): Promise<EmailSettings> {
 
   if (!response.ok) {
     return {
-      reservationConfirmationEnabled: false,
+      registrationEmailEnabled: false,
       emailConfigured: isEmailConfigured(),
       providerName,
       resendConfigured,
@@ -105,7 +105,7 @@ export async function getEmailSettings(): Promise<EmailSettings> {
 
   const rows = await response.json() as Array<{ value: string }>;
   return {
-    reservationConfirmationEnabled: rows[0]?.value === 'true',
+    registrationEmailEnabled: rows[0]?.value === 'true',
     emailConfigured: isEmailConfigured(),
     providerName,
     resendConfigured,
@@ -114,14 +114,14 @@ export async function getEmailSettings(): Promise<EmailSettings> {
   };
 }
 
-export async function updateEmailSettings(settings: { reservationConfirmationEnabled: boolean }): Promise<void> {
+export async function updateEmailSettings(settings: { registrationEmailEnabled: boolean }): Promise<void> {
   const response = await fetch(
-    `${getSupabaseUrl()}/rest/v1/settings?key=eq.email.reservation_confirmation_enabled`,
+    `${getSupabaseUrl()}/rest/v1/settings?key=eq.registration_email_enabled`,
     {
       method: 'PATCH',
       headers: getSupabaseHeaders(),
       body: JSON.stringify({
-        value: String(settings.reservationConfirmationEnabled),
+        value: String(settings.registrationEmailEnabled),
         updated_at: new Date().toISOString(),
       }),
       cache: 'no-store',
@@ -248,7 +248,7 @@ export type SendEventEmailInput = {
 
 export async function sendRegistrationSuccessEmail(input: SendEventEmailInput): Promise<SendEmailResult> {
   const settings = await getEmailSettings();
-  if (!settings.reservationConfirmationEnabled) {
+  if (!settings.registrationEmailEnabled) {
     return { status: 'skipped', reason: 'Registration success emails are disabled.' };
   }
 

@@ -17,32 +17,20 @@
  * 4. Negative Test: Confirms no email when notifications disabled
  *
  * Requirements:
- * - MailHog running (docker-compose up -d mailhog)
+ * - MailHog running (docker-compose up -d mailhog OR in CI as service)
+ * - Supabase running locally (npx supabase start OR in CI)
  * - SMTP_HOST=localhost, SMTP_PORT=1025
  * - MAILHOG_API_URL=http://localhost:8025/api/v2
  *
- * TODO: Enable these tests in CI with proper local stack
- * Currently skipped in CI because:
- * - Tests run against Vercel preview deployment (remote)
- * - MailHog runs in GitHub Actions runner (local)
- * - Vercel cannot reach localhost:1025 SMTP from remote
- *
- * To fix, add separate CI job that runs email tests with local stack:
- * 1. Start Supabase locally (`npx supabase start`)
- * 2. Start MailHog as service (already configured)
- * 3. Run Next.js locally (playwright.config.ts handles when BASE_URL not set)
- * 4. Run only email tests: `npx playwright test tests/e2e/email.spec.ts`
- *
- * For now, these tests only run locally where both Supabase and MailHog are available.
+ * CI runs these tests against local stack (Supabase + MailHog + Next.js)
+ * instead of Vercel preview to allow proper email testing.
  */
 import { test, expect } from '@playwright/test';
 import { clearMailHogMessages, waitForEmail, getMailHogMessages, findEmailByRecipient } from './helpers/mailhog';
 
 test.describe.configure({ mode: 'serial' });
 
-// Skip email tests in CI until we have local Supabase + MailHog setup
-const runInCI = !process.env.CI;
-(runInCI ? test.describe : test.describe.skip)('Email notifications', () => {
+test.describe('Email notifications', () => {
   const adminHeaders = {
     'Authorization': 'Bearer test-admin',
   };
@@ -161,7 +149,7 @@ const runInCI = !process.env.CI;
     // Enable email notifications via API
     const emailSettingsResponse = await request.put('/api/admin/settings/email', {
       headers: adminHeaders,
-      data: { reservationConfirmationEnabled: true },
+      data: { registrationEmailEnabled: true },
     });
     expect(emailSettingsResponse.ok()).toBeTruthy();
 
@@ -239,7 +227,7 @@ const runInCI = !process.env.CI;
     // Enable email notifications via API
     await request.put('/api/admin/settings/email', {
       headers: adminHeaders,
-      data: { reservationConfirmationEnabled: true },
+      data: { registrationEmailEnabled: true },
     });
 
     // Create event via API
@@ -375,7 +363,7 @@ const runInCI = !process.env.CI;
     // Enable email notifications and create event
     await request.put('/api/admin/settings/email', {
       headers: adminHeaders,
-      data: { reservationConfirmationEnabled: true },
+      data: { registrationEmailEnabled: true },
     });
     const event = await createTestEvent(request, eventSlug, '取消測試活動', 'Cancel Test Event EN');
 
@@ -442,7 +430,7 @@ const runInCI = !process.env.CI;
     // Enable email and create event
     await request.put('/api/admin/settings/email', {
       headers: adminHeaders,
-      data: { reservationConfirmationEnabled: true },
+      data: { registrationEmailEnabled: true },
     });
     const event = await createTestEvent(request, eventSlug, '取消測試活動 ZH', 'Cancel Test Event ZH');
 
@@ -518,7 +506,7 @@ const runInCI = !process.env.CI;
     // Disable email notifications via API
     await request.put('/api/admin/settings/email', {
       headers: adminHeaders,
-      data: { reservationConfirmationEnabled: false },
+      data: { registrationEmailEnabled: false },
     });
 
     // Create event via API

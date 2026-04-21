@@ -53,7 +53,7 @@ describe('GET /api/admin/settings/email', () => {
   it('should return email settings successfully', async () => {
     vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
     vi.mocked(getEmailSettings).mockResolvedValue({
-      reservationConfirmationEnabled: false,
+      registrationEmailEnabled: false,
       emailConfigured: true,
       providerName: 'resend',
       resendConfigured: true,
@@ -70,7 +70,7 @@ describe('GET /api/admin/settings/email', () => {
     const data = await response.json();
     expect(data.ok).toBe(true);
     expect(data.settings).toEqual({
-      reservationConfirmationEnabled: false,
+      registrationEmailEnabled: false,
       emailConfigured: true,
       providerName: 'resend',
       resendConfigured: true,
@@ -107,7 +107,7 @@ describe('PUT /api/admin/settings/email', () => {
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
-      body: JSON.stringify({ reservationConfirmationEnabled: true }),
+      body: JSON.stringify({ registrationEmailEnabled: true }),
     });
 
     const response = await PUT(req);
@@ -122,14 +122,14 @@ describe('PUT /api/admin/settings/email', () => {
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
       headers: { Authorization: 'Bearer wrong-token' },
-      body: JSON.stringify({ reservationConfirmationEnabled: true }),
+      body: JSON.stringify({ registrationEmailEnabled: true }),
     });
 
     const response = await PUT(req);
     expect(response.status).toBe(401);
   });
 
-  it('should return 400 if reservationConfirmationEnabled missing', async () => {
+  it('should return 400 if registrationEmailEnabled missing', async () => {
     vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
@@ -140,21 +140,21 @@ describe('PUT /api/admin/settings/email', () => {
     const response = await PUT(req);
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error).toBe('reservationConfirmationEnabled must be a boolean');
+    expect(data.error).toBe('registrationEmailEnabled must be a boolean');
   });
 
-  it('should return 400 if reservationConfirmationEnabled is not boolean', async () => {
+  it('should return 400 if registrationEmailEnabled is not boolean', async () => {
     vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
-      body: JSON.stringify({ reservationConfirmationEnabled: 'true' }),
+      body: JSON.stringify({ registrationEmailEnabled: 'true' }),
     });
 
     const response = await PUT(req);
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error).toBe('reservationConfirmationEnabled must be a boolean');
+    expect(data.error).toBe('registrationEmailEnabled must be a boolean');
   });
 
   it('should update settings to enabled successfully', async () => {
@@ -163,7 +163,7 @@ describe('PUT /api/admin/settings/email', () => {
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
-      body: JSON.stringify({ reservationConfirmationEnabled: true }),
+      body: JSON.stringify({ registrationEmailEnabled: true }),
     });
 
     const response = await PUT(req);
@@ -173,7 +173,7 @@ describe('PUT /api/admin/settings/email', () => {
     expect(data.message).toBe('Email settings updated successfully');
 
     expect(updateEmailSettings).toHaveBeenCalledWith({
-      reservationConfirmationEnabled: true,
+      registrationEmailEnabled: true,
     });
   });
 
@@ -183,7 +183,7 @@ describe('PUT /api/admin/settings/email', () => {
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
-      body: JSON.stringify({ reservationConfirmationEnabled: false }),
+      body: JSON.stringify({ registrationEmailEnabled: false }),
     });
 
     const response = await PUT(req);
@@ -192,7 +192,7 @@ describe('PUT /api/admin/settings/email', () => {
     expect(data.ok).toBe(true);
 
     expect(updateEmailSettings).toHaveBeenCalledWith({
-      reservationConfirmationEnabled: false,
+      registrationEmailEnabled: false,
     });
   });
 
@@ -202,7 +202,7 @@ describe('PUT /api/admin/settings/email', () => {
 
     const req = new NextRequest('http://localhost:3000/api/admin/settings/email', {
       method: 'PUT',
-      body: JSON.stringify({ reservationConfirmationEnabled: true }),
+      body: JSON.stringify({ registrationEmailEnabled: true }),
     });
 
     const response = await PUT(req);

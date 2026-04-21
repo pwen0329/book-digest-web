@@ -485,13 +485,13 @@ test.describe('Admin v2 API - Happy flow', () => {
     expect(initialData.ok).toBe(true);
     expect(initialData.settings).toBeDefined();
 
-    const initialState = initialData.settings.reservationConfirmationEnabled;
+    const initialState = initialData.settings.registrationEmailEnabled;
 
     // Toggle to opposite state
     const updateResponse = await request.put('/api/admin/settings/email', {
       headers: adminHeaders,
       data: {
-        reservationConfirmationEnabled: !initialState,
+        registrationEmailEnabled: !initialState,
       },
     });
     expect(updateResponse.ok()).toBeTruthy();
@@ -506,13 +506,13 @@ test.describe('Admin v2 API - Happy flow', () => {
     expect(verifyResponse.ok()).toBeTruthy();
     const verifyData = await verifyResponse.json();
     expect(verifyData.ok).toBe(true);
-    expect(verifyData.settings.reservationConfirmationEnabled).toBe(!initialState);
+    expect(verifyData.settings.registrationEmailEnabled).toBe(!initialState);
 
     // Restore original state
     const restoreResponse = await request.put('/api/admin/settings/email', {
       headers: adminHeaders,
       data: {
-        reservationConfirmationEnabled: initialState,
+        registrationEmailEnabled: initialState,
       },
     });
     expect(restoreResponse.ok()).toBeTruthy();
@@ -524,6 +524,6 @@ test.describe('Admin v2 API - Happy flow', () => {
     expect(finalResponse.ok()).toBeTruthy();
     const finalData = await finalResponse.json();
     expect(finalData.ok).toBe(true);
-    expect(finalData.settings.reservationConfirmationEnabled).toBe(initialState);
+    expect(finalData.settings.registrationEmailEnabled).toBe(initialState);
   });
 });

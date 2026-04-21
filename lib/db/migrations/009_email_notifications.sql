@@ -41,7 +41,7 @@ CREATE INDEX IF NOT EXISTS idx_email_audit_registration ON email_audit(registrat
 -- Add reservation confirmation email setting to settings table
 INSERT INTO settings (key, value, description, updated_at)
 VALUES (
-  'email.reservation_confirmation_enabled',
+  'registration_email_enabled',
   'false',
   'Enable automatic reservation confirmation emails sent to users immediately after registration',
   NOW()

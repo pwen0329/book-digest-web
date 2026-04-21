@@ -39,7 +39,7 @@ The feature includes an admin payment review workflow where admins can confirm o
 **Acceptance Criteria (EARS)**:
 - **Event**: When a user completes registration form and submits successfully
 - **Action**: System creates registration with status `created`
-- **Response**: System checks `settings.email.reservation_confirmation_enabled`
+- **Response**: System checks `settings.registration_email_enabled`
   - If enabled: Send reservation confirmation email in user's locale (zh/en)
   - If disabled: Skip email (no notification)
 - **State**: Registration record created; email_audit entry logged if sent
@@ -87,11 +87,11 @@ The feature includes an admin payment review workflow where admins can confirm o
 - **Event**: When admin visits `/admin/emails` page
 - **Action**: Admin sees current toggle state (on/off)
 - **Response**: Admin can click toggle to change state
-- **State**: Setting persisted to `public.settings` table with key `email.reservation_confirmation_enabled`
+- **State**: Setting persisted to `public.settings` table with key `registration_email_enabled`
 
 **GIVEN** admin visits `/admin/emails` page  
 **WHEN** page loads  
-**THEN** toggle reflects current state from `settings.email.reservation_confirmation_enabled`  
+**THEN** toggle reflects current state from `settings.registration_email_enabled`  
 **AND** toggle is accessible via keyboard (Space/Enter to toggle)
 
 **GIVEN** admin changes toggle from off to on  
@@ -238,7 +238,7 @@ CREATE INDEX IF NOT EXISTS idx_email_audit_registration ON email_audit(registrat
 
 -- Add reservation confirmation email setting to settings table
 INSERT INTO settings (key, value, updated_at)
-VALUES ('email.reservation_confirmation_enabled', 'false', NOW())
+VALUES ('registration_email_enabled', 'false', NOW())
 ON CONFLICT (key) DO NOTHING;
 
 -- Add comments
@@ -374,11 +374,11 @@ Book Digest Team
 **Response**:
 ```typescript
 {
-  reservationConfirmationEnabled: boolean;
+  registrationEmailEnabled: boolean;
 }
 ```
 
-**Implementation**: Read from `settings` table where `key = 'email.reservation_confirmation_enabled'`
+**Implementation**: Read from `settings` table where `key = 'registration_email_enabled'`
 
 ---
 
@@ -391,7 +391,7 @@ Book Digest Team
 **Body**:
 ```typescript
 {
-  reservationConfirmationEnabled: boolean;
+  registrationEmailEnabled: boolean;
 }
 ```
 
@@ -400,12 +400,12 @@ Book Digest Team
 {
   ok: boolean;
   settings: {
-    reservationConfirmationEnabled: boolean;
+    registrationEmailEnabled: boolean;
   };
 }
 ```
 
-**Implementation**: Update `settings` table row with key `email.reservation_confirmation_enabled`
+**Implementation**: Update `settings` table row with key `registration_email_enabled`
 
 ---
 
@@ -636,7 +636,7 @@ After creating registration with status `created`, check if reservation confirma
 // After line 151 (after creating reservation)
 const emailSettings = await getEmailSettings();
 
-if (emailSettings.reservationConfirmationEnabled) {
+if (emailSettings.registrationEmailEnabled) {
   await sendReservationConfirmationEmail({
     locale,
     name,
@@ -663,30 +663,30 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function getEmailSettings(): Promise<{ reservationConfirmationEnabled: boolean }> {
+export async function getEmailSettings(): Promise<{ registrationEmailEnabled: boolean }> {
   const { data, error } = await supabase
     .from('settings')
     .select('value')
-    .eq('key', 'email.reservation_confirmation_enabled')
+    .eq('key', 'registration_email_enabled')
     .single();
 
   if (error || !data) {
-    return { reservationConfirmationEnabled: false };
+    return { registrationEmailEnabled: false };
   }
 
   return {
-    reservationConfirmationEnabled: data.value === 'true',
+    registrationEmailEnabled: data.value === 'true',
   };
 }
 
-export async function updateEmailSettings(settings: { reservationConfirmationEnabled: boolean }): Promise<void> {
+export async function updateEmailSettings(settings: { registrationEmailEnabled: boolean }): Promise<void> {
   await supabase
     .from('settings')
     .update({
-      value: String(settings.reservationConfirmationEnabled),
+      value: String(settings.registrationEmailEnabled),
       updated_at: new Date().toISOString(),
     })
-    .eq('key', 'email.reservation_confirmation_enabled');
+    .eq('key', 'registration_email_enabled');
 }
 
 export async function logEmailAudit(entry: {
@@ -829,7 +829,7 @@ This sequence allows testing email delivery first, then adding toggle control, b
 - Create migration 009
 - Test migration on local Supabase
 - Add seed data for payment_amount and payment_currency to existing events
-- Verify settings table has email.reservation_confirmation_enabled row
+- Verify settings table has registration_email_enabled row
 
 **Files**:
 - `lib/db/migrations/009_email_notifications.sql`

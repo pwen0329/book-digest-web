@@ -43,17 +43,17 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
-    // Validate reservationConfirmationEnabled
-    if (typeof body.reservationConfirmationEnabled !== 'boolean') {
+    // Validate registrationEmailEnabled
+    if (typeof body.registrationEmailEnabled !== 'boolean') {
       return NextResponse.json({
-        error: 'reservationConfirmationEnabled must be a boolean',
+        error: 'registrationEmailEnabled must be a boolean',
       }, { status: 400 });
     }
 
     // Update email settings
     try {
       await updateEmailSettings({
-        reservationConfirmationEnabled: body.reservationConfirmationEnabled,
+        registrationEmailEnabled: body.registrationEmailEnabled,
       });
       return NextResponse.json({
         ok: true,
