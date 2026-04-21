@@ -8,8 +8,9 @@ import {
   updateRow,
   insertRow,
 } from '@/lib/supabase-utils';
+import { SUPABASE_CONFIG } from '@/lib/env';
 
-const TABLE_NAME = process.env.SUPABASE_SETTINGS_TABLE || 'settings';
+const TABLE_NAME = SUPABASE_CONFIG.TABLES.SETTINGS;
 
 // Get all settings
 export async function getAllSettings(): Promise<Setting[]> {

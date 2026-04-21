@@ -9,8 +9,9 @@ import {
   updateRow,
   deleteRow,
 } from '@/lib/supabase-utils';
+import { SUPABASE_CONFIG } from '@/lib/env';
 
-const TABLE_NAME = process.env.SUPABASE_VENUES_TABLE || 'venues';
+const TABLE_NAME = SUPABASE_CONFIG.TABLES.VENUES;
 
 // Get all venues
 export async function getAllVenues(): Promise<Venue[]> {

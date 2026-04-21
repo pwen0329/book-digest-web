@@ -1,6 +1,7 @@
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { getLocaleAlternates } from '@/lib/seo';
 import { getTranslations } from 'next-intl/server';
+import { CLIENT_ENV } from '@/lib/env';
 import type { Metadata } from 'next';
 import JoinUsClient from './client';
 
@@ -22,7 +23,7 @@ export default async function JoinUsPage({ params }: { params: Promise<{ locale:
   setRequestLocale(locale);
   const t = await getTranslations('joinus');
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
+  const siteUrl = CLIENT_ENV.SITE_URL;
   const faqJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',

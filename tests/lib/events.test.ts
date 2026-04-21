@@ -72,6 +72,8 @@ describe('events', () => {
     event_date: '2026-06-01T18:00:00Z',
     registration_opens_at: '2026-04-01T00:00:00Z',
     registration_closes_at: '2026-05-30T23:59:59Z',
+    payment_amount: 500,
+    payment_currency: 'TWD',
     cover_url: '/images/event.jpg',
     cover_url_en: '/images/event-en.jpg',
     is_published: true,

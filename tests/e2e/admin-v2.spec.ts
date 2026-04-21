@@ -372,11 +372,28 @@ test.describe('Admin v2 API - Happy flow', () => {
       expect(registration.bankAccount).toBe(testBankAccount);
       console.log('Registration test - bank account verified:', registration.bankAccount);
 
-      // TODO: Also verify via admin dashboard UI
-      // Currently the admin panel's Registrations tab doesn't properly render/update after clicking.
-      // The button shows [active] but the content area still displays the Books editor instead of
-      // the registrations list. This needs investigation into the admin panel's client-side
-      // routing/state management. Once fixed, add UI verification back.
+      // Step 9: Test payment confirmation flow via API
+      const confirmResponse = await request.post(`/api/admin/registrations/${registration.id}/confirm-payment`, {
+        headers: adminHeaders,
+      });
+      expect(confirmResponse.ok()).toBeTruthy();
+
+      // Step 10: Verify registration status was updated to confirmed
+      const updatedRegistrationsResponse = await request.get(`/api/admin/registrations?eventId=${eventId}`, {
+        headers: adminHeaders,
+      });
+      expect(updatedRegistrationsResponse.ok()).toBeTruthy();
+      const updatedRegistrationsData = await updatedRegistrationsResponse.json();
+      const updatedRegistration = updatedRegistrationsData.items.find((r: any) => r.email === testEmail);
+      expect(updatedRegistration).toBeDefined();
+      expect(updatedRegistration.status).toBe('confirmed');
+
+      // Verify audit trail includes confirmation event
+      expect(updatedRegistration.auditTrail).toBeDefined();
+      expect(updatedRegistration.auditTrail.length).toBeGreaterThan(1);
+      const confirmationAudit = updatedRegistration.auditTrail.find((entry: any) => entry.event === 'admin_confirmed_payment');
+      expect(confirmationAudit).toBeDefined();
+      expect(confirmationAudit.actor).toBe('admin');
 
       // Cleanup will happen in afterEach
     });
@@ -456,5 +473,57 @@ test.describe('Admin v2 API - Happy flow', () => {
     await expect(page.locator('button:has-text("I Understand")')).toBeVisible({ timeout: 5000 });
 
     // Cleanup happens in afterEach
+  });
+
+  test('email settings toggle - reservation confirmation enabled/disabled', async ({ request }) => {
+    // Get current settings
+    const getResponse = await request.get('/api/admin/settings/email', {
+      headers: adminHeaders,
+    });
+    expect(getResponse.ok()).toBeTruthy();
+    const initialData = await getResponse.json();
+    expect(initialData.ok).toBe(true);
+    expect(initialData.settings).toBeDefined();
+
+    const initialState = initialData.settings.registrationEmailEnabled;
+
+    // Toggle to opposite state
+    const updateResponse = await request.put('/api/admin/settings/email', {
+      headers: adminHeaders,
+      data: {
+        registrationEmailEnabled: !initialState,
+      },
+    });
+    expect(updateResponse.ok()).toBeTruthy();
+    const updateData = await updateResponse.json();
+    expect(updateData.ok).toBe(true);
+    expect(updateData.message).toContain('Email settings updated successfully');
+
+    // Verify the change
+    const verifyResponse = await request.get('/api/admin/settings/email', {
+      headers: adminHeaders,
+    });
+    expect(verifyResponse.ok()).toBeTruthy();
+    const verifyData = await verifyResponse.json();
+    expect(verifyData.ok).toBe(true);
+    expect(verifyData.settings.registrationEmailEnabled).toBe(!initialState);
+
+    // Restore original state
+    const restoreResponse = await request.put('/api/admin/settings/email', {
+      headers: adminHeaders,
+      data: {
+        registrationEmailEnabled: initialState,
+      },
+    });
+    expect(restoreResponse.ok()).toBeTruthy();
+
+    // Verify restoration
+    const finalResponse = await request.get('/api/admin/settings/email', {
+      headers: adminHeaders,
+    });
+    expect(finalResponse.ok()).toBeTruthy();
+    const finalData = await finalResponse.json();
+    expect(finalData.ok).toBe(true);
+    expect(finalData.settings.registrationEmailEnabled).toBe(initialState);
   });
 });

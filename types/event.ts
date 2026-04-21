@@ -43,6 +43,10 @@ export type Event = {
   isPublished: boolean;
   registrationStatus?: EventRegistrationStatus; // Computed status considering time and capacity
 
+  // Payment
+  paymentAmount?: number | null;
+  paymentCurrency?: string | null;
+
   createdAt: string;
   updatedAt: string;
 };
@@ -64,6 +68,8 @@ export type EventRow = {
   cover_url: string | null;
   cover_url_en: string | null;
   is_published: boolean;
+  payment_amount: number | null;
+  payment_currency: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -88,6 +94,8 @@ export function eventFromRow(row: EventRow, venue?: Venue, book?: Book): Event {
     coverUrl: row.cover_url ?? undefined,
     coverUrlEn: row.cover_url_en ?? undefined,
     isPublished: row.is_published,
+    paymentAmount: row.payment_amount ?? undefined,
+    paymentCurrency: row.payment_currency ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -112,5 +120,7 @@ export function eventToRow(event: Partial<Event>): Partial<EventRow> {
   if (event.coverUrl !== undefined) row.cover_url = event.coverUrl ?? null;
   if (event.coverUrlEn !== undefined) row.cover_url_en = event.coverUrlEn ?? null;
   if (event.isPublished !== undefined) row.is_published = event.isPublished;
+  if (event.paymentAmount !== undefined) row.payment_amount = event.paymentAmount ?? null;
+  if (event.paymentCurrency !== undefined) row.payment_currency = event.paymentCurrency ?? null;
   return row;
 }

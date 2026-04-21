@@ -5,6 +5,7 @@ import { getBooks, getLocalizedBook } from '@/lib/books';
 import { BLUR_BOOK_COVER } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { pageSEO, getLocaleAlternates } from '@/lib/seo';
+import { CLIENT_ENV } from '@/lib/env';
 import type { Metadata } from 'next';
 
 // ISR: regenerate books listing hourly
@@ -31,7 +32,7 @@ export default async function BooksPage({ params }: { params: Promise<{ locale: 
 
   const data = (await getBooks()).map((book) => getLocalizedBook(book, locale));
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
+  const siteUrl = CLIENT_ENV.SITE_URL;
   const booksListJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',

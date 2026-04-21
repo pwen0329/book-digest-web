@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next';
+import { CLIENT_ENV } from '@/lib/env';
 
 // Base URL for the site
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
+const siteUrl = CLIENT_ENV.SITE_URL;
 
 // Viewport configuration (Next.js 14 recommends separate export)
 export const defaultViewport: Viewport = {

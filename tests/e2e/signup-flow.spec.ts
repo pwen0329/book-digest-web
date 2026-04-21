@@ -169,4 +169,125 @@ test.describe('Signup Flow', () => {
 
     // Cleanup happens in afterEach
   });
+
+  test('event shows full and disabled button when capacity is reached', async ({ page, request }) => {
+    const eventTypeCode = eventTypes[0].code;
+    const timestamp = `${Date.now()}-capacity-${Math.random().toString(36).slice(2, 9)}`;
+    const bookSlug = `test-book-${timestamp}`;
+    const venueSlug = `test-venue-${timestamp}`;
+    const eventSlug = `test-event-${timestamp}`;
+
+    // Create book
+    const bookResponse = await request.post('/api/admin/book-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: bookSlug,
+        title: 'Capacity Test Book',
+        author: 'Capacity Test Author',
+      },
+    });
+    expect(bookResponse.ok()).toBeTruthy();
+    const bookData = await bookResponse.json();
+    cleanup.books.push(bookData.book.id);
+
+    // Create venue with capacity of 1
+    const venueResponse = await request.post('/api/admin/venue-v2', {
+      headers: adminHeaders,
+      data: {
+        name: venueSlug,
+        location: 'TW',
+        maxCapacity: 1,
+        isVirtual: false,
+      },
+    });
+    expect(venueResponse.ok()).toBeTruthy();
+    const venueData = await venueResponse.json();
+    cleanup.venues.push(venueData.venue.id);
+
+    const now = new Date();
+    const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const currentRegOpens = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+    const currentRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+    // Create event
+    const eventResponse = await request.post('/api/admin/event-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: eventSlug,
+        eventTypeCode: eventTypeCode,
+        venueId: venueData.venue.id,
+        bookId: bookData.book.id,
+        title: 'Capacity Test Event',
+        titleEn: 'Capacity Test Event EN',
+        eventDate: futureEvent.toISOString(),
+        registrationOpensAt: currentRegOpens.toISOString(),
+        registrationClosesAt: currentRegCloses.toISOString(),
+        isPublished: true,
+      },
+    });
+    expect(eventResponse.ok()).toBeTruthy();
+    const eventData = await eventResponse.json();
+    cleanup.events.push(eventData.event.id);
+
+    // First: Navigate to events page and verify button shows "Sign Up"
+    await page.goto(`/en/events/TW`, { waitUntil: 'networkidle' });
+
+    // Find the event card and verify Sign Up button is visible and enabled
+    const signUpButton = page.locator(`a[href="/en/signup/${eventSlug}"]`).first();
+    await expect(signUpButton).toBeVisible({ timeout: 10000 });
+    await expect(signUpButton).toBeEnabled();
+    await expect(signUpButton).toContainText('Sign Up', { ignoreCase: true });
+
+    // Second: Complete first registration to fill the event (capacity = 1)
+    await page.goto(`/en/signup/${eventSlug}`, { waitUntil: 'networkidle' });
+    await page.click('button:has-text("I Understand")');
+    await page.waitForTimeout(300);
+
+    // Fill registration form
+    await page.fill('input[name="name"]', 'First User');
+    await page.fill('input[name="age"]', '30');
+    await page.fill('input[name="profession"]', 'Tester');
+    await page.fill('input[type="email"]', `first-${timestamp}@example.com`);
+    await page.selectOption('select[name="referral"]', 'BookDigestIG');
+    await page.click('button[type="submit"]');
+    await page.waitForTimeout(500);
+
+    // Fill bank account and submit
+    await page.fill('input#bank-last-5', '12345');
+    // Wait for the submit button to be visible and click it
+    const submitButton = page.locator('button:has-text("Submit")').last();
+    await expect(submitButton).toBeVisible({ timeout: 5000 });
+    await submitButton.click();
+    await page.waitForTimeout(1000);
+
+    // Should see success message
+    await expect(page.locator('text=/success|成功/i')).toBeVisible({ timeout: 10000 });
+
+    // Manually navigate to events page to check Full button (no auto-redirect anymore)
+    await page.goto(`/en/events/TW`, { waitUntil: 'networkidle' });
+
+    // Page is now on events page - should show "Full" button that is disabled
+    const fullButton = page.locator('button:has-text("Full")').first();
+    await expect(fullButton).toBeVisible({ timeout: 10000 });
+    await expect(fullButton).toBeDisabled();
+
+    // Verify it has disabled styling (opacity-50 and cursor-not-allowed)
+    await expect(fullButton).toHaveClass(/opacity-50/);
+    await expect(fullButton).toHaveClass(/cursor-not-allowed/);
+
+    // Fourth: Try to access signup page directly - should also show full/disabled state
+    await page.goto(`/en/signup/${eventSlug}`, { waitUntil: 'networkidle' });
+
+    // Should see a disabled state or error message indicating event is full
+    const pageContent = await page.textContent('body');
+    const isFullMessageShown =
+      pageContent?.includes('full') ||
+      pageContent?.includes('Full') ||
+      pageContent?.includes('capacity') ||
+      pageContent?.includes('已滿');
+
+    expect(isFullMessageShown).toBeTruthy();
+
+    // Cleanup happens in afterEach
+  });
 });

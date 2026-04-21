@@ -62,7 +62,7 @@ jobs:
         run: npm run test:components
 
   e2e-preview:
-    name: E2E Tests (${{ matrix.browser }})
+    name: E2E Vercel Preview (${{ matrix.browser }})
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     needs: unit-tests
@@ -98,8 +98,8 @@ jobs:
           check_interval: 5
           vercel_protection_bypass_header: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
-      - name: Run E2E tests against preview
-        run: npx playwright test --project="${{ matrix.browser }}"
+      - name: Run basic E2E tests against preview
+        run: npx playwright test tests/e2e/basic.spec.ts tests/e2e/header-utilities.spec.ts tests/e2e/mobile-header.spec.ts --project="${{ matrix.browser }}"
         env:
           BASE_URL: ${{ steps.vercel-preview.outputs.url }}
           CAPACITY_GUARDRAILS_E2E: 1
@@ -109,7 +109,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.browser }}
+          name: playwright-report-preview-${{ matrix.browser }}
           path: playwright-report/
           retention-days: 14
 
@@ -117,6 +117,112 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-screenshots-${{ matrix.browser }}
+          name: playwright-screenshots-preview-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 7
+
+  e2e-local:
+    name: E2E Local Stack (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit, 'Mobile Chrome', 'Mobile Safari']
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    services:
+      mailhog:
+        image: mailhog/mailhog
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Get Supabase credentials
+        id: supabase-creds
+        run: |
+          echo "SUPABASE_URL=$(supabase status -o json | jq -r '.API_URL')" >> $GITHUB_OUTPUT
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r '.SERVICE_ROLE_KEY')" >> $GITHUB_OUTPUT
+          echo "DB_URL=$(supabase status -o json | jq -r '.DB_URL')" >> $GITHUB_OUTPUT
+
+      - name: Initialize database schema
+        run: |
+          psql "${{ steps.supabase-creds.outputs.DB_URL }}" -f lib/db/init.sql
+          psql "${{ steps.supabase-creds.outputs.DB_URL }}" -f lib/db/test_seed.sql
+
+      - name: Build Next.js for CI
+        run: NEXT_DIST_DIR=.next-ci npm run build
+        env:
+          SUPABASE_URL: ${{ steps.supabase-creds.outputs.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.supabase-creds.outputs.SUPABASE_SERVICE_ROLE_KEY }}
+          SMTP_HOST: localhost
+          SMTP_PORT: 1025
+          GMAIL_USER: test@example.com
+          GMAIL_PASSWORD: test-password
+          REGISTRATION_EMAIL_FROM: test@bookdigest.com
+          REGISTRATION_EMAIL_REPLY_TO: reply@bookdigest.com
+
+      - name: Run E2E tests against local stack
+        run: npx playwright test tests/e2e/admin-v2.spec.ts tests/e2e/email.spec.ts tests/e2e/signup-flow.spec.ts --project="${{ matrix.browser }}"
+        env:
+          NODE_ENV: test
+          RATE_LIMIT_MAX_REQUESTS: 1000000
+          ALLOW_CAPACITY_RESET: 1
+          ADMIN_PASSWORD: test-admin
+          ADMIN_SESSION_SECRET: test-session
+          CAPACITY_GUARDRAILS_E2E: 1
+          SUPABASE_URL: ${{ steps.supabase-creds.outputs.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.supabase-creds.outputs.SUPABASE_SERVICE_ROLE_KEY }}
+          SMTP_HOST: localhost
+          SMTP_PORT: 1025
+          GMAIL_USER: test@example.com
+          GMAIL_PASSWORD: test-password
+          REGISTRATION_EMAIL_FROM: test@bookdigest.com
+          REGISTRATION_EMAIL_REPLY_TO: reply@bookdigest.com
+          MAILHOG_API_URL: http://localhost:8025/api/v2
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-local-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots-local-${{ matrix.browser }}
           path: test-results/
           retention-days: 7

@@ -3,8 +3,9 @@ import 'server-only';
 import { getEventById } from '@/lib/events';
 import { getVenueById } from '@/lib/venues';
 import { countRows } from '@/lib/supabase-utils';
+import { SUPABASE_CONFIG } from '@/lib/env';
 
-const REGISTRATIONS_TABLE = process.env.SUPABASE_REGISTRATIONS_TABLE || 'registrations';
+const REGISTRATIONS_TABLE = SUPABASE_CONFIG.TABLES.REGISTRATIONS;
 
 export type CapacityStatus = {
   total: number;

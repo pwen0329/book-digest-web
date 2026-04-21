@@ -52,13 +52,13 @@ Core variables:
 - `SUPABASE_SERVICE_ROLE_KEY`: server-side key used for admin document writes and storage uploads
 - `SUPABASE_REGISTRATIONS_TABLE`: optional persistent registrations table name, defaults to `registrations`
 - `SUPABASE_STORAGE_BUCKET`: optional asset bucket name, defaults to `admin-assets`
-- `RESEND_API_KEY`: enables real registration success emails
-- `REGISTRATION_EMAIL_FROM`: sender address used by Resend, for example `Book Digest <hello@example.com>`
+- `RESEND_API_KEY`: enables real registration success emails via Resend
+- `GMAIL_USER`, `GMAIL_PASSWORD`: Gmail SMTP credentials for sending emails (alternative to Resend)
+- `REGISTRATION_EMAIL_FROM`: sender address for emails, for example `Book Digest <hello@example.com>`
 - `REGISTRATION_EMAIL_REPLY_TO`: optional reply-to address for success emails
-- `EMAIL_OUTBOX_FILE`: optional local JSON outbox path for development or automated tests
 - `NEXT_PUBLIC_TURNSTILE_SITEKEY`, `TURNSTILE_SECRET_KEY`: Cloudflare Turnstile
 
-If neither `RESEND_API_KEY` nor `EMAIL_OUTBOX_FILE` is configured, submissions still succeed, but confirmation emails are skipped even if the admin toggle is enabled.
+If no email configuration is provided (neither Resend nor Gmail SMTP), submissions still succeed, but confirmation emails are skipped even if the admin toggle is enabled.
 
 If you use Supabase's free tier for production-like environments, remember that inactive projects can auto-pause. When that happens, Vercel may still deploy successfully while `/`, `/books`, or `/events` fail or render stale fallback content until Supabase resumes.
 
@@ -164,7 +164,10 @@ For the `Emails` tab:
 
 - enable the toggle to send confirmation emails after successful registration
 - edit the localized subject and body templates
-- configure either `RESEND_API_KEY` + `REGISTRATION_EMAIL_FROM` for real delivery, or `EMAIL_OUTBOX_FILE` for local/test delivery
+- configure email delivery:
+  - Production: `RESEND_API_KEY` + `REGISTRATION_EMAIL_FROM` (via Resend)
+  - Alternative: `GMAIL_USER` + `GMAIL_PASSWORD` + `REGISTRATION_EMAIL_FROM` (via Gmail SMTP)
+  - Testing: See [Email Testing](#email-testing) section for MailHog setup
 - save the email settings before testing a new signup
 
 ### File-backed vs persistent admin
@@ -241,3 +244,59 @@ npm run test:components
 export NEXT_DIST_DIR=.next-local-build && npm run build
 npx playwright test --workers=1
 ```
+
+## Email Testing
+
+For local development and e2e tests, we use [MailHog](https://github.com/mailhog/MailHog) - a fake SMTP server that captures emails and exposes them via HTTP API.
+
+### Quick Start
+
+```bash
+# Start MailHog
+docker-compose up -d mailhog
+
+# Ensure .env.test is configured (see below)
+
+# Run email e2e tests
+npx playwright test tests/e2e/email.spec.ts
+
+# View captured emails
+open http://localhost:8025
+```
+
+### Environment Setup
+
+Email tests require both MailHog and local Supabase configuration in `.env.test`:
+
+```env
+# Get these from: npx supabase status
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+
+# MailHog SMTP
+SMTP_HOST=localhost
+SMTP_PORT=1025
+
+# Other email settings (defaults)
+REGISTRATION_EMAIL_FROM=test@bookdigest.com
+MAILHOG_API_URL=http://localhost:8025/api/v2
+```
+
+MailHog runs on:
+- SMTP server: `localhost:1025`
+- Web UI + API: `http://localhost:8025`
+
+### Email Test Coverage
+
+The email e2e test suite (`tests/e2e/email.spec.ts`) comprehensively tests:
+1. **Registration + Payment Confirmation Flow** (both EN/ZH locales)
+   - Creates event, registers user, verifies registration confirmation email
+   - Admin confirms payment, verifies payment confirmation email
+2. **Admin Test Emails** (both EN/ZH locales)
+   - Sends test emails from admin panel with different email types and locales
+3. **Cancellation Emails** (both EN/ZH locales)
+   - Admin cancels registration with custom email notification
+4. **Negative Tests**
+   - Verifies no emails sent when notifications disabled
+
+See [docs/email-testing.md](docs/email-testing.md) for detailed usage and testing examples.

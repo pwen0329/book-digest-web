@@ -38,7 +38,7 @@ export default function AdminLogin({ configured }: AdminLoginProps) {
         return;
       }
 
-      window.location.reload();
+      window.location.href = '/admin';
     } catch {
       setError('Unable to sign in.');
     } finally {

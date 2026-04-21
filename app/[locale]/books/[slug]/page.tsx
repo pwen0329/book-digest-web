@@ -8,6 +8,7 @@ import { getBooks, getLocalizedBook, getBookBySlug } from '@/lib/books';
 import { BLUR_BOOK_COVER_LARGE } from '@/lib/constants';
 import { locales, setRequestLocale } from '@/lib/i18n';
 import { getLocaleAlternates } from '@/lib/seo';
+import { CLIENT_ENV } from '@/lib/env';
 
 // ISR: regenerate book pages hourly without a full rebuild
 export const revalidate = 3600;
@@ -44,8 +45,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
   
   const book = getLocalizedBook(rawBook, locale);
-  
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
+
+  const siteUrl = CLIENT_ENV.SITE_URL;
   const ogImageUrl = `${siteUrl}/api/og?title=${encodeURIComponent(book.displayTitle)}&author=${encodeURIComponent(book.displayAuthor)}&cover=${encodeURIComponent(book.displayCoverUrl || book.coverUrl || '')}&locale=${locale}`;
   
   return {
@@ -87,7 +88,7 @@ export default async function BookArticlePage({ params }: { params: Promise<{ sl
   const book = getLocalizedBook(rawBook, locale);
 
   // JSON-LD structured data for Book schema
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookdigest.club';
+  const siteUrl = CLIENT_ENV.SITE_URL;
   const bookJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Book',

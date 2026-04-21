@@ -8,6 +8,7 @@ import FloatingLangToggle from '@/components/FloatingLangToggle';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { defaultViewport, getLocaleMetadata } from '@/lib/seo';
+import { CLIENT_ENV } from '@/lib/env';
 import { NextIntlClientProvider } from 'next-intl';
 import { Outfit } from 'next/font/google';
 import { locales, type Locale, setRequestLocale } from '@/lib/i18n';
@@ -60,7 +61,7 @@ export default async function LocaleLayout({ children, params }: Props) {
           strategy="afterInteractive"
           nonce={nonce || undefined}
           data-domain={plausibleDomain}
-          src={process.env.NEXT_PUBLIC_PLAUSIBLE_SRC || 'https://plausible.io/js/script.js'}
+          src={CLIENT_ENV.PLAUSIBLE_SRC}
         />
       )}
       <NextIntlClientProvider messages={messages}>
