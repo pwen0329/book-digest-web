@@ -191,6 +191,8 @@ test.describe('Email notifications', () => {
     expect(confirmationEmail.Content.Headers.Subject[0]).toContain('Registration');
     expect(confirmationEmail.Content.Body).toContain(testName);
     expect(confirmationEmail.Content.Body).toContain('Test Event EN');
+    // Verify bank account last 5 digits appears in email
+    expect(confirmationEmail.Content.Body).toContain('12345');
 
     // Clear MailHog for next email
     await clearMailHogMessages();
@@ -270,6 +272,8 @@ test.describe('Email notifications', () => {
     const subject = confirmationEmail.Content.Headers.Subject[0];
     expect(subject).toMatch(/報名|Registration|=E5=A0=B1=E5=90=8D/i);
     expect(confirmationEmail.Content.Body).toContain(testName);
+    // Verify bank account last 5 digits appears in email
+    expect(confirmationEmail.Content.Body).toContain('12345');
 
     await clearMailHogMessages();
 
