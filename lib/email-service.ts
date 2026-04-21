@@ -238,6 +238,9 @@ export type SendEventEmailInput = {
   eventLocation: string; // Venue location code for timezone conversion (e.g., 'TW', 'NL', 'ONLINE')
   venueName: string; // Human-readable venue name for email display
   venueAddress?: string; // Optional venue address for email display
+  bankAccount?: string; // Optional bank account last 5 digits
+  paymentAmount?: number | null; // Optional payment amount
+  paymentCurrency?: string | null; // Optional payment currency
   registrationId: string | null; // null for test emails
   eventId: number;
 };
@@ -261,6 +264,9 @@ export async function sendRegistrationSuccessEmail(input: SendEventEmailInput): 
     name: input.name,
     email: input.email,
     eventTitle,
+    bankLast5: input.bankAccount || '',
+    paymentAmount: input.paymentAmount || '',
+    paymentCurrency: input.paymentCurrency || '',
     siteUrl: getSiteUrl(),
   };
 

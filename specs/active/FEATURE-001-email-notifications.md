@@ -9,22 +9,22 @@
 
 ### Summary
 Implement comprehensive email notification system with two types of emails:
-1. **Reservation Confirmation Email** (optional, admin-controlled): Sent when user registers, notifying them registration received and awaiting payment review
+1. **Reservation Confirmation Email** (optional, admin-controlled): Sent when user registers, notifying them registration received and awaiting review
 2. **Payment Confirmation Email** (always on): Sent when admin confirms payment, notifying user their reservation is confirmed
 
-The feature includes an admin payment review workflow where admins can confirm or reject payments with reasons, and an admin email management page to control settings, send test emails, and view email history.
+The feature includes an admin registration review workflow where admins can confirm payments or cancel registrations with optional notifications, and an admin email management page to control settings, send test emails, and view email history.
 
 ### Business Value
 - **User experience**: Automatic confirmation emails reduce uncertainty and support inquiries
-- **Admin efficiency**: Centralized payment review workflow with one-click confirmation
+- **Admin efficiency**: Centralized registration review workflow with one-click confirmation or cancellation
 - **Compliance**: Email audit trail for debugging and customer support
-- **Flexibility**: Toggle reservation emails on/off based on operational needs
+- **Flexibility**: Toggle reservation emails on/off based on operational needs; manage registrations at any status
 
 ### Dependencies
 - Existing: Resend API integration (`lib/registration-success-email.ts`)
 - Existing: `public.settings` table
 - Existing: `public.events` table
-- Existing: `public.registrations` table with `status` enum including `created` and `confirmed`
+- Existing: `public.registrations` table with `status` enum including `pending`, `confirmed`, and `cancelled`
 - Existing: Email templates in `lib/email-templates.ts` (merged from separate config files)
 
 ---
@@ -38,7 +38,7 @@ The feature includes an admin payment review workflow where admins can confirm o
 
 **Acceptance Criteria (EARS)**:
 - **Event**: When a user completes registration form and submits successfully
-- **Action**: System creates registration with status `created`
+- **Action**: System creates registration with status `pending`
 - **Response**: System checks `settings.registration_email_enabled`
   - If enabled: Send reservation confirmation email in user's locale (zh/en)
   - If disabled: Skip email (no notification)
@@ -64,11 +64,11 @@ The feature includes an admin payment review workflow where admins can confirm o
 
 **Acceptance Criteria (EARS)**:
 - **Event**: When admin clicks "Confirm Payment" in payment review modal
-- **Action**: System updates registration status from `created` to `confirmed`
+- **Action**: System updates registration status from `pending` to `confirmed`
 - **Response**: System sends payment confirmation email in user's locale (zh/en)
 - **State**: Registration status is `confirmed`; email_audit entry logged
 
-**GIVEN** registration with status `created` and admin views payment review modal  
+**GIVEN** registration with status `pending` and admin views payment review modal  
 **WHEN** admin clicks "Confirm Payment"  
 **THEN** registration status changes to `confirmed`  
 **AND** user receives payment confirmation email within 30 seconds  
@@ -102,45 +102,45 @@ The feature includes an admin payment review workflow where admins can confirm o
 
 ---
 
-### US-004: Payment Review Workflow
+### US-004: Registration Review Workflow
 **As an** admin  
-**I want** to review and confirm payment details for registrations  
-**So that** I can verify payment before confirming reservations
+**I want** to review and manage registrations  
+**So that** I can confirm or cancel registrations as needed
 
 **Acceptance Criteria (EARS)**:
-- **Event**: When admin views registrations list with status `created`
-- **Action**: Admin sees "Review Payment" button in status column
-- **Response**: Clicking opens modal showing user info, event details, payment amount/currency, bank account last 5 digits
-- **State**: Modal provides "Confirm Payment" and "Reject Payment" actions
+- **Event**: When admin views registrations list
+- **Action**: Admin sees "Review" button for registrations that can be managed
+- **Response**: Clicking opens modal showing user info, event details, payment info (if applicable)
+- **State**: Modal provides "Confirm Payment" (for pending), "Cancel Registration" actions
 
-**GIVEN** registration exists with status `created`  
+**GIVEN** registration exists with status `pending`  
 **WHEN** admin views registration in admin portal  
-**THEN** "Review Payment" button appears in status column  
+**THEN** "Review" button appears in status column  
 **AND** button is keyboard accessible
 
-**GIVEN** admin clicks "Review Payment" button  
+**GIVEN** admin clicks "Review" button  
 **WHEN** modal opens  
 **THEN** modal displays:
   - User name, email, profession, age
   - Event title, date, location
-  - Payment amount and currency from event configuration
+  - Payment amount and currency from event configuration (if applicable)
   - Bank account last 5 digits (if provided)
-  - Two buttons: "Confirm Payment" and "Reject Payment"
+  - Action buttons: "Cancel Registration" (for any non-cancelled status), "Confirm Payment" (for pending only)
 
-**GIVEN** admin clicks "Confirm Payment"  
+**GIVEN** admin clicks "Confirm Payment" for pending registration  
 **WHEN** API confirms action  
 **THEN** registration status changes to `confirmed`  
 **AND** payment confirmation email is sent  
 **AND** modal closes  
 **AND** registration list refreshes
 
-**GIVEN** admin clicks "Reject Payment"  
-**WHEN** admin enters rejection reason  
+**GIVEN** admin clicks "Cancel Registration"  
+**WHEN** admin optionally provides cancellation details  
 **THEN** registration status changes to `cancelled`  
-**AND** audit_trail records rejection with reason and admin actor  
+**AND** audit_trail records cancellation with admin actor  
 **AND** modal closes  
 **AND** registration list refreshes  
-**AND** no email is sent to user
+**AND** optional cancellation email may be sent if admin chooses
 
 ---
 
@@ -492,7 +492,7 @@ Book Digest Team
 ```
 
 **Implementation**:
-1. Validate registration exists and status is `created`
+1. Validate registration exists and status is `pending`
 2. Update registration status to `confirmed`
 3. Add audit trail entry with event `admin_updated`, summary "Payment confirmed by admin"
 4. Fetch event details including payment info
@@ -502,9 +502,9 @@ Book Digest Team
 
 ---
 
-#### POST /api/admin/registrations/[id]/reject-payment
+#### POST /api/admin/registrations/[id]/cancel
 
-**Purpose**: Reject payment with reason
+**Purpose**: Cancel registration with optional notification email
 
 **Auth**: Required (Bearer token)
 
@@ -513,7 +513,8 @@ Book Digest Team
 **Body**:
 ```typescript
 {
-  reason: string; // Required, min 5 chars
+  emailContent?: string; // Optional custom message for cancellation email
+  emailSubject?: string; // Optional custom subject for cancellation email
 }
 ```
 
@@ -522,16 +523,17 @@ Book Digest Team
 {
   ok: boolean;
   registration: RegistrationRecord;
+  message: string; // Describes what action was taken
 }
 ```
 
 **Implementation**:
-1. Validate registration exists and status is `created`
-2. Validate reason is provided and >= 5 characters
-3. Update registration status to `cancelled`
-4. Add audit trail entry with event `admin_updated`, summary "Payment rejected by admin", details { reason }
-5. Return updated registration
-6. Do NOT send email
+1. Validate registration exists and status is not `cancelled`
+2. Update registration status to `cancelled`
+3. Add audit trail entry with event `admin_cancelled`, summary indicating whether email was sent
+4. If emailContent provided: send cancellation notification email
+5. If emailContent not provided: skip email, proceed with cancellation only
+6. Return updated registration and action message
 
 ---
 
@@ -562,7 +564,7 @@ Three sections stacked vertically:
    - Data table with columns: Sent At, Recipient, Type, Status, Event, Subject
    - Pagination (50 per page)
    - Filter by type dropdown
-   - "Refresh" button
+   - "Search" button
 
 **Behavior**:
 - Fetch settings on mount via GET /api/admin/settings/email
@@ -570,43 +572,45 @@ Three sections stacked vertically:
 - Test email form validates email format before enabling send button
 - Test email submission calls POST /api/admin/email-test
 - Email history fetches via GET /api/admin/email-history
-- Auto-refresh history after sending test email
 
 ---
 
-#### PaymentReviewModal
+#### RegistrationReviewModal
 
-**File**: `components/admin/PaymentReviewModal.tsx` (new)
+**File**: `components/admin/RegistrationReviewModal.tsx`
 
 **Props**:
 ```typescript
 {
   registration: RegistrationRecord;
   event: Event;
+  emailConfig: { replyTo: string; siteUrl: string };
   onClose: () => void;
   onConfirm: (id: string) => Promise<void>;
-  onReject: (id: string, reason: string) => Promise<void>;
+  onCancel?: (id: string, emailContent?: { subject: string; body: string }) => Promise<void>;
 }
 ```
 
 **Layout**:
 - Modal overlay with centered card
-- Header: "Review Payment"
+- Header: "Review Registration"
 - Two-column layout:
   - Left: User information (name, email, profession, age)
   - Right: Event information (title, date, location)
-- Payment section: Amount and currency (from event config)
+- Payment section: Amount and currency (from event config, if applicable)
 - Bank account section: Last 5 digits (if provided by user)
-- Footer with two buttons:
-  - "Reject Payment" (secondary, left-aligned) - opens reject reason dialog
-  - "Confirm Payment" (primary, right-aligned)
+- Footer with action buttons:
+  - "Cancel Registration" (destructive, left-aligned) - available for any non-cancelled registration
+  - "Back"/"Close" (secondary, center)
+  - "Confirm Payment" (primary, right-aligned) - only visible for pending status
 
 **Behavior**:
 - Confirm button calls `onConfirm(registration.id)`, shows loading state
-- Reject button shows inline form for reason input (required, min 5 chars)
-- Reject reason form has "Cancel" and "Reject" buttons
-- After confirm/reject action completes, modal closes automatically
+- Cancel button shows optional email notification form (subject + message)
+- Cancel form has "Skip Email" and "Send & Cancel" options
+- After confirm/cancel action completes, modal closes automatically
 - Escape key and overlay click close modal
+- For confirmed registrations: only show "Cancel Registration" and "Close" buttons
 
 ---
 
@@ -615,10 +619,10 @@ Three sections stacked vertically:
 **File**: `components/admin/AdminRegistrationRow.tsx`
 
 **Changes**:
-- When `registration.status === 'created'`, show "Review Payment" button in status column
+- For all non-cancelled registrations, show "Review" button in actions column
 - Button styled as secondary action button
-- Clicking button opens `PaymentReviewModal`
-- Pass registration, event, and callback handlers to modal
+- Clicking button opens `RegistrationReviewModal`
+- Pass registration, event, emailConfig, and callback handlers to modal
 - After modal actions complete, refresh registration list
 
 ---
@@ -630,7 +634,7 @@ Three sections stacked vertically:
 **File**: `app/api/event/[slug]/register/route.ts`
 
 **Changes**:
-After creating registration with status `created`, check if reservation confirmation emails are enabled:
+After creating registration with status `pending`, check if reservation confirmation emails are enabled:
 
 ```typescript
 // After line 151 (after creating reservation)
@@ -781,14 +785,15 @@ export async function sendPaymentConfirmationEmail(input: {
 - GET /api/admin/email-history filters by type
 - GET /api/admin/email-history includes event titles
 
-**File**: `tests/api/admin-payment-review.test.ts` (new)
+**File**: `tests/api/admin-registration-review.test.ts` (new)
 
 - POST /api/admin/registrations/[id]/confirm-payment updates status to confirmed
 - POST /api/admin/registrations/[id]/confirm-payment sends payment email
 - POST /api/admin/registrations/[id]/confirm-payment logs audit trail
-- POST /api/admin/registrations/[id]/reject-payment updates status to cancelled
-- POST /api/admin/registrations/[id]/reject-payment requires reason
-- POST /api/admin/registrations/[id]/reject-payment logs audit trail with reason
+- POST /api/admin/registrations/[id]/cancel updates status to cancelled (from any non-cancelled status)
+- POST /api/admin/registrations/[id]/cancel with emailContent sends cancellation notification
+- POST /api/admin/registrations/[id]/cancel without emailContent skips email
+- POST /api/admin/registrations/[id]/cancel logs audit trail with email status
 
 ### Integration Tests
 
@@ -796,8 +801,10 @@ export async function sendPaymentConfirmationEmail(input: {
 
 - Full registration flow with reservation email enabled
 - Full registration flow with reservation email disabled
-- Payment review flow: confirm payment and verify email sent
-- Payment review flow: reject payment and verify no email sent
+- Registration review flow: confirm payment and verify email sent
+- Registration review flow: cancel with email notification
+- Registration review flow: cancel without email notification
+- Registration review flow: cancel confirmed registration
 
 ### E2E Tests
 
@@ -808,12 +815,14 @@ export async function sendPaymentConfirmationEmail(input: {
 - Admin can view email history
 - Email history shows correct sent emails
 
-**File**: `tests/e2e/payment-review.spec.ts` (new)
+**File**: `tests/e2e/registration-review.spec.ts` (new)
 
-- Admin can open payment review modal from registrations list
-- Admin can confirm payment via modal
-- Admin can reject payment with reason via modal
-- Registration list updates after payment action
+- Admin can open registration review modal from registrations list
+- Admin can confirm payment via modal (for pending registrations)
+- Admin can cancel registration with email notification via modal
+- Admin can cancel registration without email via modal
+- Admin can cancel confirmed registration
+- Registration list updates after review action
 
 ---
 
@@ -897,23 +906,23 @@ This sequence allows testing email delivery first, then adding toggle control, b
 
 ---
 
-### Phase 6: Payment Review APIs and Confirmation Email (2 days) - **US-002 + US-004**
+### Phase 6: Registration Review APIs and Confirmation Email (2 days) - **US-002 + US-004**
 - Implement POST /api/admin/registrations/[id]/confirm-payment
-- Implement POST /api/admin/registrations/[id]/reject-payment
+- Implement POST /api/admin/registrations/[id]/cancel
 - Implement sendPaymentConfirmationEmail function
-- Create PaymentReviewModal component
+- Create RegistrationReviewModal component
 - Update AdminRegistrationRow with review button
 - Write unit and integration tests
 
 **Files**:
 - `app/api/admin/registrations/[id]/confirm-payment/route.ts`
-- `app/api/admin/registrations/[id]/reject-payment/route.ts`
-- `components/admin/PaymentReviewModal.tsx`
+- `app/api/admin/registrations/[id]/cancel/route.ts`
+- `components/admin/RegistrationReviewModal.tsx`
 - `components/admin/AdminRegistrationRow.tsx` (update)
 - `lib/email-service.ts` (update)
-- `tests/api/admin-payment-review.test.ts`
+- `tests/api/admin-registration-review.test.ts`
 
-**Milestone**: Admin can review payments and payment confirmation emails are sent (always on)
+**Milestone**: Admin can review registrations, confirm payments, and cancel registrations with optional email notifications
 
 ---
 
@@ -940,7 +949,7 @@ This sequence allows testing email delivery first, then adding toggle control, b
 
 **Files**:
 - `tests/e2e/admin-emails.spec.ts`
-- `tests/e2e/payment-review.spec.ts`
+- `tests/e2e/registration-review.spec.ts`
 - `docs/admin-api-v2.md` (update)
 - `docs/admin-guide.md` (update)
 - `docs/admin-email-guide.md` (new)
@@ -958,7 +967,7 @@ This sequence allows testing email delivery first, then adding toggle control, b
 - **Admin Authentication**: All admin endpoints require Bearer token authentication
 - **Email Validation**: Strict email format validation before sending
 - **Rate Limiting**: Test email endpoint should have rate limiting (max 10 per hour per admin)
-- **Audit Trail**: All payment review actions logged with admin actor
+- **Audit Trail**: All registration review actions logged with admin actor
 - **SQL Injection**: Use parameterized queries for all database operations
 - **XSS Prevention**: Sanitize all user input displayed in admin UI
 - **CSRF Protection**: Use Next.js built-in CSRF protection for admin forms
@@ -980,7 +989,7 @@ This sequence allows testing email delivery first, then adding toggle control, b
   - Email send success rate (overall and by type)
   - Email send latency
   - Email bounce rate (if Resend provides webhook)
-  - Payment review actions per day
+  - Registration review actions per day
   - Failed email attempts
 
 - **Alerts**:
@@ -990,7 +999,7 @@ This sequence allows testing email delivery first, then adding toggle control, b
 
 - **Logs**:
   - All email sends logged to email_audit
-  - Payment review actions logged to registration audit_trail
+  - Registration review actions logged to registration audit_trail
   - Admin actions logged with timestamp and actor
 
 ---
@@ -1007,7 +1016,7 @@ This sequence allows testing email delivery first, then adding toggle control, b
 ### Stage 2: Limited Production (Reservation Emails Off)
 - Deploy migration to production Supabase
 - Deploy code to production
-- Verify payment review workflow works
+- Verify registration review workflow works
 - Admin team uses payment confirmation emails
 - Monitor email_audit table for issues
 
@@ -1028,8 +1037,9 @@ This sequence allows testing email delivery first, then adding toggle control, b
 **File**: `docs/admin-email-guide.md` (new)
 
 - How to enable/disable reservation confirmation emails
-- How to review and confirm payments
-- How to reject payments with reasons
+- How to review and manage registrations
+- How to confirm payments
+- How to cancel registrations with or without email notification
 - How to send test emails
 - How to view email history
 - Troubleshooting email delivery issues
@@ -1048,7 +1058,7 @@ This sequence allows testing email delivery first, then adding toggle control, b
 
 **File**: `docs/admin-api-v2.md` (update)
 
-- Add sections for six new endpoints
+- Add sections for email management endpoints
 - Include request/response examples
 - Document authentication requirements
 

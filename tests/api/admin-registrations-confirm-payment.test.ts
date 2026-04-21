@@ -33,7 +33,7 @@ describe('POST /api/admin/registrations/[id]/confirm-payment', () => {
       name: 'John Doe',
       email: 'john@example.com',
       locale: 'en',
-      status: 'created',
+      status: 'pending',
       event_id: 1,
       audit_trail: null,
       events: {
@@ -192,7 +192,7 @@ describe('POST /api/admin/registrations/[id]/confirm-payment', () => {
       name: 'John Doe',
       email: 'john@example.com',
       locale: 'en',
-      status: 'created',
+      status: 'pending',
       event_id: 1,
       audit_trail: null,
       events: {

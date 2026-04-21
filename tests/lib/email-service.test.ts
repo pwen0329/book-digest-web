@@ -312,4 +312,127 @@ describe('Email Service - Registration ID Validation', () => {
       ).toBe(true);
     });
   });
+
+  describe('Registration success email - bank account and payment fields', () => {
+    it('should include bankLast5 in email context when bankAccount is provided', async () => {
+      const { interpolateEmailTemplate } = await import('@/lib/email-templates');
+
+      const input = {
+        locale: 'en' as const,
+        name: 'Test User',
+        email: 'test@example.com',
+        eventTitle: 'Test Event',
+        eventTitleEn: 'Test Event',
+        eventDate: '2026-05-01T19:00:00Z',
+        eventLocation: 'TW',
+        venueName: 'Test Venue',
+        bankAccount: '12345',
+        paymentAmount: 100,
+        paymentCurrency: 'USD',
+        registrationId: 'reg-123',
+        eventId: 1,
+      };
+
+      await sendRegistrationSuccessEmail(input);
+
+      // Verify interpolateEmailTemplate was called with correct context
+      expect(interpolateEmailTemplate).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          name: 'Test User',
+          email: 'test@example.com',
+          eventTitle: 'Test Event',
+          bankLast5: '12345',
+          paymentAmount: 100,
+          paymentCurrency: 'USD',
+          siteUrl: 'http://localhost:3000',
+        })
+      );
+    });
+
+    it('should use empty string for bankLast5 when bankAccount is not provided', async () => {
+      const { interpolateEmailTemplate } = await import('@/lib/email-templates');
+
+      const input = {
+        locale: 'en' as const,
+        name: 'Test User',
+        email: 'test@example.com',
+        eventTitle: 'Test Event',
+        eventDate: '2026-05-01T19:00:00Z',
+        eventLocation: 'TW',
+        venueName: 'Test Venue',
+        registrationId: 'reg-123',
+        eventId: 1,
+      };
+
+      await sendRegistrationSuccessEmail(input);
+
+      expect(interpolateEmailTemplate).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          bankLast5: '',
+          paymentAmount: '',
+          paymentCurrency: '',
+        })
+      );
+    });
+
+    it('should use empty string for paymentAmount and paymentCurrency when not provided', async () => {
+      const { interpolateEmailTemplate } = await import('@/lib/email-templates');
+
+      const input = {
+        locale: 'zh' as const,
+        name: '測試用戶',
+        email: 'test@example.com',
+        eventTitle: '測試活動',
+        eventDate: '2026-05-01T19:00:00Z',
+        eventLocation: 'TW',
+        venueName: 'Test Venue',
+        bankAccount: '99999',
+        registrationId: 'reg-456',
+        eventId: 2,
+      };
+
+      await sendRegistrationSuccessEmail(input);
+
+      expect(interpolateEmailTemplate).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          bankLast5: '99999',
+          paymentAmount: '',
+          paymentCurrency: '',
+        })
+      );
+    });
+
+    it('should handle null paymentAmount and paymentCurrency', async () => {
+      const { interpolateEmailTemplate } = await import('@/lib/email-templates');
+
+      const input = {
+        locale: 'en' as const,
+        name: 'Test User',
+        email: 'test@example.com',
+        eventTitle: 'Free Event',
+        eventDate: '2026-05-01T19:00:00Z',
+        eventLocation: 'TW',
+        venueName: 'Test Venue',
+        bankAccount: '54321',
+        paymentAmount: null,
+        paymentCurrency: null,
+        registrationId: 'reg-789',
+        eventId: 3,
+      };
+
+      await sendRegistrationSuccessEmail(input);
+
+      expect(interpolateEmailTemplate).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          bankLast5: '54321',
+          paymentAmount: '',
+          paymentCurrency: '',
+        })
+      );
+    });
+  });
 });

@@ -176,4 +176,112 @@ describe('GET /api/admin/email-history', () => {
     expect(data.ok).toBe(false);
     expect(data.error).toBe('Database error');
   });
+
+  it('should filter by search query for recipient email', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
+    vi.mocked(getEmailHistory).mockResolvedValue({
+      emails: [],
+      total: 0,
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/admin/email-history?search=john@example.com', {
+      method: 'GET',
+    });
+
+    const response = await GET(req);
+    expect(response.status).toBe(200);
+
+    expect(getEmailHistory).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      search: 'john@example.com',
+    });
+  });
+
+  it('should filter by search query for subject', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
+    vi.mocked(getEmailHistory).mockResolvedValue({
+      emails: [],
+      total: 0,
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/admin/email-history?search=Payment%20Confirmed', {
+      method: 'GET',
+    });
+
+    const response = await GET(req);
+    expect(response.status).toBe(200);
+
+    expect(getEmailHistory).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      search: 'Payment Confirmed',
+    });
+  });
+
+  it('should combine type and search filters', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
+    vi.mocked(getEmailHistory).mockResolvedValue({
+      emails: [],
+      total: 0,
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/admin/email-history?type=payment_confirmation&search=john', {
+      method: 'GET',
+    });
+
+    const response = await GET(req);
+    expect(response.status).toBe(200);
+
+    expect(getEmailHistory).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      type: 'payment_confirmation',
+      search: 'john',
+    });
+  });
+
+  it('should filter by event ID', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
+    vi.mocked(getEmailHistory).mockResolvedValue({
+      emails: [],
+      total: 0,
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/admin/email-history?eventId=42', {
+      method: 'GET',
+    });
+
+    const response = await GET(req);
+    expect(response.status).toBe(200);
+
+    expect(getEmailHistory).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      eventId: 42,
+    });
+  });
+
+  it('should combine all filters: type, search, and eventId', async () => {
+    vi.mocked(isAuthorizedAdminRequest).mockResolvedValue(true);
+    vi.mocked(getEmailHistory).mockResolvedValue({
+      emails: [],
+      total: 0,
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/admin/email-history?type=payment_confirmation&search=test@example.com&eventId=10', {
+      method: 'GET',
+    });
+
+    const response = await GET(req);
+    expect(response.status).toBe(200);
+
+    expect(getEmailHistory).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      type: 'payment_confirmation',
+      search: 'test@example.com',
+      eventId: 10,
+    });
+  });
 });

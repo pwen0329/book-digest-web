@@ -357,7 +357,7 @@ describe('/api/event/[slug]/register', () => {
         age: 25,
         referral: 'Instagram',
         timestamp: '2026-01-01T00:00:00Z',
-        status: 'created',
+        status: 'pending',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
       });
@@ -387,7 +387,7 @@ describe('/api/event/[slug]/register', () => {
         age: 25,
         referral: 'Instagram',
         timestamp: '2026-01-01T00:00:00Z',
-        status: 'created',
+        status: 'pending',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
       });
@@ -420,7 +420,7 @@ describe('/api/event/[slug]/register', () => {
         email: 'test@example.com',
         referral: 'Instagram',
         timestamp: '2026-01-01T00:00:00Z',
-        status: 'created',
+        status: 'pending',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
       });

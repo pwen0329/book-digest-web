@@ -26,13 +26,22 @@ export default function VenueEventsClient({
   const t = useTranslations('events');
   const searchParams = useSearchParams();
 
+  // Reorder event types: DETOX, MANDARIN_BOOK_CLUB, ENGLISH_BOOK_CLUB, FAMILY_ACTIVITY
+  const orderedEventTypes = [
+    eventTypes.find(t => t.code === 'DETOX'),
+    eventTypes.find(t => t.code === 'MANDARIN_BOOK_CLUB'),
+    eventTypes.find(t => t.code === 'ENGLISH_BOOK_CLUB'),
+    eventTypes.find(t => t.code === 'FAMILY_ACTIVITY'),
+    ...eventTypes.filter(t => !['DETOX', 'MANDARIN_BOOK_CLUB', 'ENGLISH_BOOK_CLUB', 'FAMILY_ACTIVITY'].includes(t.code)),
+  ].filter((type): type is EventType => type !== undefined);
+
   // Get type from URL or fall back to first available (read once on mount)
-  const validTypes = eventTypes.map(type => type.code);
+  const validTypes = orderedEventTypes.map(type => type.code);
   const [selectedEventType, setSelectedEventType] = useState<string>(() => {
     const typeFromUrl = searchParams.get('type');
     return (typeFromUrl && validTypes.includes(typeFromUrl))
       ? typeFromUrl
-      : (eventTypes.find(type => events.some(e => e.eventTypeCode === type.code))?.code || eventTypes[0]?.code || '');
+      : (orderedEventTypes.find(type => events.some(e => e.eventTypeCode === type.code))?.code || orderedEventTypes[0]?.code || '');
   });
 
   // Track image errors per event
@@ -64,7 +73,7 @@ export default function VenueEventsClient({
     <div className="space-y-8">
       {/* Event Type Tabs */}
       <div className="flex justify-center gap-2 flex-wrap">
-        {eventTypes.map(type => (
+        {orderedEventTypes.map(type => (
           <button
             key={type.code}
             onClick={() => handleEventTypeChange(type.code)}

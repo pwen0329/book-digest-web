@@ -142,7 +142,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         visitorId: visitorId || undefined,
         requestId,
         timestamp,
-        status: 'created',
+        status: 'pending',
       });
 
       reservationRecordId = reservationRecord.id;
@@ -160,6 +160,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
           eventLocation: event.venue?.location || 'TW',
           venueName: event.venue?.name || 'TBD',
           venueAddress: event.venue?.address,
+          bankAccount,
+          paymentAmount: event.paymentAmount,
+          paymentCurrency: event.paymentCurrency,
           registrationId: reservationRecord.id,
           eventId: event.id,
         });

@@ -72,7 +72,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       items,
       summary,
-      viewerSource: 'registration-store',
     }, { status: 200 });
     } catch (err) {
       await logServerError('registrations.list_failed', err, { url: req.url });

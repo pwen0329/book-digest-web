@@ -112,12 +112,12 @@ describe('VenueEventsClient URL Parameter Behavior', () => {
       />
     );
 
-    // Should show Mandarin Book Club button as active (first type with events)
-    const mandarinButton = screen.getByRole('button', { name: 'Mandarin Book Club' });
-    expect(mandarinButton).toHaveClass('bg-white/20');
+    // Should show Detox button as active (first in reordered list: DETOX, MANDARIN, ENGLISH, FAMILY)
+    const detoxButton = screen.getByRole('button', { name: 'Detox' });
+    expect(detoxButton).toHaveClass('bg-white/20');
 
-    // Should display Mandarin event
-    expect(screen.getByText('Mandarin Event 1')).toBeInTheDocument();
+    // Should display Detox event
+    expect(screen.getByText('Detox Event 1')).toBeInTheDocument();
   });
 
   it('updates URL when clicking event type tab', async () => {
@@ -157,7 +157,13 @@ describe('VenueEventsClient URL Parameter Behavior', () => {
       />
     );
 
-    // Mandarin event is OPEN - should have Sign Up link
+    // Default shows Detox (UPCOMING) - should have Coming Soon button
+    const comingSoonButtons = screen.getAllByRole('button', { name: 'Coming Soon' });
+    expect(comingSoonButtons[0]).toBeDisabled();
+
+    // Switch to Mandarin (OPEN) - should have Sign Up link
+    const mandarinButtons = screen.getAllByRole('button', { name: 'Mandarin Book Club' });
+    fireEvent.click(mandarinButtons[0]);
     const signUpLinks = screen.getAllByRole('link', { name: 'Sign Up' });
     expect(signUpLinks[0]).toHaveAttribute('href', '/en/signup/mandarin-club-1');
 
@@ -166,12 +172,6 @@ describe('VenueEventsClient URL Parameter Behavior', () => {
     fireEvent.click(englishButtons[0]);
     const fullButtons = screen.getAllByRole('button', { name: 'Registration Full' });
     expect(fullButtons[0]).toBeDisabled();
-
-    // Switch to Detox (UPCOMING)
-    const detoxButtons = screen.getAllByRole('button', { name: 'Detox' });
-    fireEvent.click(detoxButtons[0]);
-    const comingSoonButtons = screen.getAllByRole('button', { name: 'Coming Soon' });
-    expect(comingSoonButtons[0]).toBeDisabled();
   });
 
   it('uses Chinese translations when locale is zh', () => {
@@ -189,6 +189,30 @@ describe('VenueEventsClient URL Parameter Behavior', () => {
     expect(screen.getByRole('button', { name: '英文讀書會' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '親子讀書會' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '數位排毒' })).toBeInTheDocument();
+  });
+
+  it('displays event type tabs in correct order: DETOX, MANDARIN, ENGLISH, FAMILY', () => {
+    render(
+      <VenueEventsClient
+        locale="en"
+        venueLocation="TW"
+        events={mockEvents}
+        eventTypes={mockEventTypes}
+      />
+    );
+
+    // Get all tab buttons
+    const buttons = screen.getAllByRole('button');
+
+    // Filter out CTA buttons (Coming Soon, Sign Up, etc.) - they appear after the tabs
+    // Tab buttons are the first 4 buttons
+    const tabButtons = buttons.slice(0, 4);
+
+    // Verify order: Detox, Mandarin Book Club, English Book Club, Family Reading Club
+    expect(tabButtons[0]).toHaveTextContent('Detox');
+    expect(tabButtons[1]).toHaveTextContent('Mandarin Book Club');
+    expect(tabButtons[2]).toHaveTextContent('English Book Club');
+    expect(tabButtons[3]).toHaveTextContent('Family Reading Club');
   });
 
 });
