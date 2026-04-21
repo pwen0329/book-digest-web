@@ -21,7 +21,7 @@ describe('RegistrationReviewModal', () => {
     referral: 'BookDigestIG',
     bankAccount: '12345',
     timestamp: '2026-04-20T10:00:00Z',
-    status: 'created',
+    status: 'pending',
     createdAt: '2026-04-20T10:00:00Z',
     updatedAt: '2026-04-20T10:00:00Z',
   };

@@ -8,7 +8,6 @@ import PaymentReviewModal from '@/components/admin/RegistrationReviewModal';
 type RegistrationsResponse = {
   items: RegistrationRecord[];
   summary: RegistrationAuditSummary;
-  viewerSource: string;
 };
 
 function toIsoString(value: string): string {
@@ -24,7 +23,6 @@ export default function RegistrationsPage() {
   const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
   const [registrationsSummary, setRegistrationsSummary] = useState<RegistrationAuditSummary | null>(null);
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
-  const [registrationsViewerSource, setRegistrationsViewerSource] = useState<string>('registration-store');
   const [registrationEventFilter, setRegistrationEventFilter] = useState<'ALL' | number>('ALL');
   const [registrationStatusFilter, setRegistrationStatusFilter] = useState<'ALL' | RegistrationRecordStatus>('ALL');
   const [registrationSearch, setRegistrationSearch] = useState('');
@@ -38,6 +36,7 @@ export default function RegistrationsPage() {
 
   const refreshRegistrations = useCallback(async () => {
     setRegistrationsLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ limit: '100' });
       if (registrationEventFilter !== 'ALL') {
@@ -65,9 +64,20 @@ export default function RegistrationsPage() {
         throw new Error(payload && 'error' in payload ? String((payload as { error?: unknown }).error) : 'Unable to load registrations.');
       }
 
-      setRegistrations(payload.items || []);
-      setRegistrationsSummary(payload.summary || null);
-      setRegistrationsViewerSource(payload.viewerSource || 'registration-store');
+      const items = payload.items || [];
+      setRegistrations(items);
+
+      // Calculate summary from filtered results
+      const filteredSummary: RegistrationAuditSummary = {
+        total: items.length,
+        byStatus: {
+          pending: items.filter(r => r.status === 'pending').length,
+          confirmed: items.filter(r => r.status === 'confirmed').length,
+          cancelled: items.filter(r => r.status === 'cancelled').length,
+        },
+        byVenueLocation: payload.summary?.byVenueLocation || {} as RegistrationAuditSummary['byVenueLocation'],
+      };
+      setRegistrationsSummary(filteredSummary);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : 'Unable to load registrations.');
     } finally {
@@ -92,16 +102,15 @@ export default function RegistrationsPage() {
         if (emailConfigRes.ok) {
           setEmailConfig(emailConfigData);
         }
+
+        // Load registrations on initial mount
+        await refreshRegistrations();
       } catch (error) {
         console.error('Failed to load data:', error);
       }
     };
-    loadData();
+    void loadData();
   }, []);
-
-  useEffect(() => {
-    void refreshRegistrations();
-  }, [refreshRegistrations]);
 
   async function downloadRegistrationsCsv() {
     const params = new URLSearchParams({ limit: '1000', format: 'csv' });
@@ -211,8 +220,13 @@ export default function RegistrationsPage() {
               <button type="button" onClick={() => void handleAction(downloadRegistrationsCsv)} disabled={registrationsLoading || actionInFlight} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
                 Export CSV
               </button>
-              <button type="button" onClick={() => void refreshRegistrations()} disabled={registrationsLoading} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
-                {registrationsLoading ? 'Refreshing…' : 'Refresh'}
+              <button type="button" onClick={() => void refreshRegistrations()} disabled={registrationsLoading} className="inline-flex min-h-11 w-[100px] items-center justify-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
+                {registrationsLoading ? (
+                  <svg className="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : 'Search'}
               </button>
             </div>
           </div>
@@ -238,7 +252,6 @@ export default function RegistrationsPage() {
               <span className="mb-2 block text-sm text-white/70">Status</span>
               <select value={registrationStatusFilter} onChange={(event) => setRegistrationStatusFilter(event.target.value as 'ALL' | RegistrationRecordStatus)} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
                 <option value="ALL">All statuses</option>
-                <option value="created">Created</option>
                 <option value="pending">Pending</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="cancelled">Cancelled</option>
@@ -265,10 +278,6 @@ export default function RegistrationsPage() {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-sm text-white/55">Pending</p><p className="mt-1 text-2xl font-semibold">{registrationsSummary.byStatus.pending}</p></div>
             </div>
           ) : null}
-
-          <div className="rounded-2xl border border-white/10 bg-brand-navy/50 p-4 text-sm text-white/70">
-            Viewer source: <span className="font-mono text-white">{registrationsViewerSource}</span>
-          </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/10">
             <div className="overflow-x-auto">

@@ -6,7 +6,7 @@ import { getSupabaseUrl, getSupabaseHeaders } from '@/lib/supabase-utils';
 import type { VenueLocation } from '@/types/venue';
 import { getVenueLocations } from '@/types/venue';
 
-export const REGISTRATION_STATUSES = ['created', 'pending', 'confirmed', 'cancelled'] as const;
+export const REGISTRATION_STATUSES = ['pending', 'confirmed', 'cancelled'] as const;
 export type RegistrationRecordStatus = typeof REGISTRATION_STATUSES[number];
 
 export type RegistrationAuditEntry = {
@@ -355,7 +355,7 @@ export async function countActiveRegistrationsByEventId(eventId: number): Promis
   const query = buildSupabaseQuery({
     select: 'id',
     event_id: `eq.${eventId}`,
-    or: `(status.eq.confirmed,status.eq.created,and(status.eq.pending,updated_at.gte.${pendingCutoff}))`,
+    or: `(status.eq.confirmed,and(status.eq.pending,updated_at.gte.${pendingCutoff}))`,
   });
   const response = await fetch(query, {
     method: 'GET',

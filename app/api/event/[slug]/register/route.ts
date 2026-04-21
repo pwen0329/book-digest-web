@@ -142,7 +142,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         visitorId: visitorId || undefined,
         requestId,
         timestamp,
-        status: 'created',
+        status: 'pending',
       });
 
       reservationRecordId = reservationRecord.id;

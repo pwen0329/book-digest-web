@@ -1,8 +1,8 @@
 -- Migration 008: Update registration status constraint and remove source column
--- 1. Add 'created' status (used when registration is first submitted)
+-- 1. Simplify status enum (registrations start as 'pending', no need for 'created')
 -- 2. Remove 'source' column (deprecated after removing Notion/Tally integration)
 
--- Drop old constraint and add new one with 'created' status
+-- Drop old constraint and add new one without 'created' status
 DO $$
 BEGIN
   -- Drop existing status constraint if it exists
@@ -11,9 +11,9 @@ BEGIN
     ALTER TABLE registrations DROP CONSTRAINT registrations_status_check;
   END IF;
 
-  -- Add new constraint with 'created' status
+  -- Add new constraint: pending, confirmed, cancelled
   ALTER TABLE registrations ADD CONSTRAINT registrations_status_check
-    CHECK (status IN ('created', 'pending', 'confirmed', 'cancelled'));
+    CHECK (status IN ('pending', 'confirmed', 'cancelled'));
 END $$;
 
 -- Remove source column (deprecated)

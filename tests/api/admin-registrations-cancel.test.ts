@@ -32,7 +32,7 @@ describe('POST /api/admin/registrations/[id]/cancel', () => {
       id: 'reg-123',
       name: 'John Doe',
       email: 'john@example.com',
-      status: 'created',
+      status: 'pending',
       audit_trail: null,
     };
 
@@ -85,7 +85,7 @@ describe('POST /api/admin/registrations/[id]/cancel', () => {
       id: 'reg-123',
       name: 'John Doe',
       email: 'john@example.com',
-      status: 'created',
+      status: 'pending',
       audit_trail: [{ event: 'created', actor: 'system', at: '2024-01-01T00:00:00Z', summary: 'Registration created' }],
     };
 
@@ -205,7 +205,7 @@ describe('POST /api/admin/registrations/[id]/cancel', () => {
       id: 'reg-123',
       name: 'John Doe',
       email: 'john@example.com',
-      status: 'created',
+      status: 'pending',
       audit_trail: null,
     };
 

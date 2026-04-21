@@ -58,11 +58,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
       const registration = registrations[0];
 
       // Validate registration status
-      if (registration.status !== 'created') {
+      if (registration.status !== 'pending') {
         return NextResponse.json(
           {
             ok: false,
-            error: `Cannot confirm payment for registration with status '${registration.status}'. Only registrations with status 'created' can be confirmed.`,
+            error: `Cannot confirm payment for registration with status '${registration.status}'. Only registrations with status 'pending' can be confirmed.`,
           },
           { status: 400 }
         );
