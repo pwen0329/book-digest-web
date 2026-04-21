@@ -562,7 +562,7 @@ Three sections stacked vertically:
    - Data table with columns: Sent At, Recipient, Type, Status, Event, Subject
    - Pagination (50 per page)
    - Filter by type dropdown
-   - "Refresh" button
+   - "Search" button
 
 **Behavior**:
 - Fetch settings on mount via GET /api/admin/settings/email
@@ -570,7 +570,6 @@ Three sections stacked vertically:
 - Test email form validates email format before enabling send button
 - Test email submission calls POST /api/admin/email-test
 - Email history fetches via GET /api/admin/email-history
-- Auto-refresh history after sending test email
 
 ---
 

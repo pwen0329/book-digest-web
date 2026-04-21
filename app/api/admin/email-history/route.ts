@@ -28,6 +28,9 @@ export async function GET(req: NextRequest) {
       );
 
       const type = searchParams.get('type') as EmailHistoryFilters['type'];
+      const search = searchParams.get('search') || undefined;
+      const eventIdParam = searchParams.get('eventId');
+      const eventId = eventIdParam ? Number.parseInt(eventIdParam, 10) : undefined;
 
       // Validate type if provided
       if (type && !['reservation_confirmation', 'payment_confirmation', 'test'].includes(type)) {
@@ -41,6 +44,8 @@ export async function GET(req: NextRequest) {
         limit,
         offset,
         ...(type && { type }),
+        ...(search && { search }),
+        ...(eventId && { eventId }),
       };
 
       const result = await getEmailHistory(filters);

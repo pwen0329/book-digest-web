@@ -55,6 +55,8 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
   const [emailHistoryOffset, setEmailHistoryOffset] = useState(0);
   const [emailHistoryLimit] = useState(50);
   const [emailHistoryTypeFilter, setEmailHistoryTypeFilter] = useState<'all' | 'reservation_confirmation' | 'payment_confirmation' | 'test'>('all');
+  const [emailHistorySearch, setEmailHistorySearch] = useState('');
+  const [emailHistoryEventFilter, setEmailHistoryEventFilter] = useState<number | null>(null);
 
   // Auto-clear messages after 5 seconds
   useEffect(() => {
@@ -130,8 +132,10 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
     setEmailHistoryLoading(true);
     try {
       const typeParam = emailHistoryTypeFilter !== 'all' ? `&type=${emailHistoryTypeFilter}` : '';
+      const searchParam = emailHistorySearch.trim() ? `&search=${encodeURIComponent(emailHistorySearch.trim())}` : '';
+      const eventParam = emailHistoryEventFilter ? `&eventId=${emailHistoryEventFilter}` : '';
       const response = await fetch(
-        `/api/admin/email-history?limit=${emailHistoryLimit}&offset=${emailHistoryOffset}${typeParam}`,
+        `/api/admin/email-history?limit=${emailHistoryLimit}&offset=${emailHistoryOffset}${typeParam}${searchParam}${eventParam}`,
         {
           method: 'GET',
           credentials: 'include',
@@ -232,8 +236,6 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
       if (response.ok && data.ok) {
         setTestEmailStatus('success');
         setTestEmailMessage(`Test email sent to ${testEmail}`);
-        // Refresh email history after successful send
-        await loadEmailHistory();
       } else {
         setTestEmailStatus('error');
         setTestEmailMessage(data.error || 'Failed to send test email');
@@ -547,34 +549,26 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
               <h2 className="text-xl font-semibold font-outfit">Email History</h2>
               <p className="mt-2 text-sm text-white/70">View all emails sent by the system with delivery status.</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                type="text"
+                value={emailHistorySearch}
+                onChange={(e) => setEmailHistorySearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setEmailHistoryOffset(0);
+                    void loadEmailHistory();
+                  }
+                }}
+                placeholder="Search recipient or subject..."
+                className="rounded-2xl bg-black/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-pink/40 placeholder:text-white/40"
+                disabled={emailHistoryLoading}
+              />
               <select
                 value={emailHistoryTypeFilter}
-                onChange={async (e) => {
+                onChange={(e) => {
                   const newType = e.target.value as typeof emailHistoryTypeFilter;
                   setEmailHistoryTypeFilter(newType);
-                  setEmailHistoryOffset(0);
-                  // Load with the new filter immediately
-                  setEmailHistoryLoading(true);
-                  try {
-                    const typeParam = newType !== 'all' ? `&type=${newType}` : '';
-                    const response = await fetch(
-                      `/api/admin/email-history?limit=${emailHistoryLimit}&offset=0${typeParam}`,
-                      {
-                        method: 'GET',
-                        credentials: 'include',
-                      }
-                    );
-                    const data = await response.json();
-                    if (response.ok && data.ok) {
-                      setEmailHistory(data.emails);
-                      setEmailHistoryTotal(data.total);
-                    }
-                  } catch (error) {
-                    console.error('Failed to load email history:', error);
-                  } finally {
-                    setEmailHistoryLoading(false);
-                  }
                 }}
                 className="rounded-2xl bg-black/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-pink/40"
                 disabled={emailHistoryLoading}
@@ -584,12 +578,31 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
                 <option value="payment_confirmation">Payment Confirmation</option>
                 <option value="test">Test</option>
               </select>
+              <select
+                value={emailHistoryEventFilter ?? ''}
+                onChange={(e) => {
+                  const newEventId = e.target.value ? Number.parseInt(e.target.value, 10) : null;
+                  setEmailHistoryEventFilter(newEventId);
+                }}
+                className="rounded-2xl bg-black/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-pink/40"
+                disabled={emailHistoryLoading}
+              >
+                <option value="">All Events</option>
+                {events.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.titleEn}
+                  </option>
+                ))}
+              </select>
               <button
-                onClick={() => void loadEmailHistory()}
+                onClick={() => {
+                  setEmailHistoryOffset(0);
+                  void loadEmailHistory();
+                }}
                 disabled={emailHistoryLoading}
                 className="inline-flex min-h-10 items-center rounded-full bg-brand-pink px-5 py-2 text-sm font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60"
               >
-                {emailHistoryLoading ? 'Loading…' : 'Refresh'}
+                {emailHistoryLoading ? 'Loading…' : 'Search'}
               </button>
             </div>
           </div>
@@ -677,8 +690,10 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
                         setEmailHistoryLoading(true);
                         try {
                           const typeParam = emailHistoryTypeFilter !== 'all' ? `&type=${emailHistoryTypeFilter}` : '';
+                          const searchParam = emailHistorySearch.trim() ? `&search=${encodeURIComponent(emailHistorySearch.trim())}` : '';
+                          const eventParam = emailHistoryEventFilter ? `&eventId=${emailHistoryEventFilter}` : '';
                           const response = await fetch(
-                            `/api/admin/email-history?limit=${emailHistoryLimit}&offset=${newOffset}${typeParam}`,
+                            `/api/admin/email-history?limit=${emailHistoryLimit}&offset=${newOffset}${typeParam}${searchParam}${eventParam}`,
                             {
                               method: 'GET',
                               credentials: 'include',
@@ -707,8 +722,10 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
                         setEmailHistoryLoading(true);
                         try {
                           const typeParam = emailHistoryTypeFilter !== 'all' ? `&type=${emailHistoryTypeFilter}` : '';
+                          const searchParam = emailHistorySearch.trim() ? `&search=${encodeURIComponent(emailHistorySearch.trim())}` : '';
+                          const eventParam = emailHistoryEventFilter ? `&eventId=${emailHistoryEventFilter}` : '';
                           const response = await fetch(
-                            `/api/admin/email-history?limit=${emailHistoryLimit}&offset=${newOffset}${typeParam}`,
+                            `/api/admin/email-history?limit=${emailHistoryLimit}&offset=${newOffset}${typeParam}${searchParam}${eventParam}`,
                             {
                               method: 'GET',
                               credentials: 'include',

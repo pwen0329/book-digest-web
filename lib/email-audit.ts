@@ -38,6 +38,8 @@ export type EmailHistoryFilters = {
   limit?: number;
   offset?: number;
   type?: 'reservation_confirmation' | 'payment_confirmation' | 'test';
+  search?: string;
+  eventId?: number;
 };
 
 export type EmailHistoryResult = {
@@ -50,7 +52,7 @@ export type EmailHistoryResult = {
 // ============================================================================
 
 export async function getEmailHistory(filters: EmailHistoryFilters = {}): Promise<EmailHistoryResult> {
-  const { limit = 50, offset = 0, type } = filters;
+  const { limit = 50, offset = 0, type, search, eventId } = filters;
 
   // Build query with left join to events table for event titles
   const query = `
@@ -78,6 +80,18 @@ export async function getEmailHistory(filters: EmailHistoryFilters = {}): Promis
     filterParts.push(`email_type=eq.${type}`);
   }
 
+  if (eventId) {
+    filterParts.push(`event_id=eq.${eventId}`);
+  }
+
+  // Add search filter for recipient_email or subject
+  if (search && search.trim()) {
+    const searchTerm = search.trim();
+    // Use Supabase "or" filter to search in both fields
+    // Format: or=(recipient_email.ilike.*term*,subject.ilike.*term*)
+    filterParts.push(`or=(recipient_email.ilike.*${searchTerm}*,subject.ilike.*${searchTerm}*)`);
+  }
+
   const filterString = filterParts.join('&');
 
   // Fetch rows
@@ -88,7 +102,7 @@ export async function getEmailHistory(filters: EmailHistoryFilters = {}): Promis
   );
 
   // Also get total count
-  const totalCount = await getEmailHistoryCount(type);
+  const totalCount = await getEmailHistoryCount(type, search, eventId);
 
   // Transform rows
   const emails: EmailHistoryEntry[] = rows.map(row => ({
@@ -111,11 +125,29 @@ export async function getEmailHistory(filters: EmailHistoryFilters = {}): Promis
   };
 }
 
-async function getEmailHistoryCount(type?: string): Promise<number> {
-  const url = `${getTableUrl('email_audit')}?select=count`;
-  const filterUrl = type ? `${url}&email_type=eq.${type}` : url;
+async function getEmailHistoryCount(type?: string, search?: string, eventId?: number): Promise<number> {
+  let url = `${getTableUrl('email_audit')}?select=count`;
 
-  const response = await fetch(filterUrl, {
+  const filterParts: string[] = [];
+
+  if (type) {
+    filterParts.push(`email_type=eq.${type}`);
+  }
+
+  if (eventId) {
+    filterParts.push(`event_id=eq.${eventId}`);
+  }
+
+  if (search && search.trim()) {
+    const searchTerm = search.trim();
+    filterParts.push(`or=(recipient_email.ilike.*${searchTerm}*,subject.ilike.*${searchTerm}*)`);
+  }
+
+  if (filterParts.length > 0) {
+    url = `${url}&${filterParts.join('&')}`;
+  }
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: {
       ...getSupabaseHeaders(),
