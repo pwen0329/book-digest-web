@@ -74,14 +74,14 @@ export default function RegistrationReviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto"
       onClick={handleOverlayClick}
       onKeyDown={handleKeyDown}
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      <div className="w-full max-w-3xl rounded-[28px] border border-white/10 bg-brand-navy p-6">
+      <div className="w-full max-w-3xl rounded-[28px] border border-white/10 bg-brand-navy p-6 my-8">
         <h2 id="modal-title" className="text-2xl font-semibold font-outfit text-white">
           Review Registration
         </h2>
