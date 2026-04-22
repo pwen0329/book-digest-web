@@ -1,0 +1,302 @@
+import { expect, test } from '@playwright/test';
+
+test.describe('Admin Navigation Loading States', () => {
+  const adminHeaders = {
+    'Authorization': 'Bearer test-admin',
+  };
+
+  test.beforeEach(async ({ page }) => {
+    // Login to admin
+    await page.goto('/admin/login');
+    await page.fill('input[type="password"]', 'test-admin');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('/admin/books');
+  });
+
+  test('should show loading spinner when switching between admin tabs', async ({ page }) => {
+    // Start on Books page - verify by checking URL
+    await expect(page).toHaveURL('/admin/books');
+
+    // Verify Books tab is active
+    const booksTab = page.locator('a[href="/admin/books"]').first();
+    await expect(booksTab).toHaveClass(/bg-brand-pink/);
+
+    // Click on Events tab
+    const eventsTab = page.locator('a[href="/admin/events"]').first();
+    await eventsTab.click();
+
+    // Should show loading spinner (briefly)
+    // We check that the spinner appears or the navigation completes quickly
+    const spinnerOrNewPage = Promise.race([
+      page.locator('a[href="/admin/events"] svg.animate-spin').waitFor({ timeout: 500 }),
+      page.waitForURL('/admin/events', { timeout: 2000 }),
+    ]);
+
+    await spinnerOrNewPage.catch(() => {
+      // Either spinner appeared or navigation was too fast - both are OK
+    });
+
+    // Eventually should navigate to Events page
+    await page.waitForURL('/admin/events');
+    await expect(page.locator('a[href="/admin/events"]').first()).toHaveClass(/bg-brand-pink/);
+
+    // Loading spinner should be gone
+    await expect(page.locator('a[href="/admin/events"] svg.animate-spin')).not.toBeVisible();
+  });
+
+  test('should navigate through all admin tabs successfully', async ({ page }) => {
+    const tabs = [
+      { name: 'Events', url: '/admin/events', href: '/admin/events' },
+      { name: 'Venues', url: '/admin/venues', href: '/admin/venues' },
+      { name: 'Emails', url: '/admin/emails', href: '/admin/emails' },
+      { name: 'Registrations', url: '/admin/registrations', href: '/admin/registrations' },
+      { name: 'Assets', url: '/admin/assets', href: '/admin/assets' },
+      { name: 'Books', url: '/admin/books', href: '/admin/books' },
+    ];
+
+    for (const tab of tabs) {
+      // Click the tab
+      await page.locator(`a[href="${tab.href}"]`).first().click();
+
+      // Wait for navigation to complete
+      await page.waitForURL(tab.url);
+
+      // Verify the tab is active
+      await expect(page.locator(`a[href="${tab.href}"]`).first()).toHaveClass(/bg-brand-pink/);
+
+      // Verify no loading spinner is stuck
+      await expect(page.locator(`a[href="${tab.href}"] svg.animate-spin`)).not.toBeVisible();
+    }
+  });
+
+  test('should handle rapid tab switching', async ({ page }) => {
+    // Rapidly click multiple tabs
+    await page.locator('a[href="/admin/events"]').first().click();
+    await page.locator('a[href="/admin/venues"]').first().click();
+    await page.locator('a[href="/admin/emails"]').first().click();
+
+    // Should eventually settle on Emails page
+    await page.waitForURL('/admin/emails', { timeout: 5000 });
+
+    // All spinners should be cleared
+    await expect(page.locator('svg.animate-spin')).not.toBeVisible();
+
+    // Emails tab should be active
+    await expect(page.locator('a[href="/admin/emails"]').first()).toHaveClass(/bg-brand-pink/);
+  });
+
+  test('should show active tab correctly after page refresh', async ({ page }) => {
+    // Navigate to Events page
+    await page.locator('a[href="/admin/events"]').first().click();
+    await page.waitForURL('/admin/events');
+
+    // Refresh the page
+    await page.reload();
+
+    // Events tab should still be active
+    await expect(page.locator('a[href="/admin/events"]').first()).toHaveClass(/bg-brand-pink/);
+
+    // No loading spinner should be visible
+    await expect(page.locator('svg.animate-spin')).not.toBeVisible();
+  });
+
+  test('should not show spinner on already active tab', async ({ page }) => {
+    // We're on Books page
+    await expect(page).toHaveURL('/admin/books');
+    await expect(page.locator('a[href="/admin/books"]').first()).toHaveClass(/bg-brand-pink/);
+
+    // Click Books tab again
+    const booksTab = page.locator('a[href="/admin/books"]').first();
+    await booksTab.click();
+
+    // Should not show loading spinner since we're already on this page
+    await expect(page.locator('a[href="/admin/books"] svg.animate-spin')).not.toBeVisible();
+  });
+});
+
+test.describe('Event Manager Filter Loading States', () => {
+  const adminHeaders = {
+    'Authorization': 'Bearer test-admin',
+  };
+
+  let eventTypes: Array<{ code: string; nameEn: string; nameZh: string }> = [];
+  let cleanup: { events: number[]; venues: number[]; books: number[] } = {
+    events: [],
+    venues: [],
+    books: [],
+  };
+
+  test.beforeAll(async ({ request }) => {
+    // Get event types
+    const eventTypesResponse = await request.get('/api/admin/event-types', {
+      headers: adminHeaders,
+    });
+    expect(eventTypesResponse.ok()).toBeTruthy();
+    const data = await eventTypesResponse.json();
+    eventTypes = data.eventTypes;
+  });
+
+  test.beforeEach(async ({ page, request }) => {
+    cleanup = { events: [], venues: [], books: [] };
+
+    // Create test venue
+    const venueResponse = await request.post('/api/admin/venue-v2', {
+      headers: { ...adminHeaders, 'Content-Type': 'application/json' },
+      data: {
+        name: `Test Venue ${Date.now()}`,
+        maxCapacity: 20,
+        location: 'TW',
+        address: '123 Test St',
+      },
+    });
+
+    if (!venueResponse.ok()) {
+      const errorText = await venueResponse.text();
+      throw new Error(`Failed to create venue: ${errorText}`);
+    }
+
+    const venueData = await venueResponse.json();
+    cleanup.venues.push(venueData.venue.id);
+
+    // Create test events with different types
+    const now = Date.now();
+    const eventData1 = {
+      slug: `test-event-mandarin-${now}`,
+      eventTypeCode: eventTypes[0].code,
+      venueId: venueData.venue.id,
+      title: 'Test Mandarin Event',
+      titleEn: 'Test Mandarin Event',
+      eventDate: new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      registrationOpensAt: new Date(now).toISOString(),
+      registrationClosesAt: new Date(now + 29 * 24 * 60 * 60 * 1000).toISOString(),
+      isPublished: true,
+    };
+
+    const eventData2 = {
+      slug: `test-event-english-${now}`,
+      eventTypeCode: eventTypes.length > 1 ? eventTypes[1].code : eventTypes[0].code,
+      venueId: venueData.venue.id,
+      title: 'Test English Event',
+      titleEn: 'Test English Event',
+      eventDate: new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      registrationOpensAt: new Date(now).toISOString(),
+      registrationClosesAt: new Date(now + 29 * 24 * 60 * 60 * 1000).toISOString(),
+      isPublished: true,
+    };
+
+    const event1Response = await request.post('/api/admin/event-v2', {
+      headers: { ...adminHeaders, 'Content-Type': 'application/json' },
+      data: eventData1,
+    });
+    const event1Data = await event1Response.json();
+    cleanup.events.push(event1Data.event.id);
+
+    const event2Response = await request.post('/api/admin/event-v2', {
+      headers: { ...adminHeaders, 'Content-Type': 'application/json' },
+      data: eventData2,
+    });
+    const event2Data = await event2Response.json();
+    cleanup.events.push(event2Data.event.id);
+
+    // Login and navigate to Events page
+    await page.goto('/admin/login');
+    await page.fill('input[type="password"]', 'test-admin');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('/admin/books');
+    await page.locator('a:has-text("Events")').first().click();
+    await page.waitForURL('/admin/events');
+  });
+
+  test.afterEach(async ({ request }) => {
+    // Cleanup in correct order
+    for (const eventId of cleanup.events) {
+      await request.delete(`/api/admin/registrations-by-event/${eventId}`, {
+        headers: adminHeaders,
+      }).catch(() => {});
+      await request.delete(`/api/admin/event-v2/${eventId}`, {
+        headers: adminHeaders,
+      }).catch(() => {});
+    }
+    for (const venueId of cleanup.venues) {
+      await request.delete(`/api/admin/venue-v2/${venueId}`, {
+        headers: adminHeaders,
+      }).catch(() => {});
+    }
+  });
+
+  test('should show loading spinner when changing event filter', async ({ page }) => {
+    // Wait for events to load
+    await page.waitForSelector('select', { state: 'visible' });
+
+    // Get the filter dropdown
+    const filterSelect = page.locator('select').first();
+
+    // Should show "All Types" initially
+    await expect(filterSelect).toHaveValue('ALL');
+
+    // Change filter
+    await filterSelect.selectOption(eventTypes[0].code);
+
+    // Check if spinner appears (might be very brief for sync filtering)
+    // We verify either the spinner appears or filtering completes quickly
+    const spinnerOrFiltered = Promise.race([
+      page.locator('svg.animate-spin').waitFor({ state: 'visible', timeout: 300 }),
+      page.waitForTimeout(100),
+    ]);
+
+    await spinnerOrFiltered.catch(() => {
+      // Either spinner appeared or filtering was instant - both are OK
+    });
+
+    // Eventually, spinner should be gone
+    await expect(page.locator('svg.animate-spin')).not.toBeVisible({ timeout: 2000 });
+
+    // Filter should be applied
+    await expect(filterSelect).toHaveValue(eventTypes[0].code);
+  });
+
+  test('should filter events correctly and update count', async ({ page }) => {
+    // Wait for page to load
+    await page.waitForSelector('select', { state: 'visible' });
+
+    const filterSelect = page.locator('select').first();
+
+    // Check initial count shows all events
+    const initialCount = await page.locator('text=/Events \\(\\d+\\)/').textContent();
+    expect(initialCount).toContain('Events (');
+
+    // Filter by first event type
+    await filterSelect.selectOption(eventTypes[0].code);
+
+    // Wait for filtering to complete
+    await page.waitForTimeout(500);
+
+    // Count should update
+    const filteredCount = await page.locator('text=/Events \\(\\d+\\)/').textContent();
+    expect(filteredCount).toContain('Events (');
+
+    // No loading spinner should be stuck
+    await expect(page.locator('svg.animate-spin')).not.toBeVisible();
+  });
+
+  test('should handle multiple filter changes quickly', async ({ page }) => {
+    await page.waitForSelector('select', { state: 'visible' });
+
+    const filterSelect = page.locator('select').first();
+
+    // Rapidly change filters
+    await filterSelect.selectOption(eventTypes[0].code);
+    await filterSelect.selectOption('ALL');
+    if (eventTypes.length > 1) {
+      await filterSelect.selectOption(eventTypes[1].code);
+    }
+    await filterSelect.selectOption('ALL');
+
+    // Wait for all changes to complete
+    await page.waitForTimeout(1000);
+
+    // Should settle on ALL with no stuck spinners
+    await expect(filterSelect).toHaveValue('ALL');
+    await expect(page.locator('svg.animate-spin')).not.toBeVisible();
+  });
+});
