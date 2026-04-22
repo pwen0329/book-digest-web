@@ -17,7 +17,12 @@ export default async function EmailsPage() {
         registration: registrationTemplates,
         payment: paymentTemplates,
       }}
-      events={events.map(e => ({ id: e.id, title: e.title, titleEn: e.titleEn || e.title }))}
+      events={events.map(e => ({
+        id: e.id,
+        title: e.title,
+        titleEn: e.titleEn || e.title,
+        eventDate: e.eventDate,
+      }))}
     />
   );
 }

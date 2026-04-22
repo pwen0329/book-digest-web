@@ -6,13 +6,14 @@ import type {
   RegistrationSuccessEmailTemplates,
   PaymentConfirmationEmailTemplates,
 } from '@/lib/email-templates';
+import EventFilterDropdown, { type EventFilterItem } from '@/components/admin/EventFilterDropdown';
 
 type EmailManagerProps = {
   initialEmailTemplates: {
     registration: RegistrationSuccessEmailTemplates;
     payment: PaymentConfirmationEmailTemplates;
   };
-  events: Array<{ id: number; title: string; titleEn: string }>;
+  events: readonly EventFilterItem[];
 };
 
 export default function EmailManager({ initialEmailTemplates, events }: EmailManagerProps) {
@@ -36,7 +37,7 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
   const [testEmail, setTestEmail] = useState('');
   const [testEmailType, setTestEmailType] = useState<'reservation_confirmation' | 'payment_confirmation'>('payment_confirmation');
   const [testEmailLocale, setTestEmailLocale] = useState<'zh' | 'en'>('en');
-  const [testEmailEventId, setTestEmailEventId] = useState<number | null>(events.length > 0 ? events[0].id : null);
+  const [testEmailEventId, setTestEmailEventId] = useState<number | 'ALL'>(events.length > 0 ? events[0].id : 'ALL');
   const [testEmailStatus, setTestEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [testEmailMessage, setTestEmailMessage] = useState('');
 
@@ -56,7 +57,7 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
   const [emailHistoryLimit] = useState(50);
   const [emailHistoryTypeFilter, setEmailHistoryTypeFilter] = useState<'all' | 'reservation_confirmation' | 'payment_confirmation' | 'test'>('all');
   const [emailHistorySearch, setEmailHistorySearch] = useState('');
-  const [emailHistoryEventFilter, setEmailHistoryEventFilter] = useState<number | null>(null);
+  const [emailHistoryEventFilter, setEmailHistoryEventFilter] = useState<number | 'ALL'>('ALL');
 
   // Auto-clear messages after 5 seconds
   useEffect(() => {
@@ -133,7 +134,7 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
     try {
       const typeParam = emailHistoryTypeFilter !== 'all' ? `&type=${emailHistoryTypeFilter}` : '';
       const searchParam = emailHistorySearch.trim() ? `&search=${encodeURIComponent(emailHistorySearch.trim())}` : '';
-      const eventParam = emailHistoryEventFilter ? `&eventId=${emailHistoryEventFilter}` : '';
+      const eventParam = emailHistoryEventFilter !== 'ALL' ? `&eventId=${emailHistoryEventFilter}` : '';
       const response = await fetch(
         `/api/admin/email-history?limit=${emailHistoryLimit}&offset=${emailHistoryOffset}${typeParam}${searchParam}${eventParam}`,
         {
@@ -211,7 +212,7 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
       setTestEmailMessage('Invalid email format');
       return;
     }
-    if (!testEmailEventId) {
+    if (testEmailEventId === 'ALL' || typeof testEmailEventId !== 'number') {
       setTestEmailStatus('error');
       setTestEmailMessage('Please select an event');
       return;
@@ -459,22 +460,15 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
             <form onSubmit={handleSendTestEmail} className="mt-6 space-y-4">
               <label className="block">
                 <span className="mb-2 block text-sm text-white/70">Event</span>
-                <select
-                  value={testEmailEventId ?? ''}
-                  onChange={(e) => setTestEmailEventId(Number(e.target.value))}
-                  className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40"
+                <EventFilterDropdown
+                  events={events}
+                  value={testEmailEventId}
+                  onChange={setTestEmailEventId}
                   disabled={testEmailStatus === 'sending' || events.length === 0}
-                >
-                  {events.length === 0 ? (
-                    <option value="">No events available</option>
-                  ) : (
-                    events.map((event) => (
-                      <option key={event.id} value={event.id}>
-                        {event.titleEn || event.title}
-                      </option>
-                    ))
-                  )}
-                </select>
+                  size="md"
+                  showAllOption={false}
+                  locale="zh"
+                />
               </label>
 
               <label className="block">
@@ -517,7 +511,7 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
 
               <button
                 type="submit"
-                disabled={testEmailStatus === 'sending' || !testEmailEventId}
+                disabled={testEmailStatus === 'sending' || testEmailEventId === 'ALL' || typeof testEmailEventId !== 'number'}
                 className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-6 py-3 font-semibold text-brand-navy transition hover:brightness-110 disabled:opacity-60"
               >
                 {testEmailStatus === 'sending' ? 'Sending…' : 'Send Test Email'}
@@ -578,22 +572,15 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
                 <option value="payment_confirmation">Payment Confirmation</option>
                 <option value="test">Test</option>
               </select>
-              <select
-                value={emailHistoryEventFilter ?? ''}
-                onChange={(e) => {
-                  const newEventId = e.target.value ? Number.parseInt(e.target.value, 10) : null;
-                  setEmailHistoryEventFilter(newEventId);
-                }}
-                className="rounded-2xl bg-black/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-pink/40"
+              <EventFilterDropdown
+                events={events}
+                value={emailHistoryEventFilter}
+                onChange={setEmailHistoryEventFilter}
                 disabled={emailHistoryLoading}
-              >
-                <option value="">All Events</option>
-                {events.map((event) => (
-                  <option key={event.id} value={event.id}>
-                    {event.titleEn}
-                  </option>
-                ))}
-              </select>
+                size="sm"
+                allOptionLabel="All Events"
+                locale="zh"
+              />
               <button
                 onClick={() => {
                   setEmailHistoryOffset(0);
