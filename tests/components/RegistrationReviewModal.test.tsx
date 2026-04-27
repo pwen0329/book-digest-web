@@ -30,7 +30,9 @@ describe('RegistrationReviewModal', () => {
     id: 1,
     slug: 'test-event',
     eventTypeCode: 'TW',
-    venueId: 1,
+    venueName: 'Test Venue',
+    venueCapacity: 30,
+    venueLocation: 'TW',
     title: '測試活動',
     titleEn: 'Test Event',
     eventDate: '2026-05-16T19:00:00Z',
@@ -39,6 +41,7 @@ describe('RegistrationReviewModal', () => {
     isPublished: true,
     paymentAmount: 500,
     paymentCurrency: 'TWD',
+    introTemplateName: 'default_paid',
     createdAt: '2026-04-01T00:00:00Z',
     updatedAt: '2026-04-01T00:00:00Z',
   };
@@ -108,8 +111,8 @@ describe('RegistrationReviewModal', () => {
       expect(screen.getByText('12345')).toBeInTheDocument();
     });
 
-    it('should not render payment section when paymentAmount is null and no bankAccount', () => {
-      const eventWithoutPayment = { ...mockEvent, paymentAmount: null, paymentCurrency: null };
+    it('should not render payment section when paymentAmount is 0 and no bankAccount', () => {
+      const eventWithoutPayment = { ...mockEvent, paymentAmount: 0 };
       const registrationWithoutBank = { ...mockRegistration, bankAccount: undefined };
       const onClose = vi.fn();
       const onConfirm = vi.fn();

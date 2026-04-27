@@ -1,19 +1,12 @@
 'use client';
 
-import type { Event } from '@/types/event';
+import type { EventFilterItem } from './event-filter-helpers';
+
+// Re-export for backward compatibility
+export { prepareEventsForFilter, type EventFilterItem } from './event-filter-helpers';
 
 /** Value type for the event filter - either a specific event ID or 'ALL' for all events */
 type EventFilterValue = number | 'ALL';
-
-/**
- * Required event fields for the filter dropdown
- * This ensures compile-time safety - you cannot pass events without these fields
- *
- * Export this type so consumers can use it in their own type definitions
- */
-export type EventFilterItem = Pick<Event, 'id' | 'title' | 'eventDate'> & {
-  titleEn?: string | null;
-};
 
 type EventFilterDropdownProps = {
   /** Array of events to display in the dropdown. Must include id, title, titleEn, and eventDate */
@@ -37,25 +30,6 @@ type EventFilterDropdownProps = {
   /** Whether to show "(complete)" suffix for past events */
   showCompletedStatus?: boolean;
 };
-
-/**
- * Helper function to prepare events for the filter dropdown
- * This provides an additional layer of type safety and makes it clear what fields are needed
- *
- * @example
- * const filterEvents = prepareEventsForFilter(allEvents);
- * <EventFilterDropdown events={filterEvents} ... />
- */
-export function prepareEventsForFilter(
-  events: readonly Event[]
-): EventFilterItem[] {
-  return events.map((event) => ({
-    id: event.id,
-    title: event.title,
-    titleEn: event.titleEn,
-    eventDate: event.eventDate,
-  }));
-}
 
 /**
  * Reusable event filter dropdown component for admin pages

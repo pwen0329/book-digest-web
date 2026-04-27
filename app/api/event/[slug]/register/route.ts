@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
 
       // Fetch event
-      const event = await getEventBySlug(slug, { includeVenue: true });
+      const event = await getEventBySlug(slug);
       if (!event || !event.isPublished) {
         return NextResponse.json({ error: 'Event not found' }, { status: 404 });
       }
@@ -157,9 +157,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
           eventTitle: event.title,
           eventTitleEn: event.titleEn,
           eventDate: event.eventDate,
-          eventLocation: event.venue?.location || 'TW',
-          venueName: event.venue?.name || 'TBD',
-          venueAddress: event.venue?.address,
+          eventLocation: event.venueLocation,
+          venueName: event.venueName || '',
+          venueAddress: event.venueAddress,
           bankAccount,
           paymentAmount: event.paymentAmount,
           paymentCurrency: event.paymentCurrency,

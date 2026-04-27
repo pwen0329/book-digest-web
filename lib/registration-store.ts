@@ -3,8 +3,8 @@ import 'server-only';
 import { cryptoRandomId } from '@/lib/crypto-id';
 import { SUPABASE_CONFIG } from '@/lib/env';
 import { getSupabaseUrl, getSupabaseHeaders } from '@/lib/supabase-utils';
-import type { VenueLocation } from '@/types/venue';
-import { getVenueLocations } from '@/types/venue';
+import type { VenueLocation } from '@/types/event';
+import { getVenueLocations } from '@/lib/venue-locations';
 
 export const REGISTRATION_STATUSES = ['pending', 'confirmed', 'cancelled'] as const;
 export type RegistrationRecordStatus = typeof REGISTRATION_STATUSES[number];
@@ -429,9 +429,9 @@ export async function summarizeStoredRegistrations(): Promise<RegistrationAuditS
 
   const byStatus = { ...initialStatusCounts };
 
-  // Fetch all registrations with event and venue data joined
+  // Fetch all registrations with event data (venue_location is now inline on events table)
   const query = buildSupabaseQuery({
-    select: 'status,event_id,events!inner(venue_id,venues!inner(location))',
+    select: 'status,event_id,events!inner(venue_location)',
   });
 
   const response = await fetch(query, {
@@ -447,14 +447,14 @@ export async function summarizeStoredRegistrations(): Promise<RegistrationAuditS
 
   type RegistrationWithVenue = {
     status: RegistrationRecordStatus;
-    events: { venues: { location: VenueLocation } };
+    events: { venue_location: VenueLocation };
   };
 
   const rows = await response.json() as RegistrationWithVenue[];
 
   // Count registrations by venue location and status
   for (const row of rows) {
-    const venueLocation = row.events.venues.location;
+    const venueLocation = row.events.venue_location;
     const status = row.status;
 
     byVenueLocation[venueLocation][status]++;
@@ -532,8 +532,8 @@ export async function resetRegistrationsForTesting(venueLocation: VenueLocation)
     return;
   }
 
-  // First, get all event IDs for this venue location
-  const eventsQuery = `${getSupabaseUrl()}/rest/v1/events?select=id,venues!inner(location)&venues.location=eq.${encodeURIComponent(venueLocation)}`;
+  // Get all event IDs for this venue location (venue_location is now inline on events table)
+  const eventsQuery = `${getSupabaseUrl()}/rest/v1/events?select=id&venue_location=eq.${encodeURIComponent(venueLocation)}`;
   const eventsResponse = await fetch(eventsQuery, {
     method: 'GET',
     headers: getSupabaseHeaders(),

@@ -13,7 +13,6 @@ export default function AdminNavigation() {
   const tabs = [
     { id: 'books', label: 'Books', href: '/admin/books' },
     { id: 'events', label: 'Events', href: '/admin/events' },
-    { id: 'venues', label: 'Venues', href: '/admin/venues' },
     { id: 'emails', label: 'Emails', href: '/admin/emails' },
     { id: 'registrations', label: 'Registrations', href: '/admin/registrations' },
     { id: 'assets', label: 'Assets', href: '/admin/assets' },

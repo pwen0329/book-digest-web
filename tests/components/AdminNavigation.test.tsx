@@ -30,7 +30,6 @@ describe('AdminNavigation', () => {
 
     expect(screen.getByText('Books')).toBeInTheDocument();
     expect(screen.getByText('Events')).toBeInTheDocument();
-    expect(screen.getByText('Venues')).toBeInTheDocument();
     expect(screen.getByText('Emails')).toBeInTheDocument();
     expect(screen.getByText('Registrations')).toBeInTheDocument();
     expect(screen.getByText('Assets')).toBeInTheDocument();
@@ -50,12 +49,12 @@ describe('AdminNavigation', () => {
     const user = userEvent.setup();
     const { container } = render(<AdminNavigation />);
 
-    const venuesLink = container.querySelector('a[href="/admin/venues"]');
-    await user.click(venuesLink!);
+    const eventsLink = container.querySelector('a[href="/admin/events"]');
+    await user.click(eventsLink!);
 
     // Router push should be called with the correct path
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/admin/venues');
+      expect(mockPush).toHaveBeenCalledWith('/admin/events');
     });
   });
 
@@ -63,16 +62,16 @@ describe('AdminNavigation', () => {
     const user = userEvent.setup();
     const { container, rerender } = render(<AdminNavigation />);
 
-    const venuesLink = container.querySelector('a[href="/admin/venues"]');
-    await user.click(venuesLink!);
+    const eventsLink = container.querySelector('a[href="/admin/events"]');
+    await user.click(eventsLink!);
 
     // Simulate navigation complete by updating pathname
-    mockPathname.mockReturnValue('/admin/venues');
+    mockPathname.mockReturnValue('/admin/events');
     rerender(<AdminNavigation />);
 
     // Tab should be active
-    const updatedVenuesLink = container.querySelector('a[href="/admin/venues"]');
-    expect(updatedVenuesLink).toHaveClass('bg-brand-pink', 'text-brand-navy');
+    const updatedEventsLink = container.querySelector('a[href="/admin/events"]');
+    expect(updatedEventsLink).toHaveClass('bg-brand-pink', 'text-brand-navy');
   });
 
   it('should handle logout button click', async () => {
@@ -103,12 +102,11 @@ describe('AdminNavigation', () => {
 
     // All tabs should be links
     const links = container.querySelectorAll('a');
-    expect(links.length).toBe(6); // 6 navigation tabs
+    expect(links.length).toBe(5); // 5 navigation tabs (venues removed)
 
     // Verify href attributes
     expect(container.querySelector('a[href="/admin/books"]')).toBeInTheDocument();
     expect(container.querySelector('a[href="/admin/events"]')).toBeInTheDocument();
-    expect(container.querySelector('a[href="/admin/venues"]')).toBeInTheDocument();
     expect(container.querySelector('a[href="/admin/emails"]')).toBeInTheDocument();
     expect(container.querySelector('a[href="/admin/registrations"]')).toBeInTheDocument();
     expect(container.querySelector('a[href="/admin/assets"]')).toBeInTheDocument();

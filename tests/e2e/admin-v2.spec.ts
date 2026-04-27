@@ -47,12 +47,7 @@ test.describe('Admin v2 API - Happy flow', () => {
       }).catch(() => {});
     }
 
-    // Then delete venues
-    for (const venueId of cleanup.venues) {
-      await request.delete(`/api/admin/venue-v2/${venueId}`, {
-        headers: adminHeaders,
-      }).catch(() => {});
-    }
+    // Venues are no longer separate entities - they're inline in events
 
     // Finally delete books
     for (const bookId of cleanup.books) {
@@ -62,10 +57,9 @@ test.describe('Admin v2 API - Happy flow', () => {
     }
   });
 
-  test('foreign key constraints prevent deleting venue when referenced by events (book can be deleted as it uses SET NULL)', async ({ request }) => {
+  test('book deletion uses SET NULL for events', async ({ request }) => {
     const timestamp = `${Date.now()}-fk-${Math.random().toString(36).slice(2, 9)}`;
     const bookSlug = `test-book-${timestamp}`;
-    const venueSlug = `test-venue-${timestamp}`;
     const eventSlug = `test-event-${timestamp}`;
     const eventTypeCode = eventTypes[0].code;
 
@@ -83,22 +77,7 @@ test.describe('Admin v2 API - Happy flow', () => {
     const bookId = bookData.book.id;
     cleanup.books.push(bookId);
 
-    // Create a venue
-    const venueResponse = await request.post('/api/admin/venue-v2', {
-      headers: adminHeaders,
-      data: {
-        name: venueSlug,
-        location: 'TW',
-        maxCapacity: 20,
-        isVirtual: false,
-      },
-    });
-    expect(venueResponse.ok()).toBeTruthy();
-    const venueData = await venueResponse.json();
-    const venueId = venueData.venue.id;
-    cleanup.venues.push(venueId);
-
-    // Create an event linking to both
+    // Create an event with inline venue fields
     const now = new Date();
     const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const futureRegOpens = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
@@ -109,13 +88,18 @@ test.describe('Admin v2 API - Happy flow', () => {
       data: {
         slug: eventSlug,
         eventTypeCode: eventTypeCode,
-        venueId: venueId,
         bookId: bookId,
         title: 'FK Test Event',
         eventDate: futureEvent.toISOString(),
         registrationOpensAt: futureRegOpens.toISOString(),
         registrationClosesAt: futureRegCloses.toISOString(),
         isPublished: true,
+        // Inline venue fields
+        venueLocation: 'TW',
+        venueCapacity: 20,
+        venueName: 'Test Venue',
+        paymentAmount: 300,
+        paymentCurrency: 'TWD',
       },
     });
     expect(eventResponse.ok()).toBeTruthy();
@@ -138,26 +122,12 @@ test.describe('Admin v2 API - Happy flow', () => {
     const eventCheck = await getEventResponse.json();
     expect(eventCheck.event.bookId).toBeUndefined(); // bookId should be null/undefined now
 
-    // Try to delete the venue - should fail with FK constraint error (venue uses ON DELETE RESTRICT)
-    const deleteVenueResponse = await request.delete(`/api/admin/venue-v2/${venueId}`, {
-      headers: adminHeaders,
-    });
-    expect(deleteVenueResponse.ok()).toBeFalsy();
-    expect(deleteVenueResponse.status()).toBe(500); // Server error due to FK constraint
-
-    // Delete the event first
+    // Clean up event
     const deleteEventResponse = await request.delete(`/api/admin/event-v2/${eventId}`, {
       headers: adminHeaders,
     });
     expect(deleteEventResponse.ok()).toBeTruthy();
     cleanup.events = cleanup.events.filter(id => id !== eventId);
-
-    // Now we can successfully delete the venue
-    const deleteVenueRetryResponse = await request.delete(`/api/admin/venue-v2/${venueId}`, {
-      headers: adminHeaders,
-    });
-    expect(deleteVenueRetryResponse.ok()).toBeTruthy();
-    cleanup.venues = cleanup.venues.filter(id => id !== venueId);
   });
 
   for (let typeIndex = 0; typeIndex < 10; typeIndex++) {
@@ -190,30 +160,12 @@ test.describe('Admin v2 API - Happy flow', () => {
       const bookId = bookData.book.id;
       cleanup.books.push(bookId);
 
-      // Step 2: Create a venue
-      const venueResponse = await request.post('/api/admin/venue-v2', {
-        headers: adminHeaders,
-        data: {
-          name: venueSlug,
-          location: 'TW',
-          address: '123 Test Street, Taipei',
-          maxCapacity: 30,
-          isVirtual: false,
-        },
-      });
-
-      expect(venueResponse.ok()).toBeTruthy();
-      const venueData = await venueResponse.json();
-      expect(venueData.ok).toBe(true);
-      expect(venueData.venue).toBeDefined();
-      expect(venueData.venue.id).toBeGreaterThan(0);
-      const venueId = venueData.venue.id;
-      cleanup.venues.push(venueId);
+      // Step 2: Note - venues are now inline fields in events, no separate creation needed
 
       // Step 3: Note - there's no server-side validation for illogical event times
       // The API allows any date combination, so we skip the "bad times" test
 
-      // Step 4: Create event in the past (registration already ended)
+      // Step 4: Create event in the past (registration already ended) with inline venue fields
       const now = new Date();
       const pastEventTime = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000); // 1 day ago
       const pastRegOpens = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000); // 3 days ago
@@ -225,7 +177,6 @@ test.describe('Admin v2 API - Happy flow', () => {
         data: {
           slug: eventSlug,
           eventTypeCode: eventTypeCode,
-          venueId: venueId,
           bookId: bookId,
           title: 'Test Event - Past',
           titleEn: 'Test Event - Past EN',
@@ -235,6 +186,13 @@ test.describe('Admin v2 API - Happy flow', () => {
           registrationOpensAt: pastRegOpens.toISOString(),
           registrationClosesAt: pastRegCloses.toISOString(),
           isPublished: true,
+          // Inline venue fields
+          venueLocation: 'TW',
+          venueCapacity: 30,
+          venueName: venueSlug,
+          venueAddress: '123 Test Street, Taipei',
+          paymentAmount: 300,
+          paymentCurrency: 'TWD',
         },
       });
 
@@ -419,21 +377,7 @@ test.describe('Admin v2 API - Happy flow', () => {
     const bookData = await bookResponse.json();
     cleanup.books.push(bookData.book.id);
 
-    // Create venue
-    const venueResponse = await request.post('/api/admin/venue-v2', {
-      headers: adminHeaders,
-      data: {
-        name: venueSlug,
-        location: 'TW',
-        maxCapacity: 20,
-        isVirtual: false,
-      },
-    });
-    expect(venueResponse.ok()).toBeTruthy();
-    const venueData = await venueResponse.json();
-    cleanup.venues.push(venueData.venue.id);
-
-    // Create event with non-existent coverUrl
+    // Create event with non-existent coverUrl and inline venue fields
     const now = new Date();
     const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const currentRegOpens = new Date(now.getTime() - 1 * 60 * 60 * 1000);
@@ -444,7 +388,6 @@ test.describe('Admin v2 API - Happy flow', () => {
       data: {
         slug: eventSlug,
         eventTypeCode: eventTypeCode,
-        venueId: venueData.venue.id,
         bookId: bookData.book.id,
         title: 'Missing Image Test Event',
         titleEn: 'Missing Image Test Event EN',
@@ -453,6 +396,12 @@ test.describe('Admin v2 API - Happy flow', () => {
         registrationOpensAt: currentRegOpens.toISOString(),
         registrationClosesAt: currentRegCloses.toISOString(),
         isPublished: true,
+        // Inline venue fields
+        venueLocation: 'TW',
+        venueCapacity: 20,
+        venueName: venueSlug,
+        paymentAmount: 300,
+        paymentCurrency: 'TWD',
       },
     });
     expect(eventResponse.ok()).toBeTruthy();

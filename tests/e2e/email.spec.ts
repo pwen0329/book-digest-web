@@ -73,11 +73,7 @@ test.describe('Email notifications', () => {
         headers: adminHeaders,
       }).catch(() => {});
     }
-    for (const venueId of cleanup.venues) {
-      await request.delete(`/api/admin/venue-v2/${venueId}`, {
-        headers: adminHeaders,
-      }).catch(() => {});
-    }
+    // Venues are no longer separate entities - they're inline in events
     for (const bookId of cleanup.books) {
       await request.delete(`/api/admin/book-v2/${bookId}`, {
         headers: adminHeaders,
@@ -94,20 +90,7 @@ test.describe('Email notifications', () => {
   async function createTestEvent(request: any, slug: string, title: string, titleEn: string) {
     const timestamp = Date.now();
 
-    // Create venue
-    const venueResponse = await request.post('/api/admin/venue-v2', {
-      headers: adminHeaders,
-      data: {
-        name: `Test Venue ${timestamp}`,
-        location: 'TW',
-        maxCapacity: 50,
-      },
-    });
-    expect(venueResponse.ok()).toBeTruthy();
-    const venue = await venueResponse.json();
-    cleanup.venues.push(venue.venue.id);
-
-    // Create event
+    // Create event with inline venue fields
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 7);
     const registrationOpensAt = new Date();
@@ -121,12 +104,17 @@ test.describe('Email notifications', () => {
         slug,
         title,
         titleEn,
-        venueId: venue.venue.id,
         eventTypeCode: eventTypes[0].code,
         eventDate: futureDate.toISOString(),
         registrationOpensAt: registrationOpensAt.toISOString(),
         registrationClosesAt: registrationClosesAt.toISOString(),
         isPublished: true,
+        // Inline venue fields
+        venueLocation: 'TW',
+        venueCapacity: 50,
+        venueName: `Test Venue ${timestamp}`,
+        paymentAmount: 300,
+        paymentCurrency: 'TWD',
       },
     });
     expect(eventResponse.ok()).toBeTruthy();

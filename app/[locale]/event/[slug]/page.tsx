@@ -15,8 +15,8 @@ export default async function EventDetailPage({
 }) {
   const { locale, slug } = await params;
 
-  // Fetch the event to determine its venue
-  const event = await getEventBySlug(slug, { includeVenue: true });
+  // Fetch the event
+  const event = await getEventBySlug(slug);
 
   // If event doesn't exist or is not published, redirect to events page
   if (!event || !event.isPublished) {
@@ -24,6 +24,6 @@ export default async function EventDetailPage({
   }
 
   // Redirect to events page with query params to pre-select tabs
-  const venueLocation = event.venue?.location || 'TW';
+  const venueLocation = event.venueLocation;
   redirect(`/${locale}/events?venue=${venueLocation}&event=${event.id}`);
 }

@@ -12,7 +12,17 @@ export const dynamic = 'force-dynamic';
 const eventSchema = z.object({
   slug: z.string().min(1).max(200),
   eventTypeCode: z.string().min(1).max(50),
-  venueId: z.number().int().positive(),
+  // Inline venue fields
+  venueName: z.string().max(500).optional().nullable().transform(val => val === '' ? null : val),
+  venueNameEn: z.string().max(500).optional().nullable().transform(val => val === '' ? null : val),
+  venueCapacity: z.number().int().positive(),
+  venueAddress: z.string().max(1000).optional().nullable().transform(val => val === '' ? null : val),
+  venueLocation: z.enum(['TW', 'NL', 'ONLINE']),
+  // Payment fields
+  paymentAmount: z.number().int().min(0),
+  paymentCurrency: z.enum(['TWD', 'EUR', 'USD']),
+  // Intro template
+  introTemplateName: z.string().min(1).max(200),
   bookId: z.number().int().positive().optional().nullable(),
   title: z.string().min(1).max(1000),
   titleEn: z.string().min(1).max(1000).optional().nullable(),
@@ -52,7 +62,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid event ID' }, { status: 400 });
     }
 
-    const event = await getEventById(id, { includeVenue: true, includeBook: true });
+    const event = await getEventById(id, { includeBook: true, includeIntroTemplate: true });
     if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
@@ -92,7 +102,14 @@ export async function PUT(
       const updates: Partial<Event> = {};
       if (payload.slug !== undefined) updates.slug = payload.slug.trim();
       if (payload.eventTypeCode !== undefined) updates.eventTypeCode = payload.eventTypeCode;
-      if (payload.venueId !== undefined) updates.venueId = payload.venueId;
+      if (payload.venueName !== undefined) updates.venueName = payload.venueName || undefined;
+      if (payload.venueNameEn !== undefined) updates.venueNameEn = payload.venueNameEn || undefined;
+      if (payload.venueCapacity !== undefined) updates.venueCapacity = payload.venueCapacity;
+      if (payload.venueAddress !== undefined) updates.venueAddress = payload.venueAddress || undefined;
+      if (payload.venueLocation !== undefined) updates.venueLocation = payload.venueLocation;
+      if (payload.paymentAmount !== undefined) updates.paymentAmount = payload.paymentAmount;
+      if (payload.paymentCurrency !== undefined) updates.paymentCurrency = payload.paymentCurrency;
+      if (payload.introTemplateName !== undefined) updates.introTemplateName = payload.introTemplateName;
       if (payload.bookId !== undefined) updates.bookId = payload.bookId || undefined;
       if (payload.title !== undefined) updates.title = payload.title;
       if (payload.titleEn !== undefined) updates.titleEn = payload.titleEn || undefined;

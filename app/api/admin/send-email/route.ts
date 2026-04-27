@@ -98,14 +98,10 @@ export async function POST(req: NextRequest) {
       const rawBody = await req.json();
       const body = validateRequestBody(rawBody);
 
-      // Fetch event with venue
-      const event = await getEventById(body.eventId, { includeVenue: true });
+      // Fetch event
+      const event = await getEventById(body.eventId);
       if (!event) {
         throw new NotFoundError(`Event with id ${body.eventId} not found`);
-      }
-
-      if (!event.venue) {
-        throw new BadRequestError(`Event ${body.eventId} has no associated venue`);
       }
 
       // Test mode: single recipient
@@ -120,9 +116,9 @@ export async function POST(req: NextRequest) {
           eventTitle: event.title,
           eventTitleEn: event.titleEn,
           eventDate: event.eventDate,
-          eventLocation: event.venue!.location,
-          venueName: event.venue!.name,
-          venueAddress: event.venue!.address,
+          eventLocation: event.venueLocation,
+          venueName: event.venueName || '',
+          venueAddress: event.venueAddress,
           registrationId: null, // Test emails don't have a real registration
           eventId: event.id,
         };
@@ -167,9 +163,9 @@ export async function POST(req: NextRequest) {
             eventTitle: event.title,
             eventTitleEn: event.titleEn,
             eventDate: event.eventDate,
-            eventLocation: event.venue!.location,
-            venueName: event.venue!.name,
-            venueAddress: event.venue!.address,
+            eventLocation: event.venueLocation,
+            venueName: event.venueName || '',
+            venueAddress: event.venueAddress,
             registrationId: registration.id,
             eventId: event.id,
           };

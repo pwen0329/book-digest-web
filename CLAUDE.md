@@ -124,7 +124,6 @@ Tests run in test mode with:
 
 ✅ **Admin Functions (CRUD)**
 - Books: Create, Read, Update, Delete, Bulk Update
-- Venues: Create, Read, Update, Delete
 - Events: Create, Read, Update, Delete, Filter, Calculate Status
 
 ✅ **User Functions**

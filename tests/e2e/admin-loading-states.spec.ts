@@ -47,7 +47,6 @@ test.describe('Admin Navigation Loading States', () => {
   test('should navigate through all admin tabs successfully', async ({ page }) => {
     const tabs = [
       { name: 'Events', url: '/admin/events', href: '/admin/events' },
-      { name: 'Venues', url: '/admin/venues', href: '/admin/venues' },
       { name: 'Emails', url: '/admin/emails', href: '/admin/emails' },
       { name: 'Registrations', url: '/admin/registrations', href: '/admin/registrations' },
       { name: 'Assets', url: '/admin/assets', href: '/admin/assets' },
@@ -72,7 +71,7 @@ test.describe('Admin Navigation Loading States', () => {
   test('should handle rapid tab switching', async ({ page }) => {
     // Rapidly click multiple tabs
     await page.locator('a[href="/admin/events"]').first().click();
-    await page.locator('a[href="/admin/venues"]').first().click();
+    await page.locator('a[href="/admin/registrations"]').first().click();
     await page.locator('a[href="/admin/emails"]').first().click();
 
     // Should eventually settle on Emails page
@@ -139,49 +138,42 @@ test.describe('Event Manager Filter Loading States', () => {
   test.beforeEach(async ({ page, request }) => {
     cleanup = { events: [], venues: [], books: [] };
 
-    // Create test venue
-    const venueResponse = await request.post('/api/admin/venue-v2', {
-      headers: { ...adminHeaders, 'Content-Type': 'application/json' },
-      data: {
-        name: `Test Venue ${Date.now()}`,
-        maxCapacity: 20,
-        location: 'TW',
-        address: '123 Test St',
-      },
-    });
-
-    if (!venueResponse.ok()) {
-      const errorText = await venueResponse.text();
-      throw new Error(`Failed to create venue: ${errorText}`);
-    }
-
-    const venueData = await venueResponse.json();
-    cleanup.venues.push(venueData.venue.id);
-
-    // Create test events with different types
+    // Create test events with different types (venues are now inline fields)
     const now = Date.now();
     const eventData1 = {
       slug: `test-event-mandarin-${now}`,
       eventTypeCode: eventTypes[0].code,
-      venueId: venueData.venue.id,
       title: 'Test Mandarin Event',
       titleEn: 'Test Mandarin Event',
       eventDate: new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(),
       registrationOpensAt: new Date(now).toISOString(),
       registrationClosesAt: new Date(now + 29 * 24 * 60 * 60 * 1000).toISOString(),
       isPublished: true,
+      // Inline venue fields
+      venueLocation: 'TW',
+      venueCapacity: 20,
+      venueName: `Test Venue ${now}`,
+      venueAddress: '123 Test St',
+      paymentAmount: 300,
+      paymentCurrency: 'TWD',
     };
 
     const eventData2 = {
       slug: `test-event-english-${now}`,
       eventTypeCode: eventTypes.length > 1 ? eventTypes[1].code : eventTypes[0].code,
-      venueId: venueData.venue.id,
       title: 'Test English Event',
       titleEn: 'Test English Event',
       eventDate: new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(),
       registrationOpensAt: new Date(now).toISOString(),
       registrationClosesAt: new Date(now + 29 * 24 * 60 * 60 * 1000).toISOString(),
       isPublished: true,
+      // Inline venue fields
+      venueLocation: 'TW',
+      venueCapacity: 20,
+      venueName: `Test Venue ${now}`,
+      venueAddress: '123 Test St',
+      paymentAmount: 300,
+      paymentCurrency: 'TWD',
     };
 
     const event1Response = await request.post('/api/admin/event-v2', {
@@ -217,11 +209,7 @@ test.describe('Event Manager Filter Loading States', () => {
         headers: adminHeaders,
       }).catch(() => {});
     }
-    for (const venueId of cleanup.venues) {
-      await request.delete(`/api/admin/venue-v2/${venueId}`, {
-        headers: adminHeaders,
-      }).catch(() => {});
-    }
+    // Venues are no longer separate entities - they're inline in events
   });
 
   test('should show loading spinner when changing event filter', async ({ page }) => {

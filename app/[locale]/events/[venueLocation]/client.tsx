@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
 import { BLUR_POSTER } from '@/lib/constants';
-import type { VenueLocation } from '@/types/venue';
+import type { VenueLocation } from '@/types/event';
 import type { Event } from '@/types/event';
 import type { EventType } from '@/types/event-type';
 import { EventRegistrationStatus } from '@/types/event';

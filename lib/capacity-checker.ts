@@ -1,7 +1,6 @@
 import 'server-only';
 
 import { getEventById } from '@/lib/events';
-import { getVenueById } from '@/lib/venues';
 import { countRows } from '@/lib/supabase-utils';
 import { SUPABASE_CONFIG } from '@/lib/env';
 
@@ -22,19 +21,14 @@ export async function checkEventCapacity(eventId: number): Promise<CapacityStatu
     throw new Error(`Event ${eventId} not found`);
   }
 
-  const venue = await getVenueById(event.venueId);
-  if (!venue) {
-    throw new Error(`Venue ${event.venueId} not found for event ${eventId}`);
-  }
-
   const registered = await countRows(REGISTRATIONS_TABLE, `event_id=eq.${eventId}`);
 
   return {
-    total: venue.maxCapacity,
+    total: event.venueCapacity,
     registered,
-    available: Math.max(0, venue.maxCapacity - registered),
-    isFull: registered >= venue.maxCapacity,
-    percentageFull: (registered / venue.maxCapacity) * 100,
+    available: Math.max(0, event.venueCapacity - registered),
+    isFull: registered >= event.venueCapacity,
+    percentageFull: (registered / event.venueCapacity) * 100,
   };
 }
 

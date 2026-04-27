@@ -51,31 +51,24 @@ import { verifyTurnstileToken } from '@/lib/turnstile';
 import { sendRegistrationSuccessEmail } from '@/lib/email-service';
 import { EventRegistrationStatus } from '@/types/event';
 import type { Event } from '@/types/event';
-import type { Venue } from '@/types/venue';
 
 describe('/api/event/[slug]/register', () => {
-  const mockVenue: Venue = {
-    id: 1,
-    name: 'Test Venue',
-    location: 'TW',
-    address: 'Test Address',
-    maxCapacity: 20,
-    isVirtual: false,
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-  };
-
   const mockEvent: Event = {
     id: 1,
     slug: 'test-event',
     eventTypeCode: 'MANDARIN_BOOK_CLUB',
-    venueId: 1,
-    venue: mockVenue,
+    venueName: 'Test Venue',
+    venueCapacity: 20,
+    venueLocation: 'TW',
+    venueAddress: 'Test Address',
+    paymentAmount: 0,
+    paymentCurrency: 'TWD',
     title: 'Test Event',
     eventDate: '2026-06-01T18:00:00Z',
     registrationOpensAt: '2026-04-01T00:00:00Z',
     registrationClosesAt: '2026-05-30T23:59:59Z',
     isPublished: true,
+    introTemplateName: 'default_paid',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   };

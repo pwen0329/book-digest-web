@@ -12,7 +12,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>
 }): Promise<Metadata> {
   const { locale, slug } = await params;
-  const event = await getEventBySlug(slug, { includeVenue: true, includeBook: true });
+  const event = await getEventBySlug(slug, { includeBook: true, includeIntroTemplate: true });
 
   if (!event || !event.isPublished) {
     return {
@@ -54,7 +54,7 @@ export default async function EventPage({
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const event = await getEventBySlug(slug, { includeVenue: true, includeBook: true });
+  const event = await getEventBySlug(slug, { includeBook: true, includeIntroTemplate: true });
 
   // Return 404 if event doesn't exist or is not published
   if (!event || !event.isPublished) {

@@ -2,9 +2,10 @@
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import ActivitySignupFlow, { SignupStep } from '@/components/ActivitySignupFlow';
-import type { VenueLocation } from '@/types/venue';
+import type { VenueLocation } from '@/types/event';
 import { EventRegistrationStatus } from '@/types/event';
 import type { EventRegistrationStatus as EventRegistrationStatusType } from '@/types/event';
+import type { SignupIntroTemplate } from '@/types/signup-intro';
 
 type EventData = {
   id: number;
@@ -16,11 +17,21 @@ type EventData = {
   eventDate: string;
   registrationOpensAt: string;
   registrationClosesAt: string;
-  attendanceMode: 'offline' | 'online';
   locationName: string;
   venueLocation: VenueLocation;
   addressCountry?: string;
   registrationStatus: EventRegistrationStatusType;
+  introTemplate?: SignupIntroTemplate;
+  eventDataForTemplate?: {
+    title: string;
+    titleEn?: string;
+    venueName?: string;
+    venueNameEn?: string;
+    venueAddress?: string;
+    paymentAmount: number;
+    paymentCurrency: string;
+    eventDate: string;
+  };
 };
 
 type SignupClientProps = {
@@ -67,6 +78,11 @@ export default function SignupClient({ event, showIntro = false }: SignupClientP
       posterBlurDataURL={undefined}
       posterAlt={event.posterAlt}
       comingSoon={comingSoonMessage}
+      introTemplate={event.introTemplate ? {
+        content: event.introTemplate.content,
+        contentEn: event.introTemplate.contentEn,
+      } : undefined}
+      eventData={event.eventDataForTemplate}
       renderIntro={(step) => showIntro && step === SignupStep.INTRO ? (
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold font-outfit">

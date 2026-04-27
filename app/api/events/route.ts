@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runWithRequestTrace } from '@/lib/observability';
 import { getAllEvents } from '@/lib/events';
-import type { VenueLocation } from '@/types/venue';
+import type { VenueLocation } from '@/types/event';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
     const events = await getAllEvents({
       venueLocation: venueLocation || undefined,
       isPublished: true, // ALWAYS true - cannot be overridden from URL params
-      includeVenue: true,
       includeBook: true,
     });
 

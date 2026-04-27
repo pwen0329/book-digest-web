@@ -74,7 +74,7 @@ export default function CancelConfirmationModal({
         hour: '2-digit',
         minute: '2-digit',
       }))
-      .replace(/{{venueName}}/g, event.venue?.name || 'N/A')
+      .replace(/{{venueName}}/g, event.venueName || 'N/A')
       .replace(/{{replyTo}}/g, emailConfig.replyTo)
       .replace(/{{siteUrl}}/g, emailConfig.siteUrl);
     setEmailContent(interpolated);
@@ -94,7 +94,7 @@ export default function CancelConfirmationModal({
         hour: '2-digit',
         minute: '2-digit',
       }))
-      .replace(/{{venueName}}/g, event.venue?.name || 'N/A')
+      .replace(/{{venueName}}/g, event.venueName || 'N/A')
       .replace(/{{replyTo}}/g, emailConfig.replyTo)
       .replace(/{{siteUrl}}/g, emailConfig.siteUrl);
     setEmailContent(interpolated);

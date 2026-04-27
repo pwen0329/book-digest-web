@@ -13,7 +13,6 @@ export type EventContentRecord = {
   description: AdminEditableLocaleText;
   signupPath: string;
   imagePosition: 'left' | 'right';
-  attendanceMode: 'offline' | 'online';
   locationName: AdminEditableLocaleText;
   addressCountry?: string;
   comingSoon?: boolean;
@@ -31,7 +30,6 @@ export type LocalizedEventContentRecord = {
   description: string;
   signupPath: string;
   imagePosition: 'left' | 'right';
-  attendanceMode: 'offline' | 'online';
   locationName: string;
   addressCountry?: string;
   comingSoon: boolean;

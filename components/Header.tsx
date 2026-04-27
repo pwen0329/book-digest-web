@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useCallback, useEffect, useLayoutEffect, useRef, memo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { getVenueLocations } from '@/types/venue';
+import { getVenueLocations } from '@/lib/venue-locations';
 
 // Use memo to optimize navigation link component
 const NavLink = memo(function NavLink({ 

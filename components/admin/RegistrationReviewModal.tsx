@@ -138,18 +138,18 @@ export default function RegistrationReviewModal({
               </div>
               <div>
                 <dt className="text-white/60">Location</dt>
-                <dd className="mt-1 text-white">{event.venue?.name || 'N/A'}</dd>
+                <dd className="mt-1 text-white">{event.venueName || 'N/A'}</dd>
               </div>
             </dl>
           </div>
         </div>
 
         {/* Payment Section */}
-        {(event.paymentAmount !== null || registration.bankAccount) && (
+        {(event.paymentAmount > 0 || registration.bankAccount) && (
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
             <h3 className="text-lg font-semibold font-outfit text-white">Payment Information</h3>
             <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2">
-              {event.paymentAmount !== null && (
+              {event.paymentAmount > 0 && (
                 <div>
                   <dt className="text-white/60">Amount</dt>
                   <dd className="mt-1 text-xl font-semibold text-white">
