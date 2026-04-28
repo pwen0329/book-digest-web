@@ -26,12 +26,26 @@ Use this checklist when deploying Book Digest admin on Vercel with Supabase as t
 ## Initialize Database And Storage
 
 1. Open the SQL Editor in Supabase.
-2. Run [docs/supabase-admin.sql](/data/yy/book-digest-web/docs/supabase-admin.sql).
-3. Confirm these objects exist:
-   - `public.admin_documents`
+2. Run the SQL from `lib/db/init.sql` (or use `psql` if you have direct database access).
+3. **Create storage bucket** (SQL editor doesn't have permissions for storage):
+   - Go to Supabase Dashboard → Storage → "New bucket"
+   - Bucket name: `admin-assets`
+   - Public: **Yes** (for public read access to uploaded images)
+   - File size limit: `5 MB`
+   - Allowed MIME types: `image/jpeg, image/png, image/webp, image/avif`
+4. **Create storage policies**:
+   - Public read: `SELECT` with `bucket_id = 'admin-assets'`
+   - Service role write: `INSERT` with `bucket_id = 'admin-assets'`
+   - Service role update: `UPDATE` with `bucket_id = 'admin-assets'`
+   - Service role delete: `DELETE` with `bucket_id = 'admin-assets'`
+5. Confirm these tables exist:
+   - `public.event_types`
+   - `public.event_signup_intros`
+   - `public.books`
+   - `public.events`
    - `public.registrations`
-   - storage bucket `admin-assets`
-4. Confirm RLS is enabled on `public.admin_documents` and `public.registrations`.
+   - `public.settings`
+6. Confirm RLS is enabled on all tables.
 5. Confirm the public read policy exists for `storage.objects` on bucket `admin-assets`.
 6. Confirm `public.registrations` has these extra columns for the upgraded admin:
    - `request_id`

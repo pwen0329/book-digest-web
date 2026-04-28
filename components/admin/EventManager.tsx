@@ -428,7 +428,7 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
               )}
               <button
                 onClick={() => saveEvent(selectedEvent)}
-                disabled={isSaving || !selectedEvent.title || !selectedEvent.slug || !isRegistrationDatesValid(selectedEvent)}
+                disabled={isSaving || !selectedEvent.title || !isRegistrationDatesValid(selectedEvent)}
                 className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
               >
                 {selectedEvent.id === undefined ? 'Create' : 'Save'}
@@ -446,190 +446,6 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
           </div>
 
           <div className="space-y-4">
-            {/* Slug */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">
-                Slug <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                value={selectedEvent.slug}
-                onChange={(e) => updateEventField('slug', e.target.value)}
-                placeholder="e.g., tw-2026-04"
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-              />
-            </div>
-
-            {/* Event Type */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">
-                Type <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={selectedEvent.eventTypeCode}
-                onChange={(e) => updateEventField('eventTypeCode', e.target.value)}
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                disabled={loadingEventTypes}
-              >
-                {eventTypes.map((type) => (
-                  <option key={type.code} value={type.code}>{type.nameEn} ({type.nameZh})</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Venue Section */}
-            <div className="rounded-lg border border-white/10 bg-black/10 p-4 space-y-4">
-              <h4 className="text-sm font-semibold text-white">Venue Information</h4>
-
-              {/* Venue Location & Capacity */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-white">
-                    Location <span className="text-red-400">*</span>
-                  </label>
-                  <select
-                    aria-label="Venue location"
-                    value={selectedEvent.venueLocation}
-                    onChange={(e) => updateEventField('venueLocation', e.target.value as VenueLocation)}
-                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                  >
-                    {Object.entries(VENUE_LOCATIONS).map(([code, config]) => (
-                      <option key={code} value={code}>
-                        {config.displayName} ({config.displayNameZh})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-white">
-                    Capacity <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={selectedEvent.venueCapacity}
-                    onChange={(e) => updateEventField('venueCapacity', parseInt(e.target.value) || 1)}
-                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                  />
-                  {selectedEvent.id !== undefined && registrationCounts[selectedEvent.id] > 0 && (
-                    <p className="mt-1 text-xs text-white/60">
-                      {registrationCounts[selectedEvent.id]} people registered
-                      {registrationCounts[selectedEvent.id] > selectedEvent.venueCapacity && (
-                        <span className="text-red-400"> - Capacity is less than registrations!</span>
-                      )}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Venue Name */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Venue Name (中文)</label>
-                  <input
-                    type="text"
-                    value={selectedEvent.venueName || ''}
-                    onChange={(e) => updateEventField('venueName', e.target.value || undefined)}
-                    placeholder="Optional"
-                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Venue Name (English)</label>
-                  <input
-                    type="text"
-                    value={selectedEvent.venueNameEn || ''}
-                    onChange={(e) => updateEventField('venueNameEn', e.target.value || undefined)}
-                    placeholder="Optional"
-                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                  />
-                </div>
-              </div>
-
-              {/* Venue Address */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white">Venue Address</label>
-                <input
-                  type="text"
-                  value={selectedEvent.venueAddress || ''}
-                  onChange={(e) => updateEventField('venueAddress', e.target.value || undefined)}
-                  placeholder="Optional - if empty, default message will be shown"
-                  className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                />
-                <p className="mt-1 text-xs text-white/40">
-                  Leave empty to show: &quot;Event location will be informed one week before the event happens&quot;
-                </p>
-              </div>
-            </div>
-
-            {/* Payment Section */}
-            <div className="rounded-lg border border-white/10 bg-black/10 p-4 space-y-4">
-              <h4 className="text-sm font-semibold text-white">Payment Information</h4>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-white">
-                    Amount <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={selectedEvent.paymentAmount}
-                    onChange={(e) => updateEventField('paymentAmount', parseInt(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                  />
-                  <p className="mt-1 text-xs text-white/40">Use 0 for free events</p>
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-white">
-                    Currency <span className="text-red-400">*</span>
-                  </label>
-                  <select
-                    value={selectedEvent.paymentCurrency}
-                    onChange={(e) => updateEventField('paymentCurrency', e.target.value as PaymentCurrency)}
-                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                  >
-                    {Object.entries(PAYMENT_CURRENCIES).map(([code, config]) => (
-                      <option key={code} value={code}>
-                        {config.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Intro Template */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-white">
-                  Signup Intro Template <span className="text-red-400">*</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowTemplateManager(true)}
-                  className="text-xs text-brand-pink hover:underline"
-                >
-                  Manage Templates
-                </button>
-              </div>
-              <select
-                value={selectedEvent.introTemplateName}
-                onChange={(e) => updateEventField('introTemplateName', e.target.value)}
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                disabled={loadingIntroTemplates}
-              >
-                {introTemplates.map((template) => (
-                  <option key={template.name} value={template.name}>
-                    {template.name} {template.isFree ? '(Free)' : '(Paid)'}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-white/40">
-                Template shown during signup. Payment variables will be automatically filled.
-              </p>
-            </div>
-
             {/* Title */}
             <div>
               <label className="mb-2 block text-sm font-medium text-white">
@@ -651,101 +467,6 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
                 onChange={(e) => updateEventField('titleEn', e.target.value)}
                 className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
               />
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">Description (中文)</label>
-              <textarea
-                value={selectedEvent.description || ''}
-                onChange={(e) => updateEventField('description', e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">Description (English)</label>
-              <textarea
-                value={selectedEvent.descriptionEn || ''}
-                onChange={(e) => updateEventField('descriptionEn', e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-              />
-            </div>
-
-            {/* Dates */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">
-                Event Date <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="datetime-local"
-                value={toLocalDateTimeInput(selectedEvent.eventDate)}
-                onChange={(e) => updateEventField('eventDate', toIsoString(e.target.value))}
-                className={`w-full rounded-lg border px-4 py-2 text-white ${
-                  isRegClosesAfterEventDate(selectedEvent)
-                    ? 'border-red-500 bg-red-500/10'
-                    : 'border-white/20 bg-black/20'
-                }`}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white">
-                  Registration Opens <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={toLocalDateTimeInput(selectedEvent.registrationOpensAt)}
-                  onChange={(e) => updateEventField('registrationOpensAt', toIsoString(e.target.value))}
-                  className={`w-full rounded-lg border px-4 py-2 text-white ${
-                    !isRegistrationDatesValid(selectedEvent)
-                      ? 'border-red-500 bg-red-500/10'
-                      : 'border-white/20 bg-black/20'
-                  }`}
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white">
-                  Registration Closes <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={toLocalDateTimeInput(selectedEvent.registrationClosesAt)}
-                  onChange={(e) => updateEventField('registrationClosesAt', toIsoString(e.target.value))}
-                  className={`w-full rounded-lg border px-4 py-2 text-white ${
-                    !isRegistrationDatesValid(selectedEvent)
-                      ? 'border-red-500 bg-red-500/10'
-                      : 'border-white/20 bg-black/20'
-                  }`}
-                />
-              </div>
-            </div>
-            {!isRegistrationDatesValid(selectedEvent) && (
-              <p className="text-xs text-red-400">
-                {isRegClosesAfterEventDate(selectedEvent)
-                  ? 'Registration close time must not be after event date'
-                  : 'Registration close time must be after open time'}
-              </p>
-            )}
-
-            {/* Book */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">Related Book (Optional)</label>
-              <select
-                value={selectedEvent.bookId || ''}
-                onChange={(e) => updateEventField('bookId', e.target.value ? parseInt(e.target.value) : undefined)}
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-              >
-                <option value="">None</option>
-                {books.map((book) => (
-                  <option key={book.id} value={book.id}>
-                    {book.title}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Cover URLs */}
@@ -833,6 +554,271 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
                   className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
                 />
               </div>
+            </div>
+
+            {/* Venue Section */}
+            <div className="rounded-lg border border-white/10 bg-black/10 p-4 space-y-4">
+              <h4 className="text-sm font-semibold text-white">Venue Information</h4>
+
+              {/* Venue Location & Capacity */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">
+                    Location <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    aria-label="Venue location"
+                    value={selectedEvent.venueLocation}
+                    onChange={(e) => updateEventField('venueLocation', e.target.value as VenueLocation)}
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  >
+                    {Object.entries(VENUE_LOCATIONS).map(([code, config]) => (
+                      <option key={code} value={code}>
+                        {config.displayName} ({config.displayNameZh})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">
+                    Capacity <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={selectedEvent.venueCapacity}
+                    onChange={(e) => updateEventField('venueCapacity', parseInt(e.target.value) || 1)}
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  />
+                  {selectedEvent.id !== undefined && registrationCounts[selectedEvent.id] > 0 && (
+                    <p className="mt-1 text-xs text-white/60">
+                      {registrationCounts[selectedEvent.id]} people registered
+                      {registrationCounts[selectedEvent.id] > selectedEvent.venueCapacity && (
+                        <span className="text-red-400"> - Capacity is less than registrations!</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Venue Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Venue Name (中文)</label>
+                  <input
+                    type="text"
+                    value={selectedEvent.venueName || ''}
+                    onChange={(e) => updateEventField('venueName', e.target.value || undefined)}
+                    placeholder="Optional"
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Venue Name (English)</label>
+                  <input
+                    type="text"
+                    value={selectedEvent.venueNameEn || ''}
+                    onChange={(e) => updateEventField('venueNameEn', e.target.value || undefined)}
+                    placeholder="Optional"
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Venue Address */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white">Venue Address</label>
+                <input
+                  type="text"
+                  value={selectedEvent.venueAddress || ''}
+                  onChange={(e) => updateEventField('venueAddress', e.target.value || undefined)}
+                  placeholder="Optional - if empty, default message will be shown"
+                  className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                />
+                <p className="mt-1 text-xs text-white/40">
+                  Leave empty to show: &quot;Event location will be informed one week before the event happens&quot;
+                </p>
+              </div>
+            </div>
+
+            {/* Event Type */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-white">
+                Type <span className="text-red-400">*</span>
+              </label>
+              <select
+                value={selectedEvent.eventTypeCode}
+                onChange={(e) => updateEventField('eventTypeCode', e.target.value)}
+                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                disabled={loadingEventTypes}
+              >
+                {eventTypes.map((type) => (
+                  <option key={type.code} value={type.code}>{type.nameEn} ({type.nameZh})</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Dates */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-white">
+                Event Date <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="datetime-local"
+                value={toLocalDateTimeInput(selectedEvent.eventDate)}
+                onChange={(e) => updateEventField('eventDate', toIsoString(e.target.value))}
+                className={`w-full rounded-lg border px-4 py-2 text-white ${
+                  isRegClosesAfterEventDate(selectedEvent)
+                    ? 'border-red-500 bg-red-500/10'
+                    : 'border-white/20 bg-black/20'
+                }`}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white">
+                  Registration Opens <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={toLocalDateTimeInput(selectedEvent.registrationOpensAt)}
+                  onChange={(e) => updateEventField('registrationOpensAt', toIsoString(e.target.value))}
+                  className={`w-full rounded-lg border px-4 py-2 text-white ${
+                    !isRegistrationDatesValid(selectedEvent)
+                      ? 'border-red-500 bg-red-500/10'
+                      : 'border-white/20 bg-black/20'
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white">
+                  Registration Closes <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={toLocalDateTimeInput(selectedEvent.registrationClosesAt)}
+                  onChange={(e) => updateEventField('registrationClosesAt', toIsoString(e.target.value))}
+                  className={`w-full rounded-lg border px-4 py-2 text-white ${
+                    !isRegistrationDatesValid(selectedEvent)
+                      ? 'border-red-500 bg-red-500/10'
+                      : 'border-white/20 bg-black/20'
+                  }`}
+                />
+              </div>
+            </div>
+            {!isRegistrationDatesValid(selectedEvent) && (
+              <p className="text-xs text-red-400">
+                {isRegClosesAfterEventDate(selectedEvent)
+                  ? 'Registration close time must not be after event date'
+                  : 'Registration close time must be after open time'}
+              </p>
+            )}
+
+            {/* Description */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-white">Description (中文)</label>
+              <textarea
+                value={selectedEvent.description || ''}
+                onChange={(e) => updateEventField('description', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-white">Description (English)</label>
+              <textarea
+                value={selectedEvent.descriptionEn || ''}
+                onChange={(e) => updateEventField('descriptionEn', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+              />
+            </div>
+
+            {/* Payment Section */}
+            <div className="rounded-lg border border-white/10 bg-black/10 p-4 space-y-4">
+              <h4 className="text-sm font-semibold text-white">Payment Information</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">
+                    Amount <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={selectedEvent.paymentAmount}
+                    onChange={(e) => updateEventField('paymentAmount', parseInt(e.target.value) || 0)}
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  />
+                  <p className="mt-1 text-xs text-white/40">Use 0 for free events</p>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">
+                    Currency <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={selectedEvent.paymentCurrency}
+                    onChange={(e) => updateEventField('paymentCurrency', e.target.value as PaymentCurrency)}
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  >
+                    {Object.entries(PAYMENT_CURRENCIES).map(([code, config]) => (
+                      <option key={code} value={code}>
+                        {config.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Intro Template */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-white">
+                  Signup Intro Template <span className="text-red-400">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateManager(true)}
+                  className="text-xs text-brand-pink hover:underline"
+                >
+                  Manage Templates
+                </button>
+              </div>
+              <select
+                value={selectedEvent.introTemplateName}
+                onChange={(e) => updateEventField('introTemplateName', e.target.value)}
+                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                disabled={loadingIntroTemplates}
+              >
+                {introTemplates.map((template) => (
+                  <option key={template.name} value={template.name}>
+                    {template.name} {template.isFree ? '(Free)' : '(Paid)'}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-white/40">
+                Template shown during signup. Payment variables will be automatically filled.
+              </p>
+            </div>
+
+            {/* Book */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-white">Related Book (Optional)</label>
+              <select
+                value={selectedEvent.bookId || ''}
+                onChange={(e) => updateEventField('bookId', e.target.value ? parseInt(e.target.value) : undefined)}
+                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+              >
+                <option value="">None</option>
+                {books.map((book) => (
+                  <option key={book.id} value={book.id}>
+                    {book.title}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Published */}

@@ -17,6 +17,9 @@ This is a Next.js application for Book Digest, a book club platform with event m
 ### Quick Commands
 
 ```bash
+# Type Checking
+npx tsc --noEmit                     # TypeScript type check
+
 # Unit/Component Tests
 npm run test:components              # Run all unit tests
 npm run test:components:watch        # Watch mode
