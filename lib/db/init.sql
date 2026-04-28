@@ -30,10 +30,12 @@ $$;
 CREATE TABLE IF NOT EXISTS public.event_types (
   code VARCHAR(50) PRIMARY KEY,
   name_en VARCHAR(100) NOT NULL,
-  name_zh VARCHAR(100) NOT NULL
+  name_zh VARCHAR(100) NOT NULL,
+  online_possible BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 COMMENT ON TABLE public.event_types IS 'Reference table for event types with bilingual names';
+COMMENT ON COLUMN public.event_types.online_possible IS 'Whether this event type can be held online';
 
 -- ============================================================================
 -- TABLE: books
