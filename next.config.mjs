@@ -7,7 +7,9 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 const sentryEnabled = process.env.NODE_ENV === 'production' && Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_AUTH_TOKEN);
-const supabaseImageHostname = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : null;
+const supabaseUrl = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL) : null;
+const supabaseImageHostname = supabaseUrl?.hostname || null;
+const supabaseImageProtocol = supabaseUrl?.protocol.replace(':', '') || 'https';
 
 const resolvedDistDir = process.env.NEXT_DIST_DIR || (process.env.NODE_ENV === 'development' ? '.next-local-dev' : '.next');
 
@@ -64,7 +66,7 @@ const nextConfig = {
       { protocol: 'https', hostname: '*.bookdigest.dev' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '*.amazonaws.com' },
-      ...(supabaseImageHostname ? [{ protocol: 'https', hostname: supabaseImageHostname }] : []),
+      ...(supabaseImageHostname ? [{ protocol: supabaseImageProtocol, hostname: supabaseImageHostname }] : []),
     ],
   },
   // Bundle splitting optimization

@@ -21,6 +21,30 @@ type DraftEvent = Omit<Event, 'id' | 'createdAt' | 'updatedAt' | 'book' | 'intro
   updatedAt?: string;
 };
 
+type UploadedAsset = {
+  src: string;
+  format?: string;
+  blurDataURL?: string;
+};
+
+async function uploadAsset(file: File): Promise<UploadedAsset> {
+  const formData = new FormData();
+  formData.set('file', file);
+
+  const response = await fetch('/api/admin/upload?scope=events', {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+
+  const payload = await response.json().catch(() => ({ error: 'Upload failed.' }));
+  if (!response.ok || !payload.src) {
+    throw new Error(payload.error || 'Upload failed.');
+  }
+
+  return payload as UploadedAsset;
+}
+
 const PAYMENT_CURRENCIES: Record<PaymentCurrency, { label: string; symbol: string }> = {
   TWD: { label: 'TWD (台幣)', symbol: 'NT$' },
   EUR: { label: 'EUR (歐元)', symbol: '€' },
@@ -55,6 +79,7 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
   const [loadingEventTypes, setLoadingEventTypes] = useState(true);
   const [loadingIntroTemplates, setLoadingIntroTemplates] = useState(true);
   const [showTemplateManager, setShowTemplateManager] = useState(false);
+  const [uploadingAssetKey, setUploadingAssetKey] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Fetch event types from API
@@ -724,26 +749,90 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
             </div>
 
             {/* Cover URLs */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">Cover URL (中文)</label>
-              <input
-                type="text"
-                value={selectedEvent.coverUrl || ''}
-                onChange={(e) => updateEventField('coverUrl', e.target.value)}
-                placeholder="/images/events/..."
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-              />
-            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-white">Cover URL (中文)</h3>
+                  <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/10">
+                    {uploadingAssetKey === 'event-cover-zh' ? 'Processing…' : 'Upload'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !selectedEvent) return;
+                        setUploadingAssetKey('event-cover-zh');
+                        try {
+                          const asset = await uploadAsset(file);
+                          const updatedEvent = {
+                            ...selectedEvent,
+                            coverUrl: asset.src,
+                            coverBlurDataURL: asset.blurDataURL
+                          };
+                          setEvents(events.map((e) => (e.id === selectedEventId ? updatedEvent : e)));
+                          await saveEvent(updatedEvent);
+                          setSaveStatus(`Cover uploaded and saved (${asset.format || 'webp'})`);
+                        } catch (err) {
+                          console.error('Upload failed:', err);
+                          setSaveStatus(`Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                        } finally {
+                          setUploadingAssetKey(null);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={selectedEvent.coverUrl || ''}
+                  onChange={(e) => updateEventField('coverUrl', e.target.value)}
+                  placeholder="/images/events/..."
+                  className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                />
+              </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">Cover URL (English)</label>
-              <input
-                type="text"
-                value={selectedEvent.coverUrlEn || ''}
-                onChange={(e) => updateEventField('coverUrlEn', e.target.value)}
-                placeholder="/images/events/..."
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-              />
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-white">Cover URL (English)</h3>
+                  <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/10">
+                    {uploadingAssetKey === 'event-cover-en' ? 'Processing…' : 'Upload'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !selectedEvent) return;
+                        setUploadingAssetKey('event-cover-en');
+                        try {
+                          const asset = await uploadAsset(file);
+                          const updatedEvent = {
+                            ...selectedEvent,
+                            coverUrlEn: asset.src,
+                            coverBlurDataURLEn: asset.blurDataURL
+                          };
+                          setEvents(events.map((e) => (e.id === selectedEventId ? updatedEvent : e)));
+                          await saveEvent(updatedEvent);
+                          setSaveStatus(`Cover uploaded and saved (${asset.format || 'webp'})`);
+                        } catch (err) {
+                          console.error('Upload failed:', err);
+                          setSaveStatus(`Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                        } finally {
+                          setUploadingAssetKey(null);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={selectedEvent.coverUrlEn || ''}
+                  onChange={(e) => updateEventField('coverUrlEn', e.target.value)}
+                  placeholder="/images/events/..."
+                  className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                />
+              </div>
             </div>
 
             {/* Published */}
