@@ -30,10 +30,12 @@ $$;
 CREATE TABLE IF NOT EXISTS public.event_types (
   code VARCHAR(50) PRIMARY KEY,
   name_en VARCHAR(100) NOT NULL,
-  name_zh VARCHAR(100) NOT NULL
+  name_zh VARCHAR(100) NOT NULL,
+  online_possible BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 COMMENT ON TABLE public.event_types IS 'Reference table for event types with bilingual names';
+COMMENT ON COLUMN public.event_types.online_possible IS 'Whether this event type can be held online';
 
 -- ============================================================================
 -- TABLE: books
@@ -227,10 +229,6 @@ ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
 -- event_types: Read-only for all (reference data)
 CREATE POLICY "event_types_read_all" ON public.event_types
-  FOR SELECT USING (true);
-
--- venues: Read-only for all
-CREATE POLICY "venues_read_all" ON public.venues
   FOR SELECT USING (true);
 
 -- books: Read-only for all

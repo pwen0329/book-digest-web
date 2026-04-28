@@ -20,6 +20,7 @@ type VenueEventsClientProps = {
 
 export default function VenueEventsClient({
   locale,
+  venueLocation,
   events,
   eventTypes,
 }: VenueEventsClientProps) {
@@ -33,7 +34,15 @@ export default function VenueEventsClient({
     eventTypes.find(t => t.code === 'ENGLISH_BOOK_CLUB'),
     eventTypes.find(t => t.code === 'FAMILY_ACTIVITY'),
     ...eventTypes.filter(t => !['DETOX', 'MANDARIN_BOOK_CLUB', 'ENGLISH_BOOK_CLUB', 'FAMILY_ACTIVITY'].includes(t.code)),
-  ].filter((type): type is EventType => type !== undefined);
+  ]
+    .filter((type): type is EventType => type !== undefined)
+    .filter(type => {
+      // Filter out types that don't support online when venue is ONLINE
+      if (venueLocation === 'ONLINE' && !type.onlinePossible) {
+        return false;
+      }
+      return true;
+    });
 
   // Get type from URL or fall back to first available (read once on mount)
   const validTypes = orderedEventTypes.map(type => type.code);

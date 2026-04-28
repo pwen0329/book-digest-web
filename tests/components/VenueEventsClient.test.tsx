@@ -45,10 +45,10 @@ vi.mock('next-intl', () => ({
 
 describe('VenueEventsClient URL Parameter Behavior', () => {
   const mockEventTypes: EventType[] = [
-    { code: 'MANDARIN_BOOK_CLUB', nameEn: 'Mandarin Book Club', nameZh: '中文讀書會' },
-    { code: 'ENGLISH_BOOK_CLUB', nameEn: 'English Book Club', nameZh: '英文讀書會' },
-    { code: 'FAMILY_READING_CLUB', nameEn: 'Family Reading Club', nameZh: '親子讀書會' },
-    { code: 'DETOX', nameEn: 'Detox', nameZh: '數位排毒' },
+    { code: 'MANDARIN_BOOK_CLUB', nameEn: 'Mandarin Book Club', nameZh: '中文讀書會', onlinePossible: false },
+    { code: 'ENGLISH_BOOK_CLUB', nameEn: 'English Book Club', nameZh: '英文讀書會', onlinePossible: true },
+    { code: 'FAMILY_READING_CLUB', nameEn: 'Family Reading Club', nameZh: '親子讀書會', onlinePossible: false },
+    { code: 'DETOX', nameEn: 'Detox', nameZh: '數位排毒', onlinePossible: false },
   ];
 
   const mockEvents: Event[] = [

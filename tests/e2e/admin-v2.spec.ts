@@ -476,3 +476,375 @@ test.describe('Admin v2 API - Happy flow', () => {
     expect(finalData.settings.registrationEmailEnabled).toBe(initialState);
   });
 });
+
+test.describe('Admin v2 API - Online venue validation', () => {
+  const adminHeaders = {
+    'Authorization': 'Bearer test-admin',
+  };
+
+  let eventTypes: Array<{ code: string; nameEn: string; nameZh: string; onlinePossible: boolean }> = [];
+  let cleanup: { events: number[]; books: number[] } = { events: [], books: [] };
+
+  test.beforeAll(async ({ request }) => {
+    const eventTypesResponse = await request.get('/api/admin/event-types', {
+      headers: adminHeaders,
+    });
+    expect(eventTypesResponse.ok()).toBeTruthy();
+    const data = await eventTypesResponse.json();
+    eventTypes = data.eventTypes;
+    expect(eventTypes.length).toBeGreaterThan(0);
+  });
+
+  test.beforeEach(() => {
+    cleanup = { events: [], books: [] };
+  });
+
+  test.afterEach(async ({ request }) => {
+    // Delete registrations first, then events, then books
+    for (const eventId of cleanup.events) {
+      await request.delete(`/api/admin/registrations-by-event/${eventId}`, {
+        headers: adminHeaders,
+      }).catch(() => {});
+    }
+
+    for (const eventId of cleanup.events) {
+      await request.delete(`/api/admin/event-v2/${eventId}`, {
+        headers: adminHeaders,
+      }).catch(() => {});
+    }
+
+    for (const bookId of cleanup.books) {
+      await request.delete(`/api/admin/book-v2/${bookId}`, {
+        headers: adminHeaders,
+      }).catch(() => {});
+    }
+  });
+
+  test('API allows creating ENGLISH_BOOK_CLUB with ONLINE venue', async ({ request }) => {
+    const timestamp = `${Date.now()}-online-${Math.random().toString(36).slice(2, 9)}`;
+    const bookSlug = `test-book-${timestamp}`;
+    const eventSlug = `test-event-${timestamp}`;
+
+    // Create book first
+    const bookResponse = await request.post('/api/admin/book-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: bookSlug,
+        title: 'Online Test Book',
+        author: 'Test Author',
+      },
+    });
+    expect(bookResponse.ok()).toBeTruthy();
+    const bookData = await bookResponse.json();
+    cleanup.books.push(bookData.book.id);
+
+    // Create ENGLISH_BOOK_CLUB event with ONLINE venue
+    const now = new Date();
+    const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const futureRegOpens = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
+    const futureRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+    const eventResponse = await request.post('/api/admin/event-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: eventSlug,
+        eventTypeCode: 'ENGLISH_BOOK_CLUB',
+        bookId: bookData.book.id,
+        title: 'Online English Book Club',
+        eventDate: futureEvent.toISOString(),
+        registrationOpensAt: futureRegOpens.toISOString(),
+        registrationClosesAt: futureRegCloses.toISOString(),
+        isPublished: true,
+        venueLocation: 'ONLINE',
+        venueCapacity: 30,
+        paymentAmount: 0,
+        paymentCurrency: 'USD',
+        introTemplateName: 'default_paid',
+      },
+    });
+
+    expect(eventResponse.ok()).toBeTruthy();
+    const eventData = await eventResponse.json();
+    expect(eventData.event.venueLocation).toBe('ONLINE');
+    expect(eventData.event.eventTypeCode).toBe('ENGLISH_BOOK_CLUB');
+    cleanup.events.push(eventData.event.id);
+  });
+
+  test('API rejects creating MANDARIN_BOOK_CLUB with ONLINE venue', async ({ request }) => {
+    const timestamp = `${Date.now()}-mandarin-${Math.random().toString(36).slice(2, 9)}`;
+    const bookSlug = `test-book-${timestamp}`;
+    const eventSlug = `test-event-${timestamp}`;
+
+    // Create book first
+    const bookResponse = await request.post('/api/admin/book-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: bookSlug,
+        title: 'Mandarin Test Book',
+        author: 'Test Author',
+      },
+    });
+    expect(bookResponse.ok()).toBeTruthy();
+    const bookData = await bookResponse.json();
+    cleanup.books.push(bookData.book.id);
+
+    // Try to create MANDARIN_BOOK_CLUB event with ONLINE venue
+    const now = new Date();
+    const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const futureRegOpens = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
+    const futureRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+    const eventResponse = await request.post('/api/admin/event-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: eventSlug,
+        eventTypeCode: 'MANDARIN_BOOK_CLUB',
+        bookId: bookData.book.id,
+        title: 'Online Mandarin Book Club',
+        eventDate: futureEvent.toISOString(),
+        registrationOpensAt: futureRegOpens.toISOString(),
+        registrationClosesAt: futureRegCloses.toISOString(),
+        isPublished: true,
+        venueLocation: 'ONLINE',
+        venueCapacity: 30,
+        paymentAmount: 100,
+        paymentCurrency: 'TWD',
+        introTemplateName: 'default_paid',
+      },
+    });
+
+    expect(eventResponse.status()).toBe(400);
+    const errorData = await eventResponse.json();
+    expect(errorData.error).toContain('MANDARIN_BOOK_CLUB does not support online venues');
+  });
+
+  test('API rejects creating DETOX with ONLINE venue', async ({ request }) => {
+    const timestamp = `${Date.now()}-detox-${Math.random().toString(36).slice(2, 9)}`;
+    const bookSlug = `test-book-${timestamp}`;
+    const eventSlug = `test-event-${timestamp}`;
+
+    // Create book first
+    const bookResponse = await request.post('/api/admin/book-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: bookSlug,
+        title: 'Detox Test Book',
+        author: 'Test Author',
+      },
+    });
+    expect(bookResponse.ok()).toBeTruthy();
+    const bookData = await bookResponse.json();
+    cleanup.books.push(bookData.book.id);
+
+    // Try to create DETOX event with ONLINE venue
+    const now = new Date();
+    const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const futureRegOpens = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
+    const futureRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+    const eventResponse = await request.post('/api/admin/event-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: eventSlug,
+        eventTypeCode: 'DETOX',
+        bookId: bookData.book.id,
+        title: 'Online Detox Event',
+        eventDate: futureEvent.toISOString(),
+        registrationOpensAt: futureRegOpens.toISOString(),
+        registrationClosesAt: futureRegCloses.toISOString(),
+        isPublished: true,
+        venueLocation: 'ONLINE',
+        venueCapacity: 20,
+        paymentAmount: 0,
+        paymentCurrency: 'TWD',
+        introTemplateName: 'default_paid',
+      },
+    });
+
+    expect(eventResponse.status()).toBe(400);
+    const errorData = await eventResponse.json();
+    expect(errorData.error).toContain('DETOX does not support online venues');
+  });
+
+  test('API allows updating ENGLISH_BOOK_CLUB to ONLINE venue', async ({ request }) => {
+    const timestamp = `${Date.now()}-update-${Math.random().toString(36).slice(2, 9)}`;
+    const bookSlug = `test-book-${timestamp}`;
+    const eventSlug = `test-event-${timestamp}`;
+
+    // Create book
+    const bookResponse = await request.post('/api/admin/book-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: bookSlug,
+        title: 'Update Test Book',
+        author: 'Test Author',
+      },
+    });
+    expect(bookResponse.ok()).toBeTruthy();
+    const bookData = await bookResponse.json();
+    cleanup.books.push(bookData.book.id);
+
+    // Create ENGLISH_BOOK_CLUB event with TW venue
+    const now = new Date();
+    const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const futureRegOpens = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
+    const futureRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+    const eventResponse = await request.post('/api/admin/event-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: eventSlug,
+        eventTypeCode: 'ENGLISH_BOOK_CLUB',
+        bookId: bookData.book.id,
+        title: 'English Book Club - Physical',
+        eventDate: futureEvent.toISOString(),
+        registrationOpensAt: futureRegOpens.toISOString(),
+        registrationClosesAt: futureRegCloses.toISOString(),
+        isPublished: true,
+        venueLocation: 'TW',
+        venueCapacity: 30,
+        venueName: 'Test Venue',
+        paymentAmount: 100,
+        paymentCurrency: 'TWD',
+        introTemplateName: 'default_paid',
+      },
+    });
+    expect(eventResponse.ok()).toBeTruthy();
+    const eventData = await eventResponse.json();
+    cleanup.events.push(eventData.event.id);
+
+    // Update to ONLINE venue
+    const updateResponse = await request.put(`/api/admin/event-v2/${eventData.event.id}`, {
+      headers: adminHeaders,
+      data: {
+        venueLocation: 'ONLINE',
+      },
+    });
+
+    expect(updateResponse.ok()).toBeTruthy();
+    const updateData = await updateResponse.json();
+    expect(updateData.event.venueLocation).toBe('ONLINE');
+  });
+
+  test('API rejects updating DETOX to ONLINE venue', async ({ request }) => {
+    const timestamp = `${Date.now()}-detox-update-${Math.random().toString(36).slice(2, 9)}`;
+    const bookSlug = `test-book-${timestamp}`;
+    const eventSlug = `test-event-${timestamp}`;
+
+    // Create book
+    const bookResponse = await request.post('/api/admin/book-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: bookSlug,
+        title: 'Detox Update Test Book',
+        author: 'Test Author',
+      },
+    });
+    expect(bookResponse.ok()).toBeTruthy();
+    const bookData = await bookResponse.json();
+    cleanup.books.push(bookData.book.id);
+
+    // Create DETOX event with TW venue
+    const now = new Date();
+    const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const futureRegOpens = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
+    const futureRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+    const eventResponse = await request.post('/api/admin/event-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: eventSlug,
+        eventTypeCode: 'DETOX',
+        bookId: bookData.book.id,
+        title: 'Detox - Physical',
+        eventDate: futureEvent.toISOString(),
+        registrationOpensAt: futureRegOpens.toISOString(),
+        registrationClosesAt: futureRegCloses.toISOString(),
+        isPublished: true,
+        venueLocation: 'TW',
+        venueCapacity: 20,
+        venueName: 'Test Venue',
+        paymentAmount: 200,
+        paymentCurrency: 'TWD',
+        introTemplateName: 'default_paid',
+      },
+    });
+    expect(eventResponse.ok()).toBeTruthy();
+    const eventData = await eventResponse.json();
+    cleanup.events.push(eventData.event.id);
+
+    // Try to update to ONLINE venue
+    const updateResponse = await request.put(`/api/admin/event-v2/${eventData.event.id}`, {
+      headers: adminHeaders,
+      data: {
+        venueLocation: 'ONLINE',
+        eventTypeCode: 'DETOX',
+      },
+    });
+
+    expect(updateResponse.status()).toBe(400);
+    const errorData = await updateResponse.json();
+    expect(errorData.error).toContain('DETOX does not support online venues');
+  });
+
+  test('Public events page shows only ENGLISH_BOOK_CLUB tab for ONLINE venue', async ({ page, request }) => {
+    // Create an ENGLISH_BOOK_CLUB event with ONLINE venue
+    const timestamp = `${Date.now()}-public-${Math.random().toString(36).slice(2, 9)}`;
+    const bookSlug = `test-book-${timestamp}`;
+    const eventSlug = `test-event-${timestamp}`;
+
+    const bookResponse = await request.post('/api/admin/book-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: bookSlug,
+        title: 'Public Test Book',
+        author: 'Test Author',
+      },
+    });
+    expect(bookResponse.ok()).toBeTruthy();
+    const bookData = await bookResponse.json();
+    cleanup.books.push(bookData.book.id);
+
+    const now = new Date();
+    const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const currentRegOpens = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+    const currentRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+    const eventResponse = await request.post('/api/admin/event-v2', {
+      headers: adminHeaders,
+      data: {
+        slug: eventSlug,
+        eventTypeCode: 'ENGLISH_BOOK_CLUB',
+        bookId: bookData.book.id,
+        title: 'Online English Book Club',
+        titleEn: 'Online English Book Club',
+        eventDate: futureEvent.toISOString(),
+        registrationOpensAt: currentRegOpens.toISOString(),
+        registrationClosesAt: currentRegCloses.toISOString(),
+        isPublished: true,
+        venueLocation: 'ONLINE',
+        venueCapacity: 30,
+        paymentAmount: 0,
+        paymentCurrency: 'USD',
+        introTemplateName: 'default_paid',
+      },
+    });
+    expect(eventResponse.ok()).toBeTruthy();
+    const eventData = await eventResponse.json();
+    cleanup.events.push(eventData.event.id);
+
+    // Visit the ONLINE events page
+    await page.goto('/en/events/ONLINE', { waitUntil: 'networkidle' });
+
+    // Should show English Book Club tab
+    await expect(page.locator('button:has-text("English Book Club")')).toBeVisible({ timeout: 5000 });
+
+    // Should NOT show other event type tabs
+    await expect(page.locator('button:has-text("Mandarin Book Club")')).not.toBeVisible();
+    await expect(page.locator('button:has-text("Detox")')).not.toBeVisible();
+    await expect(page.locator('button:has-text("Family Reading Club")')).not.toBeVisible();
+
+    // Verify the event is displayed
+    await expect(page.locator('text=Online English Book Club')).toBeVisible({ timeout: 5000 });
+  });
+});

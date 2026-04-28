@@ -48,7 +48,6 @@ export const SUPABASE_CONFIG = {
     EVENT_TYPES: process.env.SUPABASE_EVENT_TYPES_TABLE || 'event_types',
     REGISTRATIONS: process.env.SUPABASE_REGISTRATIONS_TABLE || 'registrations',
     SETTINGS: process.env.SUPABASE_SETTINGS_TABLE || 'settings',
-    VENUES: process.env.SUPABASE_VENUES_TABLE || 'venues',
     EVENT_SIGNUP_INTROS: process.env.SUPABASE_EVENT_SIGNUP_INTROS_TABLE || 'event_signup_intros',
   },
 } as const;

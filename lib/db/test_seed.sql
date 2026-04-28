@@ -29,11 +29,11 @@ TRUNCATE TABLE public.event_signup_intros CASCADE;
 -- SEED: event_types
 -- ============================================================================
 
-INSERT INTO public.event_types (code, name_en, name_zh) VALUES
-  ('MANDARIN_BOOK_CLUB', 'Mandarin Book Club', '中文讀書會'),
-  ('ENGLISH_BOOK_CLUB', 'English Book Club', '英文讀書會'),
-  ('DETOX', 'Detox', '數位排毒'),
-  ('FAMILY_READING_CLUB', 'Family Reading Club', '親子讀書會')
+INSERT INTO public.event_types (code, name_en, name_zh, online_possible) VALUES
+  ('MANDARIN_BOOK_CLUB', 'Mandarin Book Club', '中文讀書會', FALSE),
+  ('ENGLISH_BOOK_CLUB', 'English Book Club', '英文讀書會', TRUE),
+  ('DETOX', 'Detox', '數位排毒', FALSE),
+  ('FAMILY_READING_CLUB', 'Family Reading Club', '親子讀書會', FALSE)
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================================================
