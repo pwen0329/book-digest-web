@@ -6,6 +6,7 @@ import { logServerError, runWithRequestTrace } from '@/lib/observability';
 import { JsonRequestError, parseJsonRequest } from '@/lib/request-json';
 import type { Event } from '@/types/event';
 import { getEventById, updateEvent, deleteEvent } from '@/lib/events';
+import { getEventTypeByCode } from '@/lib/event-types';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,17 @@ export async function PUT(
       }
 
       return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
+    }
+
+    // Validate online venue constraints
+    if (payload.venueLocation === 'ONLINE') {
+      const eventType = await getEventTypeByCode(payload.eventTypeCode || '');
+      if (payload.eventTypeCode && !eventType?.onlinePossible) {
+        return NextResponse.json(
+          { error: `Event type ${payload.eventTypeCode} does not support online venues` },
+          { status: 400 }
+        );
+      }
     }
 
     try {

@@ -311,6 +311,14 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
     return new Date(event.registrationClosesAt) > new Date(event.eventDate);
   };
 
+  // Validate that online venue is only used with compatible event types
+  const isOnlineVenueValid = (event: DraftEvent | Event): boolean => {
+    if (event.venueLocation !== 'ONLINE') return true;
+
+    const eventType = eventTypes.find(t => t.code === event.eventTypeCode);
+    return eventType?.onlinePossible ?? false;
+  };
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
       {/* Event List */}
@@ -428,7 +436,7 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
               )}
               <button
                 onClick={() => saveEvent(selectedEvent)}
-                disabled={isSaving || !selectedEvent.title || !isRegistrationDatesValid(selectedEvent)}
+                disabled={isSaving || !selectedEvent.title || !isRegistrationDatesValid(selectedEvent) || !isOnlineVenueValid(selectedEvent)}
                 className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
               >
                 {selectedEvent.id === undefined ? 'Create' : 'Save'}
@@ -570,7 +578,11 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
                     aria-label="Venue location"
                     value={selectedEvent.venueLocation}
                     onChange={(e) => updateEventField('venueLocation', e.target.value as VenueLocation)}
-                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                    className={`w-full rounded-lg border px-4 py-2 text-white ${
+                      selectedEvent.venueLocation === 'ONLINE' && !isOnlineVenueValid(selectedEvent)
+                        ? 'border-red-500 bg-black/20'
+                        : 'border-white/20 bg-black/20'
+                    }`}
                   >
                     {Object.entries(VENUE_LOCATIONS).map(([code, config]) => (
                       <option key={code} value={code}>
@@ -578,6 +590,14 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
                       </option>
                     ))}
                   </select>
+                  {selectedEvent.venueLocation === 'ONLINE' && !isOnlineVenueValid(selectedEvent) && (
+                    <p className="mt-1 text-sm text-red-400">
+                      {(() => {
+                        const type = eventTypes.find(t => t.code === selectedEvent.eventTypeCode);
+                        return type ? `${type.nameEn} cannot be held online` : 'This event type cannot be held online';
+                      })()}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-white">
