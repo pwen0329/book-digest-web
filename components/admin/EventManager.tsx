@@ -393,7 +393,7 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
                   )}
                 </div>
                 <div className="font-medium truncate">
-                  {event.title || '(No Title)'}
+                  {event.title || event.titleEn || '(No Title)'}
                 </div>
                 <div className="text-xs text-white/50 mt-1 flex items-center justify-between">
                   <span>{new Date(event.eventDate).toLocaleDateString()} • {event.venueName || VENUE_LOCATIONS[event.venueLocation]?.displayName || event.venueLocation}</span>
