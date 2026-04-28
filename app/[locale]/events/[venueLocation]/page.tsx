@@ -43,10 +43,10 @@ export default async function VenueEventsPage({ params }: Props) {
   const eventTypes = await getEventTypes();
 
   // Sanitize event image URLs to prevent build/SSR errors
-  // Only allow paths starting with '/', otherwise use default
+  // Allow local paths (/) or HTTPS URLs (Supabase storage)
   const DEFAULT_IMAGE = '/images/events/default.jpg';
   const isValidImagePath = (url: string | null | undefined): boolean => {
-    return !!url && typeof url === 'string' && url.startsWith('/');
+    return !!url && typeof url === 'string' && (url.startsWith('/') || url.startsWith('https://'));
   };
 
   const events = rawEvents.map(event => ({

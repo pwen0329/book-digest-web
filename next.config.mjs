@@ -67,6 +67,11 @@ const nextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '*.amazonaws.com' },
       ...(supabaseImageHostname ? [{ protocol: supabaseImageProtocol, hostname: supabaseImageHostname }] : []),
+      // Local development only
+      ...(process.env.NODE_ENV === 'development' ? [
+        { protocol: 'http', hostname: '127.0.0.1' },
+        { protocol: 'http', hostname: 'localhost' },
+      ] : []),
     ],
   },
   // Bundle splitting optimization

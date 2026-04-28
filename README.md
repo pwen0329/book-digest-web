@@ -234,6 +234,26 @@ export NEXT_DIST_DIR=.next-local-build && npm run build
 
 - Playwright local runs start the app with admin auth and capacity-reset helpers enabled.
 
+### Local Supabase Setup
+
+For local development with Supabase Docker:
+
+```bash
+# Start Supabase stack (includes PostgreSQL + Storage)
+docker-compose up -d
+
+# Get connection details
+npx supabase status
+
+# Initialize database schema
+psql -h localhost -p 54322 -U postgres -d postgres -f lib/db/init.sql
+
+# Storage bucket is created automatically via init.sql
+# Verify at: http://localhost:54323 (Supabase Studio)
+```
+
+The storage bucket `admin-assets` for book covers and event posters is created automatically by `init.sql` on local Docker. For production Supabase, see [docs/supabase-deployment-checklist.md](docs/supabase-deployment-checklist.md) for manual bucket creation steps.
+
 ## Verification checklist
 
 Before pushing:
