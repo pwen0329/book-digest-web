@@ -77,18 +77,16 @@ npx playwright show-report
 
 #### Unit/Component Tests (Vitest)
 - **Location**: `tests/components/`, `tests/lib/`, `tests/api/`
-- **Files**: 24 test files
-- **Tests**: 143 passing, 10 skipped (153 total)
+- **Files**: 42 test files
+- **Tests**: 335 passing (335 total)
 
 **Library Tests** (`tests/lib/`):
 - `books-db.test.ts` (15 tests) - Book CRUD operations
-- `venues.test.ts` (10 tests) - Venue management
 - `events.test.ts` (26 tests) - Event management and registration status calculation
 
 **API Tests** (`tests/api/`):
 - `admin-books-v2.test.ts` (3 tests) - GET /api/admin/books-v2
 - `admin-events-v2.test.ts` (6 tests) - GET /api/admin/events-v2
-- `admin-venues-v2.test.ts` (3 tests) - GET /api/admin/venues-v2
 - `admin-book-v2-create.test.ts` (6 tests) - POST /api/admin/book-v2
 - `admin-event-v2-create.test.ts` (7 tests) - POST /api/admin/event-v2
 - `events-public.test.ts` (6 tests) - GET /api/events

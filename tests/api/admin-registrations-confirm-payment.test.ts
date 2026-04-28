@@ -138,12 +138,9 @@ describe('POST /api/admin/registrations/[id]/confirm-payment', () => {
         title: '測試活動',
         title_en: 'Test Event',
         event_date: '2026-05-16T19:00:00Z',
-        venue_id: 1,
-        venues: {
-          location: 'TW',
-          name: 'Test Venue',
-          address: '123 Test St',
-        },
+        venue_location: 'TW',
+        venue_name: 'Test Venue',
+        venue_address: '123 Test St',
       },
     };
 

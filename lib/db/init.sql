@@ -229,10 +229,6 @@ ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "event_types_read_all" ON public.event_types
   FOR SELECT USING (true);
 
--- venues: Read-only for all
-CREATE POLICY "venues_read_all" ON public.venues
-  FOR SELECT USING (true);
-
 -- books: Read-only for all
 CREATE POLICY "books_read_all" ON public.books
   FOR SELECT USING (true);
