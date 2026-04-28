@@ -1,4 +1,4 @@
-import 'server-only';
+import type { VenueLocation } from '@/types/event';
 
 /**
  * Venue location configuration with display names and timezone info
@@ -51,8 +51,8 @@ export function getTimezoneForVenue(locationCode: string): string {
 }
 
 /**
- * Get all valid venue location codes
+ * Get all valid venue locations
  */
-export function getValidLocationCodes(): string[] {
-  return Object.keys(VENUE_LOCATIONS);
+export function getVenueLocations(): VenueLocation[] {
+  return Object.keys(VENUE_LOCATIONS) as VenueLocation[];
 }

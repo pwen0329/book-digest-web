@@ -2,13 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-const { mockFetchRows, mockFetchSingleRow, mockInsertRow, mockUpdateRow, mockDeleteRow, mockGetVenueById, mockGetBookById, mockCountActiveRegistrations } = vi.hoisted(() => ({
+const { mockFetchRows, mockFetchSingleRow, mockInsertRow, mockUpdateRow, mockDeleteRow, mockGetBookById, mockCountActiveRegistrations } = vi.hoisted(() => ({
   mockFetchRows: vi.fn(),
   mockFetchSingleRow: vi.fn(),
   mockInsertRow: vi.fn(),
   mockUpdateRow: vi.fn(),
   mockDeleteRow: vi.fn(),
-  mockGetVenueById: vi.fn(),
   mockGetBookById: vi.fn(),
   mockCountActiveRegistrations: vi.fn(),
 }));
@@ -19,10 +18,6 @@ vi.mock('@/lib/supabase-utils', () => ({
   insertRow: mockInsertRow,
   updateRow: mockUpdateRow,
   deleteRow: mockDeleteRow,
-}));
-
-vi.mock('@/lib/venues', () => ({
-  getVenueById: mockGetVenueById,
 }));
 
 vi.mock('@/lib/books', () => ({
@@ -45,25 +40,19 @@ import {
 } from '@/lib/events';
 import { EventRegistrationStatus } from '@/types/event';
 import type { Event, EventRow } from '@/types/event';
-import type { Venue } from '@/types/venue';
 
-describe('events', () => {
-  const mockVenue: Venue = {
-    id: 1,
-    name: 'Test Venue',
-    location: 'TW',
-    address: 'Test Address',
-    maxCapacity: 20,
-    isVirtual: false,
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-  };
-
-  const mockEventRow: EventRow = {
+describe('events', () => {  const mockEventRow: EventRow = {
     id: 1,
     slug: 'test-event',
     event_type_code: 'MANDARIN_BOOK_CLUB',
-    venue_id: 1,
+    venue_name: 'Test Venue',
+    venue_name_en: 'Test Venue EN',
+    venue_capacity: 20,
+    venue_location: 'TW',
+    venue_address: 'Test Address',
+    payment_amount: 500,
+    payment_currency: 'TWD',
+    intro_template_name: 'default_paid',
     book_id: 10,
     title: 'Test Event',
     title_en: 'Test Event EN',
@@ -72,8 +61,6 @@ describe('events', () => {
     event_date: '2026-06-01T18:00:00Z',
     registration_opens_at: '2026-04-01T00:00:00Z',
     registration_closes_at: '2026-05-30T23:59:59Z',
-    payment_amount: 500,
-    payment_currency: 'TWD',
     cover_url: '/images/event.jpg',
     cover_url_en: '/images/event-en.jpg',
     is_published: true,
@@ -138,36 +125,42 @@ describe('events', () => {
 
     it('includes venue data when requested', async () => {
       mockFetchRows.mockResolvedValueOnce([mockEventRow]);
-      mockGetVenueById.mockResolvedValueOnce(mockVenue);
 
-      const events = await getAllEvents({ includeVenue: true });
+      const events = await getAllEvents();
 
-      expect(mockGetVenueById).toHaveBeenCalledWith(1);
-      expect(events[0].venue).toEqual(mockVenue);
+      expect(events).toHaveLength(1);
+      expect(events[0].venueName).toBe('Test Venue');
+      expect(events[0].venueLocation).toBe('TW');
     });
 
-    it('filters by venue location after fetching', async () => {
+    it('filters by venue location', async () => {
       mockFetchRows.mockResolvedValueOnce([mockEventRow]);
-      mockGetVenueById.mockResolvedValueOnce(mockVenue);
 
       const events = await getAllEvents({ venueLocation: 'TW' });
 
+      expect(mockFetchRows).toHaveBeenCalledWith(
+        'events',
+        '*',
+        'venue_location=eq.TW&order=event_date.desc'
+      );
       expect(events).toHaveLength(1);
-      expect(events[0].venue?.location).toBe('TW');
     });
 
     it('filters out events not matching venue location', async () => {
-      mockFetchRows.mockResolvedValueOnce([mockEventRow]);
-      mockGetVenueById.mockResolvedValueOnce(mockVenue);
+      mockFetchRows.mockResolvedValueOnce([]);
 
       const events = await getAllEvents({ venueLocation: 'NL' });
 
+      expect(mockFetchRows).toHaveBeenCalledWith(
+        'events',
+        '*',
+        'venue_location=eq.NL&order=event_date.desc'
+      );
       expect(events).toHaveLength(0);
     });
 
     it('includes registration status when requested', async () => {
       mockFetchRows.mockResolvedValueOnce([mockEventRow]);
-      mockGetVenueById.mockResolvedValueOnce(mockVenue);
       mockCountActiveRegistrations.mockResolvedValueOnce(5);
 
       const events = await getAllEvents({ includeRegistrationStatus: true });
@@ -198,12 +191,11 @@ describe('events', () => {
 
     it('includes venue when requested', async () => {
       mockFetchSingleRow.mockResolvedValueOnce(mockEventRow);
-      mockGetVenueById.mockResolvedValueOnce(mockVenue);
 
-      const event = await getEventById(1, { includeVenue: true });
+      const event = await getEventById(1);
 
-      expect(mockGetVenueById).toHaveBeenCalledWith(1);
-      expect(event?.venue).toEqual(mockVenue);
+      expect(event?.venueName).toBe('Test Venue');
+      expect(event?.venueLocation).toBe('TW');
     });
   });
 
@@ -239,12 +231,17 @@ describe('events', () => {
       const newEvent: Omit<Event, 'id' | 'createdAt' | 'updatedAt'> = {
         slug: 'new-event',
         eventTypeCode: 'ENGLISH_CLUB',
-        venueId: 1,
+        venueName: 'New Venue',
+        venueCapacity: 25,
+        venueLocation: 'NL',
+        paymentAmount: 5,
+        paymentCurrency: 'EUR',
         title: 'New Event',
         eventDate: '2026-07-01T18:00:00Z',
         registrationOpensAt: '2026-05-01T00:00:00Z',
         registrationClosesAt: '2026-06-30T23:59:59Z',
         isPublished: true,
+        introTemplateName: 'default_paid',
       };
 
       mockInsertRow.mockResolvedValueOnce({
@@ -317,13 +314,17 @@ describe('events', () => {
       id: 1,
       slug: 'test',
       eventTypeCode: 'MANDARIN_BOOK_CLUB',
-      venueId: 1,
-      venue: mockVenue,
+      venueName: 'Test Venue',
+      venueCapacity: 20,
+      venueLocation: 'TW',
+      paymentAmount: 0,
+      paymentCurrency: 'TWD',
       title: 'Test',
       eventDate: '2026-06-01T18:00:00Z',
       registrationOpensAt: '2026-04-01T00:00:00Z',
       registrationClosesAt: '2026-05-30T23:59:59Z',
       isPublished: true,
+      introTemplateName: 'default_paid',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     };
@@ -351,7 +352,7 @@ describe('events', () => {
     it('returns FULL when at capacity', async () => {
       const status = await calculateRegistrationStatus(
         baseEvent,
-        20, // maxCapacity = 20
+        20, // venueCapacity = 20
         '2026-04-15T00:00:00Z'
       );
 
@@ -368,12 +369,10 @@ describe('events', () => {
       expect(status).toBe(EventRegistrationStatus.OPEN);
     });
 
-    it('returns UNKNOWN when venue is missing', async () => {
-      mockGetVenueById.mockResolvedValueOnce(null);
-
-      const eventWithoutVenue = { ...baseEvent, venue: undefined };
+    it('returns UNKNOWN when venue capacity is not set', async () => {
+      const eventWithoutCapacity = { ...baseEvent, venueCapacity: 0 };
       const status = await calculateRegistrationStatus(
-        eventWithoutVenue,
+        eventWithoutCapacity,
         0,
         '2026-04-15T00:00:00Z'
       );
@@ -395,14 +394,13 @@ describe('events', () => {
   describe('getEventsByVenueAndType', () => {
     it('fetches events for venue location and type', async () => {
       mockFetchRows.mockResolvedValueOnce([mockEventRow]);
-      mockGetVenueById.mockResolvedValueOnce(mockVenue);
       mockGetBookById.mockResolvedValueOnce(null);
       mockCountActiveRegistrations.mockResolvedValueOnce(5);
 
       const events = await getEventsByVenueAndType('TW', 'MANDARIN_BOOK_CLUB');
 
       expect(events).toHaveLength(1);
-      expect(events[0].venue?.location).toBe('TW');
+      expect(events[0].venueLocation).toBe('TW');
     });
 
     it('hides expired events by default', async () => {
@@ -420,7 +418,6 @@ describe('events', () => {
       const event2 = { ...mockEventRow, id: 2, event_date: '2026-05-01T00:00:00Z' };
 
       mockFetchRows.mockResolvedValueOnce([event1, event2]);
-      mockGetVenueById.mockResolvedValue(mockVenue);
       mockGetBookById.mockResolvedValue(null);
       mockCountActiveRegistrations.mockResolvedValue(5);
 

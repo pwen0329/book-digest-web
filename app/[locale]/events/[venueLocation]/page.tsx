@@ -4,8 +4,8 @@ import dynamicImport from 'next/dynamic';
 import { getEventsByVenueAndType } from '@/lib/events';
 import { getEventTypes } from '@/lib/event-types';
 import { getLocales } from '@/lib/i18n';
-import type { VenueLocation } from '@/types/venue';
-import { getVenueLocations } from '@/types/venue';
+import type { VenueLocation } from '@/types/event';
+import { getVenueLocations } from '@/lib/venue-locations';
 import VenueEventsClient from './client';
 
 // Counter is a client component; lazy-load it

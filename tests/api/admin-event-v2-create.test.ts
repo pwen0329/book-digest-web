@@ -41,12 +41,17 @@ describe('/api/admin/event-v2 POST', () => {
     id: 1,
     slug: 'test-event',
     eventTypeCode: 'MANDARIN_BOOK_CLUB',
-    venueId: 1,
+    venueName: 'Test Venue',
+    venueCapacity: 30,
+    venueLocation: 'TW',
+    paymentAmount: 0,
+    paymentCurrency: 'TWD',
     title: 'Test Event',
     eventDate: '2026-06-01T18:00:00Z',
     registrationOpensAt: '2026-04-01T00:00:00Z',
     registrationClosesAt: '2026-05-30T23:59:59Z',
     isPublished: true,
+    introTemplateName: 'default_paid',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   };
@@ -64,7 +69,8 @@ describe('/api/admin/event-v2 POST', () => {
         body: JSON.stringify({
           slug: 'test',
           eventTypeCode: 'MANDARIN_BOOK_CLUB',
-          venueId: 1,
+          venueLocation: 'TW',
+          venueCapacity: 30,
           title: 'Test',
           eventDate: '2026-06-01T18:00:00Z',
           registrationOpensAt: '2026-04-01T00:00:00Z',
@@ -83,7 +89,8 @@ describe('/api/admin/event-v2 POST', () => {
       vi.mocked(parseJsonRequest).mockResolvedValueOnce({
         slug: 'test-event',
         eventTypeCode: 'MANDARIN_BOOK_CLUB',
-        venueId: 1,
+        venueLocation: 'TW',
+        venueCapacity: 30,
         title: 'Test Event',
         eventDate: '2026-06-01T18:00:00Z',
         registrationOpensAt: '2026-04-01T00:00:00Z',
@@ -118,7 +125,8 @@ describe('/api/admin/event-v2 POST', () => {
       vi.mocked(parseJsonRequest).mockResolvedValueOnce({
         slug: 'test-event',
         eventTypeCode: 'MANDARIN_BOOK_CLUB',
-        venueId: 1,
+        venueLocation: 'TW',
+        venueCapacity: 30,
         title: 'Test Event',
         eventDate: '2026-06-01T18:00:00Z',
         registrationOpensAt: '2026-04-01T00:00:00Z',
@@ -170,7 +178,7 @@ describe('/api/admin/event-v2 POST', () => {
     it('returns 400 for JsonRequestError', async () => {
       vi.mocked(isAuthorizedAdminRequest).mockResolvedValueOnce(true);
       vi.mocked(parseJsonRequest).mockRejectedValueOnce(
-        new JsonRequestError('Missing required field: venueId', 400)
+        new JsonRequestError('Missing required field: venueLocation', 400)
       );
 
       const request = new NextRequest('http://localhost/api/admin/event-v2', {
@@ -189,7 +197,8 @@ describe('/api/admin/event-v2 POST', () => {
       vi.mocked(parseJsonRequest).mockResolvedValueOnce({
         slug: 'test-event',
         eventTypeCode: 'ENGLISH_CLUB',
-        venueId: 2,
+        venueLocation: 'NL',
+        venueCapacity: 25,
         bookId: 5,
         title: 'Test Event',
         titleEn: 'Test Event EN',
@@ -209,7 +218,8 @@ describe('/api/admin/event-v2 POST', () => {
         body: JSON.stringify({
           slug: 'test-event',
           eventTypeCode: 'ENGLISH_CLUB',
-          venueId: 2,
+          venueLocation: 'NL',
+          venueCapacity: 25,
           bookId: 5,
           title: 'Test Event',
           titleEn: 'Test Event EN',
@@ -226,7 +236,8 @@ describe('/api/admin/event-v2 POST', () => {
         expect.objectContaining({
           slug: 'test-event',
           eventTypeCode: 'ENGLISH_CLUB',
-          venueId: 2,
+          venueLocation: 'NL',
+          venueCapacity: 25,
           bookId: 5,
         })
       );
@@ -243,7 +254,8 @@ describe('/api/admin/event-v2 POST', () => {
         body: JSON.stringify({
           slug: 'test-event',
           eventTypeCode: 'MANDARIN_BOOK_CLUB',
-          venueId: 1,
+          venueLocation: 'TW',
+          venueCapacity: 30,
           title: 'Test Event',
           eventDate: 'invalid-date', // Invalid format
           registrationOpensAt: '2026-04-01T00:00:00Z',

@@ -36,26 +36,6 @@ CREATE TABLE IF NOT EXISTS public.event_types (
 COMMENT ON TABLE public.event_types IS 'Reference table for event types with bilingual names';
 
 -- ============================================================================
--- TABLE: venues
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.venues (
-  id BIGSERIAL PRIMARY KEY,
-  name TEXT UNIQUE NOT NULL,
-  location VARCHAR(20) NOT NULL,
-  address TEXT,
-  max_capacity INTEGER NOT NULL CHECK (max_capacity > 0),
-  is_virtual BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_venues_name ON public.venues(name);
-CREATE INDEX IF NOT EXISTS idx_venues_location ON public.venues(location);
-CREATE INDEX IF NOT EXISTS idx_venues_is_virtual ON public.venues(is_virtual);
-
--- ============================================================================
 -- TABLE: books
 -- ============================================================================
 
@@ -106,6 +86,19 @@ CREATE INDEX IF NOT EXISTS idx_books_tags ON public.books USING GIN(tags);
 CREATE INDEX IF NOT EXISTS idx_books_sort_order ON public.books(sort_order);
 
 -- ============================================================================
+-- TABLE: event_signup_intros (templates for event signup intro messages)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.event_signup_intros (
+  name TEXT PRIMARY KEY,
+  content TEXT NOT NULL,
+  content_en TEXT NOT NULL,
+  is_free BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================================
 -- TABLE: events
 -- ============================================================================
 
@@ -113,7 +106,13 @@ CREATE TABLE IF NOT EXISTS public.events (
   id BIGSERIAL PRIMARY KEY,
   slug TEXT UNIQUE NOT NULL,
   event_type_code VARCHAR(50) NOT NULL REFERENCES public.event_types(code) ON DELETE RESTRICT,
-  venue_id BIGINT NOT NULL REFERENCES public.venues(id) ON DELETE RESTRICT,
+
+  -- Inline venue fields (no separate venue table)
+  venue_name TEXT,
+  venue_name_en TEXT,
+  venue_capacity INTEGER NOT NULL,
+  venue_address TEXT,
+  venue_location TEXT NOT NULL CHECK (venue_location IN ('TW', 'NL', 'ONLINE')),
 
   -- Bilingual content
   title TEXT NOT NULL,
@@ -132,6 +131,15 @@ CREATE TABLE IF NOT EXISTS public.events (
   -- Cover images
   cover_url TEXT,
   cover_url_en TEXT,
+  cover_blur_data_url TEXT,
+  cover_blur_data_url_en TEXT,
+
+  -- Payment fields
+  payment_amount INTEGER NOT NULL DEFAULT 0,
+  payment_currency TEXT NOT NULL DEFAULT 'TWD',
+
+  -- Signup intro template
+  intro_template_name TEXT NOT NULL REFERENCES public.event_signup_intros(name) ON DELETE RESTRICT,
 
   -- Status
   is_published BOOLEAN DEFAULT TRUE,
@@ -142,11 +150,12 @@ CREATE TABLE IF NOT EXISTS public.events (
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_events_type ON public.events(event_type_code);
-CREATE INDEX IF NOT EXISTS idx_events_venue ON public.events(venue_id);
+CREATE INDEX IF NOT EXISTS idx_events_location ON public.events(venue_location);
 CREATE INDEX IF NOT EXISTS idx_events_date ON public.events(event_date);
 CREATE INDEX IF NOT EXISTS idx_events_slug ON public.events(slug);
 CREATE INDEX IF NOT EXISTS idx_events_published ON public.events(is_published);
 CREATE INDEX IF NOT EXISTS idx_events_book ON public.events(book_id);
+CREATE INDEX IF NOT EXISTS idx_events_intro_template ON public.events(intro_template_name);
 
 -- ============================================================================
 -- TABLE: registrations
@@ -207,7 +216,7 @@ EXECUTE FUNCTION public.set_updated_at();
 
 -- Enable RLS on all tables
 ALTER TABLE public.event_types ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.venues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_signup_intros ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.books ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;

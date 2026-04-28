@@ -11,7 +11,17 @@ export const dynamic = 'force-dynamic';
 const eventSchema = z.object({
   slug: z.string().min(1).max(200),
   eventTypeCode: z.string().min(1).max(50),
-  venueId: z.number().int().positive(),
+  // Inline venue fields
+  venueName: z.string().max(500).optional().nullable().transform(val => val === '' ? null : val),
+  venueNameEn: z.string().max(500).optional().nullable().transform(val => val === '' ? null : val),
+  venueCapacity: z.number().int().positive(),
+  venueAddress: z.string().max(1000).optional().nullable().transform(val => val === '' ? null : val),
+  venueLocation: z.enum(['TW', 'NL', 'ONLINE']),
+  // Payment fields
+  paymentAmount: z.number().int().min(0).default(0),
+  paymentCurrency: z.enum(['TWD', 'EUR', 'USD']).default('TWD'),
+  // Intro template
+  introTemplateName: z.string().min(1).max(200).default('default_paid'),
   bookId: z.number().int().positive().optional().nullable(),
   title: z.string().min(1).max(1000),
   titleEn: z.string().min(1).max(1000).optional().nullable(),
@@ -59,7 +69,14 @@ export async function POST(request: NextRequest) {
       const event = await createEvent({
         slug: payload.slug.trim(),
         eventTypeCode: payload.eventTypeCode,
-        venueId: payload.venueId,
+        venueName: payload.venueName || undefined,
+        venueNameEn: payload.venueNameEn || undefined,
+        venueCapacity: payload.venueCapacity,
+        venueAddress: payload.venueAddress || undefined,
+        venueLocation: payload.venueLocation,
+        paymentAmount: payload.paymentAmount,
+        paymentCurrency: payload.paymentCurrency,
+        introTemplateName: payload.introTemplateName,
         bookId: payload.bookId || undefined,
         title: payload.title,
         titleEn: payload.titleEn || undefined,

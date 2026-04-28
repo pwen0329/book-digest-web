@@ -47,12 +47,7 @@ test.describe('Signup Flow', () => {
       }).catch(() => {});
     }
 
-    // Then delete venues
-    for (const venueId of cleanup.venues) {
-      await request.delete(`/api/admin/venue-v2/${venueId}`, {
-        headers: adminHeaders,
-      }).catch(() => {});
-    }
+    // Venues are no longer separate entities - they're inline in events
 
     // Finally delete books
     for (const bookId of cleanup.books) {
@@ -66,10 +61,9 @@ test.describe('Signup Flow', () => {
     const eventTypeCode = eventTypes[0].code;
     const timestamp = `${Date.now()}-lang-${Math.random().toString(36).slice(2, 9)}`;
     const bookSlug = `test-book-${timestamp}`;
-    const venueSlug = `test-venue-${timestamp}`;
     const eventSlug = `test-event-${timestamp}`;
 
-    // Create book, venue, and event
+    // Create book and event
     const bookResponse = await request.post('/api/admin/book-v2', {
       headers: adminHeaders,
       data: {
@@ -82,19 +76,6 @@ test.describe('Signup Flow', () => {
     const bookData = await bookResponse.json();
     cleanup.books.push(bookData.book.id);
 
-    const venueResponse = await request.post('/api/admin/venue-v2', {
-      headers: adminHeaders,
-      data: {
-        name: venueSlug,
-        location: 'TW',
-        maxCapacity: 20,
-        isVirtual: false,
-      },
-    });
-    expect(venueResponse.ok()).toBeTruthy();
-    const venueData = await venueResponse.json();
-    cleanup.venues.push(venueData.venue.id);
-
     const now = new Date();
     const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const currentRegOpens = new Date(now.getTime() - 1 * 60 * 60 * 1000);
@@ -105,7 +86,6 @@ test.describe('Signup Flow', () => {
       data: {
         slug: eventSlug,
         eventTypeCode: eventTypeCode,
-        venueId: venueData.venue.id,
         bookId: bookData.book.id,
         title: 'Lang Test Event',
         titleEn: 'Lang Test Event EN',
@@ -113,6 +93,12 @@ test.describe('Signup Flow', () => {
         registrationOpensAt: currentRegOpens.toISOString(),
         registrationClosesAt: currentRegCloses.toISOString(),
         isPublished: true,
+        // Inline venue fields
+        venueLocation: 'TW',
+        venueCapacity: 20,
+        venueName: `test-venue-${timestamp}`,
+        paymentAmount: 300,
+        paymentCurrency: 'TWD',
       },
     });
     expect(eventResponse.ok()).toBeTruthy();
@@ -174,7 +160,6 @@ test.describe('Signup Flow', () => {
     const eventTypeCode = eventTypes[0].code;
     const timestamp = `${Date.now()}-capacity-${Math.random().toString(36).slice(2, 9)}`;
     const bookSlug = `test-book-${timestamp}`;
-    const venueSlug = `test-venue-${timestamp}`;
     const eventSlug = `test-event-${timestamp}`;
 
     // Create book
@@ -190,32 +175,17 @@ test.describe('Signup Flow', () => {
     const bookData = await bookResponse.json();
     cleanup.books.push(bookData.book.id);
 
-    // Create venue with capacity of 1
-    const venueResponse = await request.post('/api/admin/venue-v2', {
-      headers: adminHeaders,
-      data: {
-        name: venueSlug,
-        location: 'TW',
-        maxCapacity: 1,
-        isVirtual: false,
-      },
-    });
-    expect(venueResponse.ok()).toBeTruthy();
-    const venueData = await venueResponse.json();
-    cleanup.venues.push(venueData.venue.id);
-
     const now = new Date();
     const futureEvent = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const currentRegOpens = new Date(now.getTime() - 1 * 60 * 60 * 1000);
     const currentRegCloses = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000);
 
-    // Create event
+    // Create event with capacity of 1
     const eventResponse = await request.post('/api/admin/event-v2', {
       headers: adminHeaders,
       data: {
         slug: eventSlug,
         eventTypeCode: eventTypeCode,
-        venueId: venueData.venue.id,
         bookId: bookData.book.id,
         title: 'Capacity Test Event',
         titleEn: 'Capacity Test Event EN',
@@ -223,6 +193,12 @@ test.describe('Signup Flow', () => {
         registrationOpensAt: currentRegOpens.toISOString(),
         registrationClosesAt: currentRegCloses.toISOString(),
         isPublished: true,
+        // Inline venue fields with capacity of 1
+        venueLocation: 'TW',
+        venueCapacity: 1,
+        venueName: `test-venue-${timestamp}`,
+        paymentAmount: 300,
+        paymentCurrency: 'TWD',
       },
     });
     expect(eventResponse.ok()).toBeTruthy();

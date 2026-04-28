@@ -16,16 +16,6 @@ vi.mock('@/lib/supabase-utils', () => ({
   deleteRow: vi.fn(),
 }));
 
-vi.mock('@/lib/venues', () => ({
-  getVenueById: vi.fn((id: number) => {
-    const venues: Record<number, any> = {
-      1: { id: 1, name: 'Test Venue TW', nameEn: 'Test Venue TW', location: 'TW', address: 'Test Address', maxCapacity: 20, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-      2: { id: 2, name: 'Test Venue NL', nameEn: 'Test Venue NL', location: 'NL', address: 'Test Address', maxCapacity: 15, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-    };
-    return Promise.resolve(venues[id] || null);
-  }),
-}));
-
 vi.mock('@/lib/books', () => ({
   getBookById: vi.fn(() => Promise.resolve(null)),
 }));
@@ -46,7 +36,6 @@ vi.mock('@/lib/registration-store', () => ({
 import { getAllEvents } from '@/lib/events';
 import { EventRegistrationStatus } from '@/types/event';
 import type { Event, EventRow } from '@/types/event';
-import type { Venue } from '@/types/venue';
 
 describe('Event Registration Status', () => {
   // Use dates relative to current time to avoid test failures due to time
@@ -76,7 +65,11 @@ describe('Event Registration Status', () => {
         id: 1,
         slug: 'test-upcoming',
         event_type_code: 'MANDARIN_BOOK_CLUB',
-        venue_id: 1,
+        venue_capacity: 20,
+        venue_location: 'TW',
+        venue_name: 'Test Venue',
+        payment_amount: 0,
+        payment_currency: 'TWD',
         title: 'Upcoming Event',
         event_date: getFutureDate(15),
         registration_opens_at: getFutureDate(5), // Opens 5 days from now
@@ -99,7 +92,11 @@ describe('Event Registration Status', () => {
         id: 1,
         slug: 'test-closed',
         event_type_code: 'MANDARIN_BOOK_CLUB',
-        venue_id: 1,
+        venue_capacity: 20,
+        venue_location: 'TW',
+        venue_name: 'Test Venue',
+        payment_amount: 0,
+        payment_currency: 'TWD',
         title: 'Closed Event',
         event_date: getFutureDate(15),
         registration_opens_at: getPastDate(30),
@@ -122,7 +119,11 @@ describe('Event Registration Status', () => {
         id: 3, // This ID has 20 registrations (full capacity)
         slug: 'test-full',
         event_type_code: 'MANDARIN_BOOK_CLUB',
-        venue_id: 1, // Venue with maxCapacity = 20
+        venue_capacity: 20,
+        venue_location: 'TW',
+        venue_name: 'Test Venue',
+        payment_amount: 0,
+        payment_currency: 'TWD', // Venue with maxCapacity = 20
         title: 'Full Event',
         event_date: getFutureDate(15),
         registration_opens_at: getPastDate(30),
@@ -145,7 +146,11 @@ describe('Event Registration Status', () => {
         id: 2, // This ID has 10 registrations (below capacity)
         slug: 'test-open',
         event_type_code: 'MANDARIN_BOOK_CLUB',
-        venue_id: 1, // Venue with maxCapacity = 20
+        venue_capacity: 20,
+        venue_location: 'TW',
+        venue_name: 'Test Venue',
+        payment_amount: 0,
+        payment_currency: 'TWD', // Venue with maxCapacity = 20
         title: 'Open Event',
         event_date: getFutureDate(15),
         registration_opens_at: getPastDate(30),
@@ -168,7 +173,11 @@ describe('Event Registration Status', () => {
         id: 1,
         slug: 'test-unknown',
         event_type_code: 'MANDARIN_BOOK_CLUB',
-        venue_id: 999, // Non-existent venue ID
+        venue_capacity: 0, // Invalid capacity (0 or undefined)
+        venue_location: 'TW',
+        venue_name: 'Test Venue',
+        payment_amount: 0,
+        payment_currency: 'TWD',
         title: 'Unknown Venue Event',
         event_date: getFutureDate(15),
         registration_opens_at: getPastDate(30),
@@ -191,7 +200,11 @@ describe('Event Registration Status', () => {
         id: 3, // This ID would return FULL if capacity was checked
         slug: 'test-upcoming-full',
         event_type_code: 'MANDARIN_BOOK_CLUB',
-        venue_id: 1,
+        venue_capacity: 20,
+        venue_location: 'TW',
+        venue_name: 'Test Venue',
+        payment_amount: 0,
+        payment_currency: 'TWD',
         title: 'Upcoming but Full Event',
         event_date: getFutureDate(15),
         registration_opens_at: getFutureDate(5), // Opens 5 days from now
@@ -215,7 +228,11 @@ describe('Event Registration Status', () => {
         id: 1,
         slug: 'test-venue-included',
         event_type_code: 'MANDARIN_BOOK_CLUB',
-        venue_id: 1,
+        venue_capacity: 20,
+        venue_location: 'TW',
+        venue_name: 'Test Venue',
+        payment_amount: 0,
+        payment_currency: 'TWD',
         title: 'Event with Venue',
         event_date: getFutureDate(15),
         registration_opens_at: getPastDate(30),
@@ -228,9 +245,9 @@ describe('Event Registration Status', () => {
 
     const events = await getAllEvents({ includeRegistrationStatus: true });
 
-    expect(events[0].venue).toBeDefined();
-    expect(events[0].venue?.id).toBe(1);
-    expect(events[0].venue?.maxCapacity).toBe(20);
+    expect(events[0].venueName).toBeDefined();
+    expect(events[0].venueCapacity).toBe(20);
+    expect(events[0].venueLocation).toBe('TW');
   });
 
   it('does not populate registrationStatus when includeRegistrationStatus is false', async () => {
@@ -239,7 +256,11 @@ describe('Event Registration Status', () => {
         id: 1,
         slug: 'test-no-status',
         event_type_code: 'MANDARIN_BOOK_CLUB',
-        venue_id: 1,
+        venue_capacity: 20,
+        venue_location: 'TW',
+        venue_name: 'Test Venue',
+        payment_amount: 0,
+        payment_currency: 'TWD',
         title: 'Event without Status',
         event_date: getFutureDate(15),
         registration_opens_at: getPastDate(30),

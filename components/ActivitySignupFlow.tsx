@@ -8,6 +8,7 @@ import SignupForm from '@/components/SignupForm';
 import Turnstile from '@/components/Turnstile';
 import { BLUR_POSTER } from '@/lib/constants';
 import { mapClientReferralToApi, type SignupFormValues } from '@/lib/signup';
+import { interpolateTemplate } from '@/lib/template-interpolation';
 
 export enum SignupStep {
   INTRO = 0,
@@ -29,6 +30,22 @@ type ActivitySignupFlowProps = {
     title: string;
     body?: string;
   };
+  // Optional intro template content - if provided, will be displayed instead of default
+  introTemplate?: {
+    content: string;
+    contentEn: string;
+  };
+  // Event data for template interpolation
+  eventData?: {
+    title: string;
+    titleEn?: string;
+    venueName?: string;
+    venueNameEn?: string;
+    venueAddress?: string;
+    paymentAmount: number;
+    paymentCurrency: string;
+    eventDate: string;
+  };
 };
 
 export default function ActivitySignupFlow({
@@ -41,6 +58,8 @@ export default function ActivitySignupFlow({
   posterPriority = false,
   renderIntro,
   comingSoon,
+  introTemplate,
+  eventData,
 }: ActivitySignupFlowProps) {
   const tEvents = useTranslations('events');
   const tSignup = useTranslations('signupFlow');
@@ -228,7 +247,26 @@ export default function ActivitySignupFlow({
                     <div className="text-white flex flex-col min-h-[300px] justify-between py-6">
                       <div>
                         <h3 className="text-xl font-bold mb-4">{tSignup('paymentIntroTitle')}</h3>
-                        <p className="whitespace-pre-line text-white">{tSignup('paymentIntroBody')}</p>
+                        {introTemplate && eventData ? (
+                          <p className="whitespace-pre-line text-white">
+                            {interpolateTemplate(
+                              locale === 'en' ? introTemplate.contentEn : introTemplate.content,
+                              {
+                                event_title: locale === 'en' ? (eventData.titleEn || eventData.title) : eventData.title,
+                                venue_name: locale === 'en' ? (eventData.venueNameEn || eventData.venueName || '') : (eventData.venueName || ''),
+                                venue_address: eventData.venueAddress || '',
+                                payment_amount: eventData.paymentAmount.toString(),
+                                payment_currency: eventData.paymentCurrency,
+                                event_date: new Date(eventData.eventDate).toLocaleDateString(
+                                  locale === 'zh' ? 'zh-TW' : 'en-US',
+                                  { year: 'numeric', month: 'long', day: 'numeric' }
+                                ),
+                              }
+                            )}
+                          </p>
+                        ) : (
+                          <p className="whitespace-pre-line text-white">{tSignup('paymentIntroBody')}</p>
+                        )}
                       </div>
                       <div className="pt-6">
                         <button

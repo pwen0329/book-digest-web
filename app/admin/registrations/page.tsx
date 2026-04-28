@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { RegistrationAuditSummary, RegistrationRecord, RegistrationRecordStatus } from '@/lib/registration-store';
 import type { Event } from '@/types/event';
 import PaymentReviewModal from '@/components/admin/RegistrationReviewModal';
+import EventFilterDropdown from '@/components/admin/EventFilterDropdown';
 
 type RegistrationsResponse = {
   items: RegistrationRecord[];
@@ -211,7 +212,7 @@ export default function RegistrationsPage() {
         <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-black/10 p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="text-xl font-semibold font-outfit">Registrations audit</h2>
+              <h2 className="text-xl font-semibold font-outfit">Registrations</h2>
               <p className="mt-2 max-w-3xl text-sm text-white/70">
                 This viewer reads from the app registration store used for capacity and confirmation flow. It supports CSV export, time-window filtering, and a per-row lifecycle trail including request id, mirror states, and delivery attempts.
               </p>
@@ -234,19 +235,13 @@ export default function RegistrationsPage() {
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
             <label className="block">
               <span className="mb-2 block text-sm text-white/70">Event</span>
-              <select value={registrationEventFilter} onChange={(event) => setRegistrationEventFilter(event.target.value === 'ALL' ? 'ALL' : parseInt(event.target.value, 10))} className="w-full rounded-2xl bg-black/20 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-pink/40">
-                <option value="ALL">All events</option>
-                {events.slice().sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()).map((event) => {
-                  const eventDate = new Date(event.eventDate);
-                  const isComplete = eventDate < new Date();
-                  const dateStr = eventDate.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
-                  return (
-                    <option key={event.id} value={event.id} style={{ color: isComplete ? '#888' : undefined }}>
-                      {dateStr} {event.title}{isComplete ? ' (complete)' : ''}
-                    </option>
-                  );
-                })}
-              </select>
+              <EventFilterDropdown
+                events={events}
+                value={registrationEventFilter}
+                onChange={setRegistrationEventFilter}
+                locale="zh"
+                showCompletedStatus={true}
+              />
             </label>
             <label className="block">
               <span className="mb-2 block text-sm text-white/70">Status</span>

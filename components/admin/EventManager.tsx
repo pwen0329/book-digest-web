@@ -1,21 +1,54 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import type { Event } from '@/types/event';
 import type { EventType } from '@/types/event-type';
-import type { Venue } from '@/types/venue';
+import type { VenueLocation } from '@/types/event';
+import type { PaymentCurrency } from '@/types/event';
 import type { Book } from '@/types/book';
+import type { SignupIntroTemplate } from '@/types/signup-intro';
+import { VENUE_LOCATIONS } from '@/lib/venue-locations';
+import IntroTemplateManager from './IntroTemplateManager';
 
 type EventManagerProps = {
   initialEvents: Event[];
-  initialVenues: Venue[];
   initialBooks: Book[];
 };
 
-type DraftEvent = Omit<Event, 'id' | 'createdAt' | 'updatedAt' | 'venue' | 'book'> & {
+type DraftEvent = Omit<Event, 'id' | 'createdAt' | 'updatedAt' | 'book' | 'introTemplate'> & {
   id?: number;
   createdAt?: string;
   updatedAt?: string;
+};
+
+type UploadedAsset = {
+  src: string;
+  format?: string;
+  blurDataURL?: string;
+};
+
+async function uploadAsset(file: File): Promise<UploadedAsset> {
+  const formData = new FormData();
+  formData.set('file', file);
+
+  const response = await fetch('/api/admin/upload?scope=events', {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+
+  const payload = await response.json().catch(() => ({ error: 'Upload failed.' }));
+  if (!response.ok || !payload.src) {
+    throw new Error(payload.error || 'Upload failed.');
+  }
+
+  return payload as UploadedAsset;
+}
+
+const PAYMENT_CURRENCIES: Record<PaymentCurrency, { label: string; symbol: string }> = {
+  TWD: { label: 'TWD (台幣)', symbol: 'NT$' },
+  EUR: { label: 'EUR (歐元)', symbol: '€' },
+  USD: { label: 'USD (美金)', symbol: '$' },
 };
 
 function toLocalDateTimeInput(value?: string): string {
@@ -32,10 +65,10 @@ function toIsoString(value: string): string {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 }
 
-export default function EventManager({ initialEvents, initialVenues, initialBooks }: EventManagerProps) {
+export default function EventManager({ initialEvents, initialBooks }: EventManagerProps) {
   const [events, setEvents] = useState<Event[]>(initialEvents);
-  const [venues] = useState<Venue[]>(initialVenues);
   const [books] = useState<Book[]>(initialBooks);
+  const [introTemplates, setIntroTemplates] = useState<SignupIntroTemplate[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<number | undefined>(initialEvents[0]?.id);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string>('');
@@ -44,6 +77,10 @@ export default function EventManager({ initialEvents, initialVenues, initialBook
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [loadingEventTypes, setLoadingEventTypes] = useState(true);
+  const [loadingIntroTemplates, setLoadingIntroTemplates] = useState(true);
+  const [showTemplateManager, setShowTemplateManager] = useState(false);
+  const [uploadingAssetKey, setUploadingAssetKey] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   // Fetch event types from API
   useEffect(() => {
@@ -61,6 +98,25 @@ export default function EventManager({ initialEvents, initialVenues, initialBook
       }
     };
     fetchEventTypes();
+  }, []);
+
+  const fetchIntroTemplates = async () => {
+    try {
+      const response = await fetch('/api/admin/intro-templates');
+      if (response.ok) {
+        const data = await response.json();
+        setIntroTemplates(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch intro templates:', error);
+    } finally {
+      setLoadingIntroTemplates(false);
+    }
+  };
+
+  // Fetch intro templates from API
+  useEffect(() => {
+    fetchIntroTemplates();
   }, []);
 
   const filteredEvents = filterType === 'ALL'
@@ -109,7 +165,14 @@ export default function EventManager({ initialEvents, initialVenues, initialBook
     return {
       slug: `event-${Date.now()}`,
       eventTypeCode: eventTypes[0]?.code || 'MANDARIN_BOOK_CLUB',
-      venueId: venues[0]?.id || 1,
+      venueName: undefined,
+      venueNameEn: undefined,
+      venueCapacity: 30,
+      venueAddress: undefined,
+      venueLocation: 'TW',
+      paymentAmount: 0,
+      paymentCurrency: 'TWD',
+      introTemplateName: 'default_paid',
       title: '',
       titleEn: '',
       description: '',
@@ -221,11 +284,6 @@ export default function EventManager({ initialEvents, initialVenues, initialBook
     setEvents(events.map((e) => (e.id === selectedEventId ? updated : e)));
   };
 
-  const getVenueName = (venueId: number) => {
-    const venue = venues.find((v) => v.id === venueId);
-    return venue ? `${venue.name} (${venue.maxCapacity})` : `Venue #${venueId}`;
-  };
-
   const getEventTypeName = (code: string) => {
     const eventType = eventTypes.find((t) => t.code === code);
     return eventType ? eventType.nameEn : code;
@@ -268,18 +326,48 @@ export default function EventManager({ initialEvents, initialVenues, initialBook
         </div>
 
         {/* Filter */}
-        <div className="mb-4">
+        <div className="mb-4 relative">
           <select
+            aria-label="Filter by event type"
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              startTransition(() => {
+                setFilterType(newValue);
+              });
+            }}
             className="w-full rounded-lg border border-white/20 bg-black/20 px-3 py-2 text-sm text-white"
-            disabled={loadingEventTypes}
+            disabled={loadingEventTypes || isPending}
           >
             <option value="ALL">All Types</option>
             {eventTypes.map((type) => (
               <option key={type.code} value={type.code}>{type.nameEn}</option>
             ))}
           </select>
+          {isPending && (
+            <div className="absolute right-10 top-1/2 -translate-y-1/2">
+              <svg
+                className="animate-spin h-4 w-4 text-white/60"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2 max-h-[600px] overflow-y-auto">
@@ -305,10 +393,10 @@ export default function EventManager({ initialEvents, initialVenues, initialBook
                   )}
                 </div>
                 <div className="font-medium truncate">
-                  {event.title || '(No Title)'}
+                  {event.title || event.titleEn || '(No Title)'}
                 </div>
                 <div className="text-xs text-white/50 mt-1 flex items-center justify-between">
-                  <span>{new Date(event.eventDate).toLocaleDateString()} • {event.venue?.name || getVenueName(event.venueId)}</span>
+                  <span>{new Date(event.eventDate).toLocaleDateString()} • {event.venueName || VENUE_LOCATIONS[event.venueLocation]?.displayName || event.venueLocation}</span>
                   {event.id !== undefined && (
                     <span className="text-blue-400 font-medium">
                       {loadingCounts ? '...' : `${regCount} registered`}
@@ -372,48 +460,174 @@ export default function EventManager({ initialEvents, initialVenues, initialBook
               />
             </div>
 
-            {/* Event Type & Venue */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white">
-                  Type <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={selectedEvent.eventTypeCode}
-                  onChange={(e) => updateEventField('eventTypeCode', e.target.value)}
-                  className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                  disabled={loadingEventTypes}
-                >
-                  {eventTypes.map((type) => (
-                    <option key={type.code} value={type.code}>{type.nameEn} ({type.nameZh})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white">
-                  Venue <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={selectedEvent.venueId}
-                  onChange={(e) => updateEventField('venueId', parseInt(e.target.value))}
-                  className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-                >
-                  {venues.map((venue) => {
-                    const currentRegCount = selectedEvent.id !== undefined ? (registrationCounts[selectedEvent.id] || 0) : 0;
-                    const isDisabled = currentRegCount > venue.maxCapacity;
-                    return (
-                      <option key={venue.id} value={venue.id} disabled={isDisabled}>
-                        {venue.name} (Max: {venue.maxCapacity}){isDisabled ? ' - Too small' : ''}
+            {/* Event Type */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-white">
+                Type <span className="text-red-400">*</span>
+              </label>
+              <select
+                value={selectedEvent.eventTypeCode}
+                onChange={(e) => updateEventField('eventTypeCode', e.target.value)}
+                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                disabled={loadingEventTypes}
+              >
+                {eventTypes.map((type) => (
+                  <option key={type.code} value={type.code}>{type.nameEn} ({type.nameZh})</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Venue Section */}
+            <div className="rounded-lg border border-white/10 bg-black/10 p-4 space-y-4">
+              <h4 className="text-sm font-semibold text-white">Venue Information</h4>
+
+              {/* Venue Location & Capacity */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">
+                    Location <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    aria-label="Venue location"
+                    value={selectedEvent.venueLocation}
+                    onChange={(e) => updateEventField('venueLocation', e.target.value as VenueLocation)}
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  >
+                    {Object.entries(VENUE_LOCATIONS).map(([code, config]) => (
+                      <option key={code} value={code}>
+                        {config.displayName} ({config.displayNameZh})
                       </option>
-                    );
-                  })}
-                </select>
-                {selectedEvent.id !== undefined && registrationCounts[selectedEvent.id] > 0 && (
-                  <p className="mt-1 text-xs text-white/60">
-                    {registrationCounts[selectedEvent.id]} people registered. Venues with smaller capacity are disabled.
-                  </p>
-                )}
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">
+                    Capacity <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={selectedEvent.venueCapacity}
+                    onChange={(e) => updateEventField('venueCapacity', parseInt(e.target.value) || 1)}
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  />
+                  {selectedEvent.id !== undefined && registrationCounts[selectedEvent.id] > 0 && (
+                    <p className="mt-1 text-xs text-white/60">
+                      {registrationCounts[selectedEvent.id]} people registered
+                      {registrationCounts[selectedEvent.id] > selectedEvent.venueCapacity && (
+                        <span className="text-red-400"> - Capacity is less than registrations!</span>
+                      )}
+                    </p>
+                  )}
+                </div>
               </div>
+
+              {/* Venue Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Venue Name (中文)</label>
+                  <input
+                    type="text"
+                    value={selectedEvent.venueName || ''}
+                    onChange={(e) => updateEventField('venueName', e.target.value || undefined)}
+                    placeholder="Optional"
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Venue Name (English)</label>
+                  <input
+                    type="text"
+                    value={selectedEvent.venueNameEn || ''}
+                    onChange={(e) => updateEventField('venueNameEn', e.target.value || undefined)}
+                    placeholder="Optional"
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Venue Address */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white">Venue Address</label>
+                <input
+                  type="text"
+                  value={selectedEvent.venueAddress || ''}
+                  onChange={(e) => updateEventField('venueAddress', e.target.value || undefined)}
+                  placeholder="Optional - if empty, default message will be shown"
+                  className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                />
+                <p className="mt-1 text-xs text-white/40">
+                  Leave empty to show: &quot;Event location will be informed one week before the event happens&quot;
+                </p>
+              </div>
+            </div>
+
+            {/* Payment Section */}
+            <div className="rounded-lg border border-white/10 bg-black/10 p-4 space-y-4">
+              <h4 className="text-sm font-semibold text-white">Payment Information</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">
+                    Amount <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={selectedEvent.paymentAmount}
+                    onChange={(e) => updateEventField('paymentAmount', parseInt(e.target.value) || 0)}
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  />
+                  <p className="mt-1 text-xs text-white/40">Use 0 for free events</p>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">
+                    Currency <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={selectedEvent.paymentCurrency}
+                    onChange={(e) => updateEventField('paymentCurrency', e.target.value as PaymentCurrency)}
+                    className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                  >
+                    {Object.entries(PAYMENT_CURRENCIES).map(([code, config]) => (
+                      <option key={code} value={code}>
+                        {config.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Intro Template */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-white">
+                  Signup Intro Template <span className="text-red-400">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateManager(true)}
+                  className="text-xs text-brand-pink hover:underline"
+                >
+                  Manage Templates
+                </button>
+              </div>
+              <select
+                value={selectedEvent.introTemplateName}
+                onChange={(e) => updateEventField('introTemplateName', e.target.value)}
+                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                disabled={loadingIntroTemplates}
+              >
+                {introTemplates.map((template) => (
+                  <option key={template.name} value={template.name}>
+                    {template.name} {template.isFree ? '(Free)' : '(Paid)'}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-white/40">
+                Template shown during signup. Payment variables will be automatically filled.
+              </p>
             </div>
 
             {/* Title */}
@@ -535,26 +749,90 @@ export default function EventManager({ initialEvents, initialVenues, initialBook
             </div>
 
             {/* Cover URLs */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">Cover URL (中文)</label>
-              <input
-                type="text"
-                value={selectedEvent.coverUrl || ''}
-                onChange={(e) => updateEventField('coverUrl', e.target.value)}
-                placeholder="/images/events/..."
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-              />
-            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-white">Cover URL (中文)</h3>
+                  <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/10">
+                    {uploadingAssetKey === 'event-cover-zh' ? 'Processing…' : 'Upload'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !selectedEvent) return;
+                        setUploadingAssetKey('event-cover-zh');
+                        try {
+                          const asset = await uploadAsset(file);
+                          const updatedEvent = {
+                            ...selectedEvent,
+                            coverUrl: asset.src,
+                            coverBlurDataURL: asset.blurDataURL
+                          };
+                          setEvents(events.map((e) => (e.id === selectedEventId ? updatedEvent : e)));
+                          await saveEvent(updatedEvent);
+                          setSaveStatus(`Cover uploaded and saved (${asset.format || 'webp'})`);
+                        } catch (err) {
+                          console.error('Upload failed:', err);
+                          setSaveStatus(`Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                        } finally {
+                          setUploadingAssetKey(null);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={selectedEvent.coverUrl || ''}
+                  onChange={(e) => updateEventField('coverUrl', e.target.value)}
+                  placeholder="/images/events/..."
+                  className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                />
+              </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">Cover URL (English)</label>
-              <input
-                type="text"
-                value={selectedEvent.coverUrlEn || ''}
-                onChange={(e) => updateEventField('coverUrlEn', e.target.value)}
-                placeholder="/images/events/..."
-                className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
-              />
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-white">Cover URL (English)</h3>
+                  <label className="cursor-pointer rounded-full border border-white/15 px-3 py-1.5 text-sm text-white/80 transition hover:bg-white/10">
+                    {uploadingAssetKey === 'event-cover-en' ? 'Processing…' : 'Upload'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !selectedEvent) return;
+                        setUploadingAssetKey('event-cover-en');
+                        try {
+                          const asset = await uploadAsset(file);
+                          const updatedEvent = {
+                            ...selectedEvent,
+                            coverUrlEn: asset.src,
+                            coverBlurDataURLEn: asset.blurDataURL
+                          };
+                          setEvents(events.map((e) => (e.id === selectedEventId ? updatedEvent : e)));
+                          await saveEvent(updatedEvent);
+                          setSaveStatus(`Cover uploaded and saved (${asset.format || 'webp'})`);
+                        } catch (err) {
+                          console.error('Upload failed:', err);
+                          setSaveStatus(`Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                        } finally {
+                          setUploadingAssetKey(null);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={selectedEvent.coverUrlEn || ''}
+                  onChange={(e) => updateEventField('coverUrlEn', e.target.value)}
+                  placeholder="/images/events/..."
+                  className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
+                />
+              </div>
             </div>
 
             {/* Published */}
@@ -585,6 +863,16 @@ export default function EventManager({ initialEvents, initialVenues, initialBook
           <p className="text-white/50">Select an event or create a new one</p>
         </div>
       )}
+
+      {/* Intro Template Manager Modal */}
+      <IntroTemplateManager
+        open={showTemplateManager}
+        onClose={() => setShowTemplateManager(false)}
+        onTemplatesChanged={() => {
+          setLoadingIntroTemplates(true);
+          fetchIntroTemplates();
+        }}
+      />
     </div>
   );
 }

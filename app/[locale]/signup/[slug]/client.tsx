@@ -30,11 +30,22 @@ export default function EventDetailClient({ event, locale }: EventDetailClientPr
     eventDate: event.eventDate,
     registrationOpensAt: event.registrationOpensAt,
     registrationClosesAt: event.registrationClosesAt,
-    attendanceMode: event.venue?.isVirtual ? 'online' as const : 'offline' as const,
-    locationName: event.venue?.name || '',
-    venueLocation: event.venue?.location || 'TW',
-    addressCountry: event.venue?.location === 'TW' ? 'TW' : event.venue?.location === 'NL' ? 'NL' : undefined,
+    locationName: event.venueName || '',
+    venueLocation: event.venueLocation,
+    addressCountry: event.venueLocation === 'TW' ? 'TW' : event.venueLocation === 'NL' ? 'NL' : undefined,
     registrationStatus,
+    // Pass intro template and event data for interpolation
+    introTemplate: event.introTemplate,
+    eventDataForTemplate: {
+      title: event.title,
+      titleEn: event.titleEn,
+      venueName: event.venueName,
+      venueNameEn: event.venueNameEn,
+      venueAddress: event.venueAddress,
+      paymentAmount: event.paymentAmount,
+      paymentCurrency: event.paymentCurrency,
+      eventDate: event.eventDate,
+    },
   };
 
   return (

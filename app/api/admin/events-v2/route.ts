@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
     const events = await getAllEvents({
       eventTypeCode: eventTypeCodeParam || undefined,
       isPublished: isPublishedParam ? isPublishedParam === 'true' : undefined,
-      includeVenue: true,
       includeBook: true,
     });
 

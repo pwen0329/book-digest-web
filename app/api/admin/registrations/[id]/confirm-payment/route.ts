@@ -21,7 +21,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     try {
       const { id: registrationId } = await context.params;
 
-      // Fetch registration with event and venue details
+      // Fetch registration with event details
       const registrations = await fetchRows<{
         id: string;
         name: string;
@@ -35,16 +35,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
           title: string;
           title_en: string | null;
           event_date: string;
-          venue_id: number;
-          venues: {
-            location: string;
-            name: string;
-            address: string | null;
-          };
+          venue_location: string;
+          venue_name: string | null;
+          venue_address: string | null;
         };
       }>(
         'registrations',
-        'id,name,email,locale,status,event_id,audit_trail,events(id,title,title_en,event_date,venue_id,venues(location,name,address))',
+        'id,name,email,locale,status,event_id,audit_trail,events(id,title,title_en,event_date,venue_location,venue_name,venue_address)',
         `id=eq.${registrationId}`
       );
 
@@ -97,7 +94,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       // Send payment confirmation email
       const event = registration.events;
-      const venue = event.venues;
 
       await sendPaymentConfirmationEmail({
         locale: registration.locale as 'zh' | 'en',
@@ -106,9 +102,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
         eventTitle: event.title,
         eventTitleEn: event.title_en || event.title,
         eventDate: event.event_date,
-        eventLocation: venue.location,
-        venueName: venue.name,
-        venueAddress: venue.address || undefined,
+        eventLocation: event.venue_location,
+        venueName: event.venue_name || '',
+        venueAddress: event.venue_address || undefined,
         registrationId: registration.id,
         eventId: event.id,
       });

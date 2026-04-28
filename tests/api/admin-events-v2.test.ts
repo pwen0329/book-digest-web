@@ -24,12 +24,17 @@ describe('/api/admin/events-v2', () => {
       id: 1,
       slug: 'event-1',
       eventTypeCode: 'MANDARIN_BOOK_CLUB',
-      venueId: 1,
+      venueName: 'Test Venue 1',
+      venueCapacity: 30,
+      venueLocation: 'TW',
+      paymentAmount: 0,
+      paymentCurrency: 'TWD',
       title: 'Event 1',
       eventDate: '2026-06-01T18:00:00Z',
       registrationOpensAt: '2026-04-01T00:00:00Z',
       registrationClosesAt: '2026-05-30T23:59:59Z',
       isPublished: true,
+      introTemplateName: 'default_paid',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     },
@@ -37,12 +42,17 @@ describe('/api/admin/events-v2', () => {
       id: 2,
       slug: 'event-2',
       eventTypeCode: 'ENGLISH_CLUB',
-      venueId: 2,
+      venueName: 'Test Venue 2',
+      venueCapacity: 25,
+      venueLocation: 'NL',
+      paymentAmount: 5,
+      paymentCurrency: 'EUR',
       title: 'Event 2',
       eventDate: '2026-07-01T18:00:00Z',
       registrationOpensAt: '2026-05-01T00:00:00Z',
       registrationClosesAt: '2026-06-30T23:59:59Z',
       isPublished: false,
+      introTemplateName: 'default_paid',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     },
@@ -77,7 +87,6 @@ describe('/api/admin/events-v2', () => {
       expect(getAllEvents).toHaveBeenCalledWith({
         eventTypeCode: undefined,
         isPublished: undefined,
-        includeVenue: true,
         includeBook: true,
       });
     });
@@ -96,7 +105,6 @@ describe('/api/admin/events-v2', () => {
       expect(getAllEvents).toHaveBeenCalledWith({
         eventTypeCode: 'MANDARIN_BOOK_CLUB',
         isPublished: undefined,
-        includeVenue: true,
         includeBook: true,
       });
     });
@@ -114,7 +122,6 @@ describe('/api/admin/events-v2', () => {
       expect(getAllEvents).toHaveBeenCalledWith({
         eventTypeCode: undefined,
         isPublished: true,
-        includeVenue: true,
         includeBook: true,
       });
     });
@@ -131,7 +138,6 @@ describe('/api/admin/events-v2', () => {
       expect(getAllEvents).toHaveBeenCalledWith({
         eventTypeCode: 'MANDARIN_BOOK_CLUB',
         isPublished: true,
-        includeVenue: true,
         includeBook: true,
       });
     });

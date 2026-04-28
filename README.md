@@ -142,7 +142,6 @@ Current dashboard areas:
 
 - `Books`: edit book metadata and copy
 - `Events`: create and edit events with dates, venues, capacity, and localized content
-- `Venues`: manage event locations and capacities
 - `Emails`: turn confirmation emails on or off and edit localized subject/body templates
 - `Registrations`: filter by event, status, source, and submission time; inspect request-aware audit trail; export CSV
 - `Assets`: scan referenced uploads vs stored uploads and prune old orphaned assets safely

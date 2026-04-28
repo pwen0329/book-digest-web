@@ -15,15 +15,15 @@
 -- ============================================================================
 -- Truncate in order to handle foreign key constraints:
 -- 1. registrations (depends on events)
--- 2. events (depends on venues, event_types, books)
--- 3. books, venues, event_types, settings (no dependencies)
+-- 2. events (depends on event_types, books)
+-- 3. books, event_types, settings (no dependencies)
 
 TRUNCATE TABLE public.registrations CASCADE;
 TRUNCATE TABLE public.events CASCADE;
 TRUNCATE TABLE public.books CASCADE;
-TRUNCATE TABLE public.venues CASCADE;
 TRUNCATE TABLE public.event_types CASCADE;
 TRUNCATE TABLE public.settings CASCADE;
+TRUNCATE TABLE public.event_signup_intros CASCADE;
 
 -- ============================================================================
 -- SEED: event_types
@@ -37,14 +37,12 @@ INSERT INTO public.event_types (code, name_en, name_zh) VALUES
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================================================
--- SEED: venues
+-- SEED: event_signup_intros
 -- ============================================================================
 
-INSERT INTO public.venues (name, location, address, max_capacity, is_virtual) VALUES
-  ('Louisa Cafe Taipei Main Station', 'TW', '2F, No. 3, Section 1, Zhongxiao W Rd, Zhongzheng District, Taipei City, 100', 30, false),
-  ('Louisa Cafe Taipei Xinyi', 'TW', '1F, No. 11, Section 5, Xinyi Rd, Xinyi District, Taipei City, 110', 25, false),
-  ('Starbucks Amsterdam Centraal', 'NL', 'Platform 2B, Stationsplein, 1012 AB Amsterdam, Netherlands', 25, false),
-  ('Zoom Meeting Room - Book Digest', 'ONLINE', 'https://zoom.us/j/bookdigest', 100, true)
+INSERT INTO public.event_signup_intros (name, content, content_en, is_free) VALUES
+  ('default_paid', '本活動需要支付 {{payment_currency}} {{payment_amount}} 作為場地與茶點費用。請在完成報名後，轉帳至指定帳戶，並在下一步驟填寫您的帳戶末五碼以便核對。', 'This event requires a payment of {{payment_currency}} {{payment_amount}} for venue and refreshments. After registration, please transfer to the designated account and provide the last 5 digits of your account number in the next step for verification.', false),
+  ('default_free', '本活動為免費參加，無需支付任何費用。', 'This event is free to attend, no payment required.', true)
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================================
@@ -64,13 +62,18 @@ ON CONFLICT (key) DO NOTHING;
 -- These paths work without uploading to Supabase Storage
 
 INSERT INTO public.events (
-  id, slug, event_type_code, venue_id, title, title_en,
+  id, slug, event_type_code,
+  venue_name, venue_capacity, venue_location, venue_address,
+  title, title_en,
   description, description_en, event_date,
   registration_opens_at, registration_closes_at,
+  payment_amount, payment_currency, intro_template_name,
   cover_url, cover_url_en, is_published,
   created_at, updated_at
 ) VALUES
-  (1, 'tw-2026-03', 'MANDARIN_BOOK_CLUB', 1, '台灣中文讀書會 2', 'Book Club in Taipei, Taiwan', '芭芭拉．德米克在《竹林姊妹》以雙胞胎芳芳與留在湖南的雙潔為線索，剖析一胎化時代的拐賣、官僚貪腐與國際收養的灰色產業，調查式敘事帶出政策如何撕裂家庭與身份。
+  (1, 'tw-2026-03', 'MANDARIN_BOOK_CLUB',
+   'Louisa Cafe Taipei Main Station', 30, 'TW', '2F, No. 3, Section 1, Zhongxiao W Rd, Zhongzheng District, Taipei City, 100',
+   '台灣中文讀書會 2', 'Book Club in Taipei, Taiwan', '芭芭拉．德米克在《竹林姊妹》以雙胞胎芳芳與留在湖南的雙潔為線索，剖析一胎化時代的拐賣、官僚貪腐與國際收養的灰色產業，調查式敘事帶出政策如何撕裂家庭與身份。
 
 作者不只還原被拐兒童的命運，也追蹤兩家人在文明與語言隔閡中重逢的複雜情感，場面既動人又充滿尷尬與不確定。
 
@@ -78,8 +81,12 @@ INSERT INTO public.events (
 
 Through investigative storytelling, Demick shows how policy can tear apart families and identities. She not only reconstructs the fate of trafficked children, but also follows two families through emotionally complex reunions shaped by civilizational and language barriers.
 
-The book also confronts the moral dilemmas of international adoption and global inequality, helping readers see the systemic historical forces and consequences beyond any single personal story.', '2026-03-01T00:00:00.000Z', '2026-03-06T00:00:00.000Z', '2026-03-29T23:59:59.000Z', '/images/elements/poster_202603_taiwan.webp', NULL, TRUE, '2026-01-01T00:00:00.000Z', '2026-04-07T13:46:29.763Z'),
-  (2, 'nl-2027-01', 'ENGLISH_BOOK_CLUB', 2, '英文讀書會', 'Book Club in the Netherlands', '荷蘭的面積比台灣略大 1.15 倍，說我們有點相像，卻又好像很不一樣。
+The book also confronts the moral dilemmas of international adoption and global inequality, helping readers see the systemic historical forces and consequences beyond any single personal story.', '2026-03-01T00:00:00.000Z', '2026-03-06T00:00:00.000Z', '2026-03-29T23:59:59.000Z',
+   300, 'TWD', 'default_paid',
+   '/images/elements/poster_202603_taiwan.webp', NULL, TRUE, '2026-01-01T00:00:00.000Z', '2026-04-07T13:46:29.763Z'),
+  (2, 'nl-2027-01', 'ENGLISH_BOOK_CLUB',
+   'Starbucks Amsterdam Centraal', 25, 'NL', 'Platform 2B, Stationsplein, 1012 AB Amsterdam, Netherlands',
+   '英文讀書會', 'Book Club in the Netherlands', '荷蘭的面積比台灣略大 1.15 倍，說我們有點相像，卻又好像很不一樣。
 
 這本書分別就轉型、社會、環境永續三個面向，討論荷蘭的光明與陰暗。荷蘭的職場、對待多元性別或許沒有比較平等，對待職業婦女也有自己的問題。也收錄一個較少被媒體報導的話題：荷蘭人深入骨子裡的運動文化。
 
@@ -87,13 +94,21 @@ The book also confronts the moral dilemmas of international adoption and global 
 
 Through three lenses, transition, society, and environmental sustainability, this book explores both the bright and shadowed sides of Dutch life. It questions workplace norms, gender diversity in practice, and the realities faced by working women. It also dives into a topic rarely covered by mainstream media: the deeply rooted sports culture in Dutch society.
 
-After finishing this book, you will also learn why cannabis has long remained in a legal gray zone, whether the so-called Dutch disease can be cured, whether the Netherlands has its own north-south divide, and what histories lie behind the Red Light District.', '2027-01-15T14:00:00.000Z', '2027-01-01T00:00:00.000Z', '2027-01-31T23:59:59.000Z', '/images/elements/AD-15.webp', NULL, TRUE, '2026-01-01T00:00:00.000Z', '2026-04-06T12:38:37.623Z'),
-  (3, 'online-2026-04', 'ENGLISH_BOOK_CLUB', 1, '英文讀書會', 'English Book Club', 'Good Material 是 Dolly Alderton 的幽默但溫柔的新作，從男主角 Andy 在三十五歲突遭分手的混亂出發，描繪他在友誼、約會與身分重整間的跌撞與自我修復。這本書從不同的角度看待男性視角，書中描繪主角的缺點、不安全感和人際關係。作者的機智筆觸與對三十多歲世代生活的敏銳觀察，並稱其既有笑點也有深刻情感轉折，也有出色的有聲書製作，整體來說是既輕鬆又能引人反思的一本分手小說，適合想找既療癒又帶笑的當代小說的讀者。
+After finishing this book, you will also learn why cannabis has long remained in a legal gray zone, whether the so-called Dutch disease can be cured, whether the Netherlands has its own north-south divide, and what histories lie behind the Red Light District.', '2027-01-15T14:00:00.000Z', '2027-01-01T00:00:00.000Z', '2027-01-31T23:59:59.000Z',
+   0, 'EUR', 'default_free',
+   '/images/elements/AD-15.webp', NULL, TRUE, '2026-01-01T00:00:00.000Z', '2026-04-06T12:38:37.623Z'),
+  (3, 'online-2026-04', 'ENGLISH_BOOK_CLUB',
+   NULL, 30, 'ONLINE', NULL,
+   '英文讀書會', 'English Book Club', 'Good Material 是 Dolly Alderton 的幽默但溫柔的新作，從男主角 Andy 在三十五歲突遭分手的混亂出發，描繪他在友誼、約會與身分重整間的跌撞與自我修復。這本書從不同的角度看待男性視角，書中描繪主角的缺點、不安全感和人際關係。作者的機智筆觸與對三十多歲世代生活的敏銳觀察，並稱其既有笑點也有深刻情感轉折，也有出色的有聲書製作，整體來說是既輕鬆又能引人反思的一本分手小說，適合想找既療癒又帶笑的當代小說的讀者。
 
 建議程度：中級至進階 (B2-C1)', 'Good Material is Dolly Alderton''s witty yet tender new novel. It begins with protagonist Andy''s sudden breakup at thirty-five and follows his stumbles through friendship, dating, and identity repair. Critics praise Alderton''s sharp humor and her keen observations of thirty-something life; the book delivers both laughs and emotionally resonant turns, and the audiobook production has also been well received. Overall, it''s a breezy yet thought-provoking breakup novel, perfect for readers who want something comforting, funny, and emotionally smart.
 
-Recommended level: Intermediate to advanced (B2-C1)', '2026-03-01T00:00:00.000Z', '2026-03-06T00:00:00.000Z', '2026-04-11T23:59:59.000Z', '/images/elements/poster_202604_en_online.webp', NULL, TRUE, '2026-01-01T00:00:00.000Z', '2026-04-05T15:23:43.701Z'),
-  (4, 'detox-2026-04', 'DETOX', 4, '數位排毒', 'Unplug Project', '勇者們，來自異世界的干擾太強大了！那些被稱為「螢幕」的神祕法器正在吸取我們的靈魂。大魔法師已下達禁令：進入本領地前，請將所有數位法器封印於「時空寶箱」中。
+Recommended level: Intermediate to advanced (B2-C1)', '2026-03-01T00:00:00.000Z', '2026-03-06T00:00:00.000Z', '2026-04-11T23:59:59.000Z',
+   200, 'TWD', 'default_paid',
+   '/images/elements/poster_202604_en_online.webp', NULL, TRUE, '2026-01-01T00:00:00.000Z', '2026-04-05T15:23:43.701Z'),
+  (4, 'detox-2026-04', 'DETOX',
+   'Zoom Meeting Room - Book Digest', 100, 'ONLINE', 'https://zoom.us/j/bookdigest',
+   '數位排毒', 'Unplug Project', '勇者們，來自異世界的干擾太強大了！那些被稱為「螢幕」的神祕法器正在吸取我們的靈魂。大魔法師已下達禁令：進入本領地前，請將所有數位法器封印於「時空寶箱」中。
 
 任務目標：擺脫數位心靈控制，重新連結你的隊友
 冒險裝備：一支鉛筆、幾顆骰子，以及你無窮的想像力
@@ -103,14 +118,20 @@ Recommended level: Intermediate to advanced (B2-C1)', '2026-03-01T00:00:00.000Z'
 Quest Objective: Break free from digital mind control and reconnect with your party members.
 Adventure Gear: A pencil, a few dice, and your boundless imagination.
 Custom Characters: Describe your character''s appearance, clothing, accessories, class, and whether they possess magical powers. We will 3D print a unique miniature just for you.
-Rewards: Focus +10, Social Skills +5, and a truly legendary memory.', '2026-04-26T10:00:00.000Z', '2026-03-06T00:00:00.000Z', '2026-04-26T23:59:59.000Z', '/images/elements/poster_202604_detox.jpg', NULL, TRUE, '2026-01-01T00:00:00.000Z', '2026-04-04T22:51:05.540Z'),
-  (5, 'event-1775477435413', 'FAMILY_READING_CLUB', 1, '親子共讀會', 'Book Club in the Netherlands', '這本《郊遊日，一起去海底玩！》
+Rewards: Focus +10, Social Skills +5, and a truly legendary memory.', '2026-04-26T10:00:00.000Z', '2026-03-06T00:00:00.000Z', '2026-04-26T23:59:59.000Z',
+   0, 'TWD', 'default_free',
+   '/images/elements/poster_202604_detox.jpg', NULL, TRUE, '2026-01-01T00:00:00.000Z', '2026-04-04T22:51:05.540Z'),
+  (5, 'event-1775477435413', 'FAMILY_READING_CLUB',
+   'Louisa Cafe Taipei Main Station', 30, 'TW', '2F, No. 3, Section 1, Zhongxiao W Rd, Zhongzheng District, Taipei City, 100',
+   '親子共讀會', 'Book Club in the Netherlands', '這本《郊遊日，一起去海底玩！》
 以孩子最喜歡的恐龍為主角，結合海底冒險的情節，讓整個故事既有趣又充滿想像力。閱讀過程中，我感受到作者不只是描寫一段旅程，更細膩地帶入角色的情緒變化。當小恐龍們面對未知與困難時，會出現緊張、不安甚至害怕，但也透過彼此的陪伴與鼓勵，慢慢學會調整心情，勇敢面對挑戰。
 
 故事中特別讓我印象深刻的是朋友之間的互動，在冒險中不只是期待與快樂，也包含誤會與挫折，但他們選擇溝通與合作，一起找到解決問題的方法。這樣的情節對孩子來說非常貼近生活，也能學習到如何面對情緒與人際關係。
 
 整體而言，這本書不僅有吸引人的主題與畫面，更蘊含情緒管理與同理心的教育意義，是一本兼具趣味與成長價值的優質繪本唷🤍
-', 'Book Club in the Netherlands', '2026-04-01T12:10:35.413Z', '2026-04-06T12:10:35.413Z', '2026-05-06T12:10:35.413Z', '/images/elements/AD-15.webp', '/images/elements/AD-15.webp', TRUE, '2026-04-06T12:16:06.613Z', '2026-04-06T12:23:51.971Z')
+', 'Book Club in the Netherlands', '2026-04-01T12:10:35.413Z', '2026-04-06T12:10:35.413Z', '2026-05-06T12:10:35.413Z',
+   0, 'TWD', 'default_free',
+   '/images/elements/AD-15.webp', '/images/elements/AD-15.webp', TRUE, '2026-04-06T12:16:06.613Z', '2026-04-06T12:23:51.971Z')
 ON CONFLICT (id) DO NOTHING;
 
 -- Reset sequence after manual ID insertion

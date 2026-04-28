@@ -2,7 +2,7 @@ import 'server-only';
 
 import type { Event, EventRow } from '@/types/event';
 import { EventRegistrationStatus } from '@/types/event';
-import type { VenueLocation } from '@/types/venue';
+import type { VenueLocation } from '@/types/event';
 import { eventFromRow, eventToRow } from '@/types/event';
 import {
   fetchRows,
@@ -11,8 +11,8 @@ import {
   updateRow,
   deleteRow,
 } from '@/lib/supabase-utils';
-import { getVenueById } from '@/lib/venues';
 import { getBookById } from '@/lib/books';
+import { getIntroTemplateByName } from '@/lib/signup-intro-templates';
 import { countActiveRegistrationsByEventId } from '@/lib/registration-store';
 import { SUPABASE_CONFIG } from '@/lib/env';
 
@@ -22,7 +22,7 @@ const TABLE_NAME = SUPABASE_CONFIG.TABLES.EVENTS;
  * Calculate event registration status considering both time and venue capacity.
  * This is the authoritative function for determining registration availability.
  *
- * @param event - Event with venue data
+ * @param event - Event with inline venue capacity
  * @param currentRegistrations - Number of active registrations for this event
  * @param now - Current time (defaults to now)
  * @returns Registration status
@@ -32,6 +32,11 @@ export async function calculateRegistrationStatus(
   currentRegistrations: number,
   now: string = new Date().toISOString()
 ): Promise<EventRegistrationStatus> {
+  // Check if venue capacity is invalid
+  if (!event.venueCapacity || event.venueCapacity <= 0) {
+    return EventRegistrationStatus.UNKNOWN;
+  }
+
   // Check if registration hasn't opened yet
   if (now < event.registrationOpensAt) {
     return EventRegistrationStatus.UPCOMING;
@@ -43,16 +48,7 @@ export async function calculateRegistrationStatus(
   }
 
   // Now we're in the open time window - check venue capacity
-  let venue = event.venue;
-  if (!venue) {
-    venue = await getVenueById(event.venueId);
-    if (!venue) {
-      return EventRegistrationStatus.UNKNOWN;
-    }
-  }
-
-  // Check venue capacity
-  if (currentRegistrations >= venue.maxCapacity) {
+  if (currentRegistrations >= event.venueCapacity) {
     return EventRegistrationStatus.FULL;
   }
 
@@ -75,8 +71,8 @@ async function populateRegistrationStatus(
 export async function getAllEvents(options?: {
   eventTypeCode?: string;
   venueLocation?: VenueLocation;
-  includeVenue?: boolean;
   includeBook?: boolean;
+  includeIntroTemplate?: boolean;
   includeRegistrationStatus?: boolean;
   isPublished?: boolean;
   from?: string; // ISO date string - filter events on or after this date
@@ -91,6 +87,10 @@ export async function getAllEvents(options?: {
     filters.push(`is_published=eq.${options.isPublished}`);
   }
 
+  if (options?.venueLocation) {
+    filters.push(`venue_location=eq.${options.venueLocation}`);
+  }
+
   if (options?.from) {
     filters.push(`event_date=gte.${options.from}`);
   }
@@ -100,20 +100,16 @@ export async function getAllEvents(options?: {
   const filterString = filters.join('&');
   const rows = await fetchRows<EventRow>(TABLE_NAME, '*', filterString);
 
-  // Fetch related data and filter by venue location if requested
-  let events = await Promise.all(
+  // Fetch related data
+  const events = await Promise.all(
     rows.map(async (row) => {
-      const venue = options?.includeVenue || options?.includeRegistrationStatus || options?.venueLocation ? await getVenueById(row.venue_id) : undefined;
       const book =
         options?.includeBook && row.book_id ? await getBookById(row.book_id) : undefined;
-      return eventFromRow(row, venue ?? undefined, book ?? undefined);
+      const introTemplate =
+        options?.includeIntroTemplate ? await getIntroTemplateByName(row.intro_template_name) : undefined;
+      return eventFromRow(row, book ?? undefined, introTemplate ?? undefined);
     })
   );
-
-  // Filter by venue location if specified
-  if (options?.venueLocation) {
-    events = events.filter(e => e.venue?.location === options.venueLocation);
-  }
 
   // Populate registration status if requested
   if (options?.includeRegistrationStatus) {
@@ -128,21 +124,22 @@ export async function getAllEvents(options?: {
 // Get event by ID
 export async function getEventById(
   id: number,
-  options?: { includeVenue?: boolean; includeBook?: boolean }
+  options?: { includeBook?: boolean; includeIntroTemplate?: boolean }
 ): Promise<Event | null> {
   const row = await fetchSingleRow<EventRow>(TABLE_NAME, '*', `id=eq.${id}`);
   if (!row) return null;
 
-  const venue = options?.includeVenue ? await getVenueById(row.venue_id) : undefined;
   const book = options?.includeBook && row.book_id ? await getBookById(row.book_id) : undefined;
+  const introTemplate =
+    options?.includeIntroTemplate ? await getIntroTemplateByName(row.intro_template_name) : undefined;
 
-  return eventFromRow(row, venue ?? undefined, book ?? undefined);
+  return eventFromRow(row, book ?? undefined, introTemplate ?? undefined);
 }
 
 // Get event by slug
 export async function getEventBySlug(
   slug: string,
-  options?: { includeVenue?: boolean; includeBook?: boolean }
+  options?: { includeBook?: boolean; includeIntroTemplate?: boolean }
 ): Promise<Event | null> {
   const row = await fetchSingleRow<EventRow>(
     TABLE_NAME,
@@ -151,10 +148,11 @@ export async function getEventBySlug(
   );
   if (!row) return null;
 
-  const venue = options?.includeVenue ? await getVenueById(row.venue_id) : undefined;
   const book = options?.includeBook && row.book_id ? await getBookById(row.book_id) : undefined;
+  const introTemplate =
+    options?.includeIntroTemplate ? await getIntroTemplateByName(row.intro_template_name) : undefined;
 
-  const event = eventFromRow(row, venue ?? undefined, book ?? undefined);
+  const event = eventFromRow(row, book ?? undefined, introTemplate ?? undefined);
 
   // Always populate registration status for signup pages
   await populateRegistrationStatus(event);
@@ -201,7 +199,6 @@ export async function getEventsByVenueAndType(
     venueLocation,
     eventTypeCode,
     isPublished: true,
-    includeVenue: true,
     includeBook: true,
     includeRegistrationStatus: true,
     from: fromDate,

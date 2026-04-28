@@ -19,12 +19,17 @@ describe('/api/events (public)', () => {
       id: 1,
       slug: 'event-1',
       eventTypeCode: 'MANDARIN_BOOK_CLUB',
-      venueId: 1,
+      venueName: 'Test Venue',
+      venueCapacity: 30,
+      venueLocation: 'TW',
+      paymentAmount: 0,
+      paymentCurrency: 'TWD',
       title: 'Event 1',
       eventDate: '2026-06-01T18:00:00Z',
       registrationOpensAt: '2026-04-01T00:00:00Z',
       registrationClosesAt: '2026-05-30T23:59:59Z',
       isPublished: true,
+      introTemplateName: 'default_paid',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     },
@@ -47,7 +52,6 @@ describe('/api/events (public)', () => {
       expect(getAllEvents).toHaveBeenCalledWith({
         venueLocation: undefined,
         isPublished: true, // Always true for public endpoint
-        includeVenue: true,
         includeBook: true,
       });
     });
@@ -62,7 +66,6 @@ describe('/api/events (public)', () => {
       expect(getAllEvents).toHaveBeenCalledWith({
         venueLocation: 'TW',
         isPublished: true,
-        includeVenue: true,
         includeBook: true,
       });
     });
@@ -109,7 +112,6 @@ describe('/api/events (public)', () => {
       expect(getAllEvents).toHaveBeenCalledWith({
         venueLocation: undefined,
         isPublished: true, // Always true, never false
-        includeVenue: true,
         includeBook: true,
       });
     });

@@ -124,14 +124,11 @@ export async function getPaymentConfirmationEmailTemplates(): Promise<PaymentCon
 // Template Interpolation Helpers
 // ============================================================================
 
-type TemplateContext = Record<string, string | number | undefined | null>;
+import { interpolateTemplate, type TemplateContext } from './template-interpolation';
 
-export function interpolateTemplate(template: string, context: TemplateContext): string {
-  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key: string) => {
-    const value = context[key];
-    return value != null ? String(value) : '';
-  });
-}
+// Re-export for backward compatibility
+export type { TemplateContext };
+export { interpolateTemplate };
 
 export function interpolateEmailTemplate(
   template: EmailTemplate,
