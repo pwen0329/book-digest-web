@@ -93,7 +93,6 @@ type SupabaseRegistrationRow = {
 };
 
 const SUPABASE_REGISTRATIONS_TABLE = SUPABASE_CONFIG.TABLES.REGISTRATIONS;
-const PENDING_TTL_MS = 30 * 60 * 1000;
 const OPTIONAL_SUPABASE_MUTATION_COLUMNS = new Set([
   'instagram',
   'referral_other',

@@ -119,7 +119,7 @@ export default function RegistrationsPage() {
       }
     };
     void loadData();
-  }, []);
+  }, [refreshRegistrations]);
 
   async function downloadRegistrationsCsv() {
     const params = new URLSearchParams({ limit: '1000', format: 'csv' });

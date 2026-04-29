@@ -49,6 +49,11 @@ export default function middleware(req: NextRequest) {
     ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io https://vercel.live`
     : `script-src 'self' 'unsafe-inline' https://plausible.io https://challenges.cloudflare.com https://*.sentry.io https://vercel.live`;
 
+  // In development, allow HTTP images from local Supabase
+  const imgSrc = isDev
+    ? "img-src 'self' data: blob: https: http://127.0.0.1:54321 http://localhost:54321"
+    : "img-src 'self' data: blob: https:";
+
   const csp = [
     "default-src 'self'",
     scriptSrc,
@@ -56,7 +61,7 @@ export default function middleware(req: NextRequest) {
     "style-src-elem 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https:",
+    imgSrc,
     "connect-src 'self' https://plausible.io https://challenges.cloudflare.com https://*.ingest.sentry.io https://vercel.live",
     "frame-src https://challenges.cloudflare.com",
     "frame-ancestors 'none'",
