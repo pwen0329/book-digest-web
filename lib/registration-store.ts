@@ -6,7 +6,7 @@ import { getSupabaseUrl, getSupabaseHeaders } from '@/lib/supabase-utils';
 import type { VenueLocation } from '@/types/event';
 import { getVenueLocations } from '@/lib/venue-locations';
 
-export const REGISTRATION_STATUSES = ['pending', 'confirmed', 'cancelled'] as const;
+export const REGISTRATION_STATUSES = ['pending', 'confirmed', 'cancelled', 'ready'] as const;
 export type RegistrationRecordStatus = typeof REGISTRATION_STATUSES[number];
 
 export type RegistrationAuditEntry = {

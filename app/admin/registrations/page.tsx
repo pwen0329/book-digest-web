@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { RegistrationAuditSummary, RegistrationRecord, RegistrationRecordStatus } from '@/lib/registration-store';
 import type { Event } from '@/types/event';
 import PaymentReviewModal from '@/components/admin/RegistrationReviewModal';
+import FinalConfirmationModal from '@/components/admin/FinalConfirmationModal';
 import EventFilterDropdown from '@/components/admin/EventFilterDropdown';
 
 type RegistrationsResponse = {
@@ -34,6 +35,8 @@ export default function RegistrationsPage() {
   const [actionInFlight, setActionInFlight] = useState(false);
   const [reviewingRegistration, setReviewingRegistration] = useState<RegistrationRecord | null>(null);
   const [emailConfig, setEmailConfig] = useState<{ replyTo: string; siteUrl: string }>({ replyTo: '', siteUrl: '' });
+  const [selectedRegistrationIds, setSelectedRegistrationIds] = useState<Set<string>>(new Set());
+  const [showFinalConfirmationModal, setShowFinalConfirmationModal] = useState(false);
 
   const refreshRegistrations = useCallback(async () => {
     setRegistrationsLoading(true);
@@ -75,6 +78,7 @@ export default function RegistrationsPage() {
           pending: items.filter(r => r.status === 'pending').length,
           confirmed: items.filter(r => r.status === 'confirmed').length,
           cancelled: items.filter(r => r.status === 'cancelled').length,
+          ready: items.filter(r => r.status === 'ready').length,
         },
         byVenueLocation: payload.summary?.byVenueLocation || {} as RegistrationAuditSummary['byVenueLocation'],
       };
@@ -204,6 +208,43 @@ export default function RegistrationsPage() {
     await refreshRegistrations();
   }
 
+  // Checkbox selection handlers
+  const handleToggleSelect = (registrationId: string) => {
+    setSelectedRegistrationIds(prev => {
+      const next = new Set(prev);
+      if (next.has(registrationId)) {
+        next.delete(registrationId);
+      } else {
+        next.add(registrationId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const confirmedIds = registrations
+      .filter(r => r.status === 'confirmed')
+      .map(r => r.id);
+    setSelectedRegistrationIds(new Set(confirmedIds));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedRegistrationIds(new Set());
+  };
+
+  const selectedRegistrations = registrations.filter(r => selectedRegistrationIds.has(r.id));
+  const allSelectedConfirmed = selectedRegistrations.length > 0 && selectedRegistrations.every(r => r.status === 'confirmed');
+  const confirmedRegistrations = registrations.filter(r => r.status === 'confirmed');
+  const allConfirmedSelected = confirmedRegistrations.length > 0 && confirmedRegistrations.every(r => selectedRegistrationIds.has(r.id));
+
+  // Show checkboxes only when filtering by specific event
+  const showCheckboxes = registrationEventFilter !== 'ALL';
+
+  // Clear selections when filters change
+  useEffect(() => {
+    setSelectedRegistrationIds(new Set());
+  }, [registrationEventFilter, registrationStatusFilter, registrationSearch, registrationCreatedAfter, registrationCreatedBefore, refreshRegistrations]);
+
   return (
     <>
       {error ? <div className="rounded-[28px] border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">{error}</div> : null}
@@ -218,6 +259,16 @@ export default function RegistrationsPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
+              {showCheckboxes && (
+                <button
+                  type="button"
+                  onClick={() => setShowFinalConfirmationModal(true)}
+                  disabled={!allSelectedConfirmed || selectedRegistrations.length === 0 || registrationsLoading || actionInFlight}
+                  className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-pink/90 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Send Final Confirmation ({selectedRegistrations.length})
+                </button>
+              )}
               <button type="button" onClick={() => void handleAction(downloadRegistrationsCsv)} disabled={registrationsLoading || actionInFlight} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
                 Export CSV
               </button>
@@ -279,6 +330,17 @@ export default function RegistrationsPage() {
               <table className="min-w-full divide-y divide-white/10 text-sm">
                 <thead className="bg-white/5 text-left text-white/60">
                   <tr>
+                    {showCheckboxes && (
+                      <th className="px-4 py-3 font-medium w-12">
+                        <input
+                          type="checkbox"
+                          checked={allConfirmedSelected}
+                          onChange={() => allConfirmedSelected ? handleDeselectAll() : handleSelectAll()}
+                          disabled={confirmedRegistrations.length === 0}
+                          className="h-4 w-4 rounded border-white/20 bg-black/20 text-brand-pink focus:ring-2 focus:ring-brand-pink/40 disabled:opacity-50"
+                        />
+                      </th>
+                    )}
                     <th className="px-4 py-3 font-medium">Created</th>
                     <th className="px-4 py-3 font-medium">Event</th>
                     <th className="px-4 py-3 font-medium">Name</th>
@@ -291,12 +353,28 @@ export default function RegistrationsPage() {
                 <tbody className="divide-y divide-white/10 bg-black/10">
                   {registrations.map((registration) => (
                     <tr key={registration.id}>
+                      {showCheckboxes && (
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedRegistrationIds.has(registration.id)}
+                            onChange={() => handleToggleSelect(registration.id)}
+                            disabled={registration.status !== 'confirmed'}
+                            className="h-4 w-4 rounded border-white/20 bg-black/20 text-brand-pink focus:ring-2 focus:ring-brand-pink/40 disabled:opacity-50"
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-white/75">{new Date(registration.createdAt).toLocaleString()}</td>
                       <td className="px-4 py-3 text-white">{events.find((e) => e.id === registration.eventId)?.title || `Event #${registration.eventId}`}</td>
                       <td className="px-4 py-3 text-white">{registration.name}</td>
                       <td className="px-4 py-3 text-white/85">{registration.email}</td>
                       <td className="px-4 py-3">
-                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs uppercase tracking-wide text-white">
+                        <span className={`rounded-full px-2.5 py-1 text-xs uppercase tracking-wide ${
+                          registration.status === 'confirmed' ? 'bg-blue-500/20 text-blue-300' :
+                          registration.status === 'ready' ? 'bg-green-500/20 text-green-300' :
+                          registration.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                          'bg-red-500/20 text-red-300'
+                        }`}>
                           {registration.status}
                         </span>
                       </td>
@@ -313,7 +391,7 @@ export default function RegistrationsPage() {
                   ))}
                   {!registrations.length ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-white/60">No registrations matched the current filters.</td>
+                      <td colSpan={showCheckboxes ? 8 : 7} className="px-4 py-8 text-center text-white/60">No registrations matched the current filters.</td>
                     </tr>
                   ) : null}
                 </tbody>
@@ -337,6 +415,20 @@ export default function RegistrationsPage() {
           onCancel={async (emailContent, emailSubject) => {
             await handleCancelRegistration(reviewingRegistration.id, emailContent, emailSubject);
             setReviewingRegistration(null);
+          }}
+        />
+      )}
+
+      {/* Final Confirmation Modal */}
+      {showFinalConfirmationModal && selectedRegistrations.length > 0 && (
+        <FinalConfirmationModal
+          registrations={selectedRegistrations}
+          event={events.find(e => e.id === selectedRegistrations[0]?.eventId)!}
+          onClose={() => setShowFinalConfirmationModal(false)}
+          onSuccess={() => {
+            setShowFinalConfirmationModal(false);
+            setSelectedRegistrationIds(new Set());
+            void refreshRegistrations();
           }}
         />
       )}

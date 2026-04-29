@@ -121,6 +121,51 @@ export async function getPaymentConfirmationEmailTemplates(): Promise<PaymentCon
 }
 
 // ============================================================================
+// Final Confirmation Email Templates
+// ============================================================================
+
+export function getFinalConfirmationEmailTemplates(): Record<EmailLocale, EmailTemplate> {
+  return {
+    zh: {
+      subject: 'Book Digest 活動最終確認｜{{eventTitle}}',
+      body: `嗨 {{name}}，
+
+您報名的 Book Digest 活動即將舉行！
+
+活動詳情：
+• 活動：{{eventTitle}}
+• 日期：{{eventDate}}
+• 地點：{{eventLocation}}
+
+請準時參加，我們期待在活動中見到您！
+
+如有任何問題，請隨時與我們聯繫：${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}
+
+Book Digest 團隊
+{{siteUrl}}`,
+    },
+    en: {
+      subject: 'Book Digest Event Final Confirmation | {{eventTitle}}',
+      body: `Hi {{name}},
+
+Your Book Digest event is coming up soon!
+
+Event Details:
+• Event: {{eventTitle}}
+• Date: {{eventDate}}
+• Location: {{eventLocation}}
+
+Please arrive on time. We look forward to seeing you at the event!
+
+If you have any questions, please feel free to contact us at ${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}
+
+Book Digest Team
+{{siteUrl}}`,
+    },
+  };
+}
+
+// ============================================================================
 // Template Interpolation Helpers
 // ============================================================================
 
