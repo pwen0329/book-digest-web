@@ -27,13 +27,13 @@ export default function VenueEventsClient({
   const t = useTranslations('events');
   const searchParams = useSearchParams();
 
-  // Reorder event types: DETOX, MANDARIN_BOOK_CLUB, ENGLISH_BOOK_CLUB, FAMILY_ACTIVITY
+  // Reorder event types: MANDARIN_BOOK_CLUB, ENGLISH_BOOK_CLUB, DETOX, FAMILY_ACTIVITY
   const orderedEventTypes = [
-    eventTypes.find(t => t.code === 'DETOX'),
     eventTypes.find(t => t.code === 'MANDARIN_BOOK_CLUB'),
     eventTypes.find(t => t.code === 'ENGLISH_BOOK_CLUB'),
+    eventTypes.find(t => t.code === 'DETOX'),
     eventTypes.find(t => t.code === 'FAMILY_ACTIVITY'),
-    ...eventTypes.filter(t => !['DETOX', 'MANDARIN_BOOK_CLUB', 'ENGLISH_BOOK_CLUB', 'FAMILY_ACTIVITY'].includes(t.code)),
+    ...eventTypes.filter(t => !['MANDARIN_BOOK_CLUB', 'ENGLISH_BOOK_CLUB', 'DETOX', 'FAMILY_ACTIVITY'].includes(t.code)),
   ]
     .filter((type): type is EventType => type !== undefined)
     .filter(type => {
