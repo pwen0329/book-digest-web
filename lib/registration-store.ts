@@ -351,11 +351,10 @@ export async function updateRegistrationReservation(id: string, patch: UpdateReg
 }
 
 export async function countActiveRegistrationsByEventId(eventId: number): Promise<number> {
-  const pendingCutoff = new Date(Date.now() - PENDING_TTL_MS).toISOString();
   const query = buildSupabaseQuery({
     select: 'id',
     event_id: `eq.${eventId}`,
-    or: `(status.eq.confirmed,and(status.eq.pending,updated_at.gte.${pendingCutoff}))`,
+    status: `neq.cancelled`,
   });
   const response = await fetch(query, {
     method: 'GET',

@@ -154,6 +154,9 @@ test.describe('Batch Final Confirmation Email', () => {
     const eventDropdown = page.locator('select').first();
     await eventDropdown.selectOption(String(testEventId));
 
+    // Checkboxes should NOT appear yet (data not fetched)
+    await expect(page.locator('tbody input[type="checkbox"]').first()).not.toBeVisible();
+
     // Search to load results
     await page.click('button:has-text("Search")');
     await page.waitForTimeout(500);
@@ -232,7 +235,7 @@ test.describe('Batch Final Confirmation Email', () => {
     }
   });
 
-  test('should show "Send Final Confirmation" button only with valid selections', async ({ page }) => {
+  test('should show "✉️ Compose" button only with valid selections', async ({ page }) => {
     await page.goto('/admin/registrations');
 
     // Filter to our test event
@@ -241,7 +244,7 @@ test.describe('Batch Final Confirmation Email', () => {
     await page.click('button:has-text("Search")');
     await page.waitForTimeout(500);
 
-    const sendButton = page.locator('button:has-text("Send Final Confirmation")');
+    const sendButton = page.locator('button:has-text("Compose")');
 
     // Initially disabled (no selections)
     await expect(sendButton).toBeDisabled();
@@ -274,7 +277,7 @@ test.describe('Batch Final Confirmation Email', () => {
     await page.waitForTimeout(200);
 
     // Click send button
-    const sendButton = page.locator('button:has-text("Send Final Confirmation")');
+    const sendButton = page.locator('button:has-text("Compose")');
     await expect(sendButton).toBeEnabled();
     await sendButton.click();
 
@@ -313,7 +316,7 @@ test.describe('Batch Final Confirmation Email', () => {
     await headerCheckbox.click();
     await page.waitForTimeout(200);
 
-    const sendButton = page.locator('button:has-text("Send Final Confirmation")');
+    const sendButton = page.locator('button:has-text("Compose")');
     await sendButton.click();
 
     // Edit templates
@@ -349,7 +352,7 @@ test.describe('Batch Final Confirmation Email', () => {
     await headerCheckbox.click();
     await page.waitForTimeout(200);
 
-    const sendButton = page.locator('button:has-text("Send Final Confirmation")');
+    const sendButton = page.locator('button:has-text("Compose")');
     await sendButton.click();
 
     // Wait for modal and templates to load
@@ -446,7 +449,7 @@ test.describe('Batch Final Confirmation Email', () => {
     await checkboxes.nth(1).click();
     await page.waitForTimeout(100);
 
-    const sendButton = page.locator('button:has-text("Send Final Confirmation")');
+    const sendButton = page.locator('button:has-text("Compose")');
 
     // Button shows count
     await expect(sendButton).toContainText('(2)');

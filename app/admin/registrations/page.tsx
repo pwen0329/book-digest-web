@@ -37,6 +37,7 @@ export default function RegistrationsPage() {
   const [emailConfig, setEmailConfig] = useState<{ replyTo: string; siteUrl: string }>({ replyTo: '', siteUrl: '' });
   const [selectedRegistrationIds, setSelectedRegistrationIds] = useState<Set<string>>(new Set());
   const [showFinalConfirmationModal, setShowFinalConfirmationModal] = useState(false);
+  const [lastLoadedEventFilter, setLastLoadedEventFilter] = useState<'ALL' | number>('ALL');
 
   const refreshRegistrations = useCallback(async () => {
     setRegistrationsLoading(true);
@@ -83,6 +84,9 @@ export default function RegistrationsPage() {
         byVenueLocation: payload.summary?.byVenueLocation || {} as RegistrationAuditSummary['byVenueLocation'],
       };
       setRegistrationsSummary(filteredSummary);
+
+      // Track which event filter was successfully loaded
+      setLastLoadedEventFilter(registrationEventFilter);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : 'Unable to load registrations.');
     } finally {
@@ -237,8 +241,8 @@ export default function RegistrationsPage() {
   const confirmedRegistrations = registrations.filter(r => r.status === 'confirmed');
   const allConfirmedSelected = confirmedRegistrations.length > 0 && confirmedRegistrations.every(r => selectedRegistrationIds.has(r.id));
 
-  // Show checkboxes only when filtering by specific event
-  const showCheckboxes = registrationEventFilter !== 'ALL';
+  // Show checkboxes only when filtering by specific event AND the loaded data matches the current filter
+  const showCheckboxes = registrationEventFilter !== 'ALL' && lastLoadedEventFilter === registrationEventFilter;
 
   // Clear selections when filters change
   useEffect(() => {
@@ -255,7 +259,7 @@ export default function RegistrationsPage() {
             <div>
               <h2 className="text-xl font-semibold font-outfit">Registrations</h2>
               <p className="mt-2 max-w-3xl text-sm text-white/70">
-                This viewer reads from the app registration store used for capacity and confirmation flow. It supports CSV export, time-window filtering, and a per-row lifecycle trail including request id, mirror states, and delivery attempts.
+                This viewer supports filtering by event, status, date range, and CSV export. Batch mail button is only availble when event filter is applied during search.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -266,7 +270,7 @@ export default function RegistrationsPage() {
                   disabled={!allSelectedConfirmed || selectedRegistrations.length === 0 || registrationsLoading || actionInFlight}
                   className="inline-flex min-h-11 items-center rounded-full bg-brand-pink px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-pink/90 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Send Final Confirmation ({selectedRegistrations.length})
+                  ✉️ Compose ({selectedRegistrations.length})
                 </button>
               )}
               <button type="button" onClick={() => void handleAction(downloadRegistrationsCsv)} disabled={registrationsLoading || actionInFlight} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60">
