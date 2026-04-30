@@ -186,6 +186,8 @@ type SendEmailResult = {
 
 function getEmailSignature(): string {
   return `
+
+
 ──────────────────────────────
 Book Digest｜吃書反芻
 

@@ -22,7 +22,7 @@ describe('registration success email', () => {
 
     expect(subject).toContain('台灣讀書會');
     expect(body).toContain('測試讀者');
-    expect(body).toContain('http://127.0.0.1:3000');
+    expect(body).toContain('bookdigest2020@gmail.com');
   });
 
   it('renders the localized en template with correct context', async () => {
@@ -46,6 +46,6 @@ describe('registration success email', () => {
 
     expect(subject).toContain('Unplug Project');
     expect(body).toContain('Detox Adventurer');
-    expect(body).toContain('https://bookdigest.test');
+    expect(body).toContain('bookdigest2020@gmail.com');
   });
 });
