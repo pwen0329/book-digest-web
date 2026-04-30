@@ -482,7 +482,10 @@ test.describe('Email notifications', () => {
     // Subject might be RFC 2047 encoded with base64
     const cancellationSubject = cancellationEmail.Content.Headers.Subject[0];
     expect(cancellationSubject).toMatch(/取消|已取消|5Y+W5raI/i);
-    expect(cancellationEmail.Content.Body).toContain('取消您的報名');
+    // Body may contain quoted-printable encoding, check for the text in either form
+    const cancellationBody = cancellationEmail.Content.Body;
+    const hasText = cancellationBody.includes('取消您的報名') || cancellationBody.includes('=E5=8F=96=E6=B6=88=E6=82=A8=E7=9A=84=E5=A0=B1=E5=90=8D');
+    expect(hasText).toBe(true);
   });
 
   // ============================================================================
