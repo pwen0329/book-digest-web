@@ -191,12 +191,12 @@ test.describe('Event Manager Filter Loading States', () => {
     cleanup.events.push(event2Data.event.id);
 
     // Login and navigate to Events page
-    await page.goto('/admin/login');
+    await page.goto('/admin/login', { waitUntil: 'networkidle' });
     await page.fill('input[type="password"]', 'test-admin');
     await page.click('button[type="submit"]');
-    await page.waitForURL('/admin/books');
+    await page.waitForURL('/admin/books', { timeout: 60000 });
     await page.locator('a:has-text("Events")').first().click();
-    await page.waitForURL('/admin/events');
+    await page.waitForURL('/admin/events', { timeout: 60000 });
   });
 
   test.afterEach(async ({ request }) => {
@@ -329,49 +329,55 @@ test.describe('Event Manager Filter Loading States', () => {
     await expect(initialCount).toBeVisible();
     await expect(initialCount).toHaveClass(/text-blue-400/);
 
-    // Add 2 registrations to reach capacity
-    const registrationData1 = {
-      eventId,
-      locale: 'en',
-      name: 'Test User 1',
-      age: 25,
-      profession: 'Engineer',
-      email: `test1-${now}@example.com`,
-      referral: 'friend',
-      timestamp: new Date().toISOString(),
-      status: 'confirmed',
-    };
+    // Add 2 registrations to reach capacity using public registration API
+    const eventSlug = `test-event-low-capacity-${now}`;
 
-    const registrationData2 = {
-      eventId,
-      locale: 'en',
-      name: 'Test User 2',
-      age: 25,
-      profession: 'Engineer',
-      email: `test2-${now}@example.com`,
-      referral: 'friend',
-      timestamp: new Date().toISOString(),
-      status: 'confirmed',
-    };
-
-    await request.post('/api/admin/registrations', {
-      headers: { ...adminHeaders, 'Content-Type': 'application/json' },
-      data: registrationData1,
+    const reg1Response = await request.post(`/api/event/${eventSlug}/register`, {
+      headers: { 'Content-Type': 'application/json' },
+      data: {
+        locale: 'en',
+        name: 'Test User 1',
+        age: 25,
+        profession: 'Engineer',
+        email: `test1-${now}@example.com`,
+        referral: 'Instagram',
+        bankAccount: '12345',
+      },
     });
+    if (!reg1Response.ok()) {
+      const errorBody = await reg1Response.json();
+      console.log('Registration 1 error:', errorBody);
+    }
+    expect(reg1Response.status()).toBe(201);
 
-    await request.post('/api/admin/registrations', {
-      headers: { ...adminHeaders, 'Content-Type': 'application/json' },
-      data: registrationData2,
+    const reg2Response = await request.post(`/api/event/${eventSlug}/register`, {
+      headers: { 'Content-Type': 'application/json' },
+      data: {
+        locale: 'en',
+        name: 'Test User 2',
+        age: 25,
+        profession: 'Engineer',
+        email: `test2-${now}@example.com`,
+        referral: 'Facebook',
+        bankAccount: '67890',
+      },
     });
+    expect(reg2Response.status()).toBe(201);
 
     // Refresh the page to see updated counts
     await page.reload();
+
+    // Wait for registration counts to load
     await page.waitForTimeout(500);
 
-    // Find the event again and check the count is now red (at capacity)
+    // Find the event again
     const updatedEventItem = page.locator(`button:has-text("Low Capacity Event")`).first();
     await expect(updatedEventItem).toBeVisible();
 
+    // Wait for the count to finish loading (no longer shows "...")
+    await expect(updatedEventItem.locator('span:has-text("...")')).not.toBeVisible({ timeout: 5000 });
+
+    // Check the count is now red (at capacity)
     const fullCount = updatedEventItem.locator('span:has-text("(2/2)")');
     await expect(fullCount).toBeVisible();
     await expect(fullCount).toHaveClass(/text-red-400/);

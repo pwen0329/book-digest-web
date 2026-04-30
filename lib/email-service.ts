@@ -184,7 +184,28 @@ type SendEmailResult = {
   emailId?: string;
 };
 
-export async function sendEmail(to: string, subject: string, body: string, replyTo?: string): Promise<SendEmailResult> {
+function getEmailSignature(): string {
+  return `
+
+
+──────────────────────────────
+Book Digest｜吃書反芻
+
+創辦人｜Viola 家柔
+
+Email：${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}
+
+<a href="https://bookdigest.dev">Book Digest Website</a> | <a href="https://www.instagram.com/bookdigest_tw/">Book Digest IG</a> | <a href="https://www.threads.net/bookdigest_tw">BD threads</a>
+`;
+}
+
+export async function sendEmail(
+  to: string,
+  subject: string,
+  body: string,
+  replyTo?: string,
+  includeSignature: boolean = true
+): Promise<SendEmailResult> {
   try {
     const provider = getEmailProvider();
 
@@ -192,10 +213,21 @@ export async function sendEmail(to: string, subject: string, body: string, reply
       return { status: 'skipped', reason: 'Email provider not configured' };
     }
 
+    const signature = includeSignature ? getEmailSignature() : '';
+
+    // Plain text version (with plain text URLs)
+    const textSignature = signature
+      .replace(/<a href="([^"]+)">([^<]+)<\/a>/g, '$2: $1');
+    const textBody = body + textSignature;
+
+    // HTML version (convert plain text to HTML and add HTML signature)
+    const htmlBody = body.replace(/\n/g, '<br>') + signature.replace(/\n/g, '<br>');
+
     const result = await provider.sendEmail({
       to,
       subject,
-      text: body,
+      text: textBody,
+      html: htmlBody,
       replyTo,
     });
 

@@ -287,10 +287,7 @@ zh: {
 
 一旦確認付款，我們將發送確認郵件給您。
 
-如有任何問題，請隨時與我們聯繫：bookdigest2020@gmail.com
-
-Book Digest 團隊
-{{siteUrl}}`,
+如有任何問題，請隨時與我們聯繫：bookdigest2020@gmail.com`,
 },
 en: {
   subject: 'Book Digest Registration Received | {{eventTitle}}',
@@ -307,10 +304,7 @@ Event Details:
 
 Once payment is confirmed, we will send you a confirmation email.
 
-If you have any questions, please feel free to contact us at bookdigest2020@gmail.com
-
-Book Digest Team
-{{siteUrl}}`,
+If you have any questions, please feel free to contact us at bookdigest2020@gmail.com`,
 }
 ```
 
@@ -338,10 +332,7 @@ zh: {
 
 我們期待在活動中見到您！
 
-如有任何問題，請隨時與我們聯繫：bookdigest2020@gmail.com
-
-Book Digest 團隊
-{{siteUrl}}`,
+如有任何問題，請隨時與我們聯繫：bookdigest2020@gmail.com`,
 },
 en: {
   subject: 'Book Digest Payment Confirmed | {{eventTitle}}',
@@ -356,10 +347,7 @@ Event Details:
 
 We look forward to seeing you at the event!
 
-If you have any questions, please feel free to contact us at bookdigest2020@gmail.com
-
-Book Digest Team
-{{siteUrl}}`,
+If you have any questions, please feel free to contact us at bookdigest2020@gmail.com`,
 }
 ```
 

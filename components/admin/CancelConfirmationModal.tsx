@@ -22,11 +22,7 @@ Event Details:
 - Date: {{eventDate}}
 - Location: {{venueName}}
 
-If you have any questions, please feel free to contact us at {{replyTo}}.
-
-Best regards,
-Book Digest Team
-{{siteUrl}}`,
+If you have any questions, please feel free to contact us at {{replyTo}}.`,
   zh: `親愛的 {{name}}，
 
 很遺憾通知您，您的活動報名已被取消。
@@ -36,10 +32,7 @@ Book Digest Team
 - 活動日期：{{eventDate}}
 - 地點：{{venueName}}
 
-如有任何問題，請聯繫我們：{{replyTo}}
-
-Book Digest 團隊 敬上
-{{siteUrl}}`,
+如有任何問題，請聯繫我們：{{replyTo}}`,
 };
 
 const EMAIL_SUBJECTS = {

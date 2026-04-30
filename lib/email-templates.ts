@@ -32,10 +32,7 @@ const REGISTRATION_SUCCESS_TEMPLATES_DATA: Record<EmailLocale, EmailTemplate> = 
 
 一旦確認付款，我們將發送確認郵件給您。
 
-如有任何問題，請隨時與我們聯繫：${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}
-
-Book Digest 團隊
-{{siteUrl}}`,
+如有任何問題，請隨時與我們聯繫：${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}`,
   },
   en: {
     subject: 'Book Digest Registration Received | {{eventTitle}}',
@@ -52,10 +49,7 @@ Event Details:
 
 Once payment is confirmed, we will send you a confirmation email.
 
-If you have any questions, please feel free to contact us at ${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}
-
-Book Digest Team
-{{siteUrl}}`,
+If you have any questions, please feel free to contact us at ${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}`,
   },
 };
 
@@ -88,10 +82,7 @@ const PAYMENT_CONFIRMATION_TEMPLATES_DATA: Record<EmailLocale, EmailTemplate> = 
 
 我們期待在活動中見到您！
 
-如有任何問題，請隨時與我們聯繫：${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}
-
-Book Digest 團隊
-{{siteUrl}}`,
+如有任何問題，請隨時與我們聯繫：${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}`,
   },
   en: {
     subject: 'Book Digest Payment Confirmed | {{eventTitle}}',
@@ -106,10 +97,7 @@ Event Details:
 
 We look forward to seeing you at the event!
 
-If you have any questions, please feel free to contact us at ${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}
-
-Book Digest Team
-{{siteUrl}}`,
+If you have any questions, please feel free to contact us at ${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}`,
   },
 };
 
@@ -139,10 +127,7 @@ export function getFinalConfirmationEmailTemplates(): Record<EmailLocale, EmailT
 
 請準時參加，我們期待在活動中見到您！
 
-如有任何問題，請隨時與我們聯繫：${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}
-
-Book Digest 團隊
-{{siteUrl}}`,
+如有任何問題，請隨時與我們聯繫：${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}`,
     },
     en: {
       subject: 'Book Digest Event Final Confirmation | {{eventTitle}}',
@@ -157,10 +142,7 @@ Event Details:
 
 Please arrive on time. We look forward to seeing you at the event!
 
-If you have any questions, please feel free to contact us at ${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}
-
-Book Digest Team
-{{siteUrl}}`,
+If you have any questions, please feel free to contact us at ${EMAIL_CONFIG.REGISTRATION_EMAIL_REPLY_TO}`,
     },
   };
 }

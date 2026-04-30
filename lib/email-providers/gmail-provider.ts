@@ -50,6 +50,7 @@ export class GmailEmailProvider implements IEmailProvider {
         to: params.to,
         subject: params.subject,
         text: params.text,
+        html: params.html,
         replyTo: params.replyTo,
       });
 

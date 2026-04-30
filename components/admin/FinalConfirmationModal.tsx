@@ -48,10 +48,7 @@ const DEFAULT_TEMPLATES = {
 
 請準時參加，我們期待在活動中見到您！
 
-如有任何問題，請隨時與我們聯繫：bookdigest2020@gmail.com
-
-Book Digest 團隊
-{{siteUrl}}`,
+如有任何問題，請隨時與我們聯繫：bookdigest2020@gmail.com`,
   },
   en: {
     subject: 'Book Digest Event Final Confirmation | {{eventTitle}}',
@@ -66,10 +63,7 @@ Event Details:
 
 Please arrive on time. We look forward to seeing you at the event!
 
-If you have any questions, please feel free to contact us at bookdigest2020@gmail.com
-
-Book Digest Team
-{{siteUrl}}`,
+If you have any questions, please feel free to contact us at bookdigest2020@gmail.com`,
   },
 };
 

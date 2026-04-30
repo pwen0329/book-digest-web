@@ -102,7 +102,7 @@ test.describe('Admin asset upload API', () => {
     expect(imageResponse.headers()['content-type']).toMatch(/^image\//);
 
     // Step 5: Verify event appears on public page with image
-    await page.goto('/en/events/TW');
+    await page.goto(`/en/events/TW?type=${eventTypeCode}`);
     const eventImage = page.locator(`img[alt*="Upload Test Event"]`);
     await expect(eventImage).toBeVisible({ timeout: 10000 });
   });
@@ -295,6 +295,8 @@ test.describe('Admin asset upload API', () => {
     const { event } = await createResponse.json();
     testEventId = event.id;
 
+    const eventTypeCode = eventTypes[0].code;
+
     // Verify both images load
     const zhImageResponse = await request.get(zhCoverUrl);
     expect(zhImageResponse.ok()).toBeTruthy();
@@ -303,12 +305,12 @@ test.describe('Admin asset upload API', () => {
     expect(enImageResponse.ok()).toBeTruthy();
 
     // Verify Chinese page shows Chinese cover
-    await page.goto('/zh/events/TW');
+    await page.goto(`/zh/events/TW?type=${eventTypeCode}`);
     const zhImage = page.locator(`img[alt*="雙語測試活動"]`);
     await expect(zhImage).toBeVisible({ timeout: 10000 });
 
     // Verify English page shows English cover
-    await page.goto('/en/events/TW');
+    await page.goto(`/en/events/TW?type=${eventTypeCode}`);
     const enImage = page.locator(`img[alt*="Bilingual Test Event"]`);
     await expect(enImage).toBeVisible({ timeout: 10000 });
   });
