@@ -287,4 +287,93 @@ test.describe('Event Manager Filter Loading States', () => {
     await expect(filterSelect).toHaveValue('ALL');
     await expect(page.locator('svg.animate-spin')).not.toBeVisible();
   });
+
+  test('should display registration count in correct color based on capacity', async ({ page, request }) => {
+    // Create an event with capacity 2
+    const now = Date.now();
+    const eventDataLowCapacity = {
+      slug: `test-event-low-capacity-${now}`,
+      eventTypeCode: eventTypes[0].code,
+      title: 'Low Capacity Event',
+      titleEn: 'Low Capacity Event',
+      eventDate: new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      registrationOpensAt: new Date(now).toISOString(),
+      registrationClosesAt: new Date(now + 29 * 24 * 60 * 60 * 1000).toISOString(),
+      isPublished: true,
+      venueLocation: 'TW',
+      venueCapacity: 2,
+      venueName: `Low Capacity Venue ${now}`,
+      venueAddress: '123 Test St',
+      paymentAmount: 300,
+      paymentCurrency: 'TWD',
+    };
+
+    const eventResponse = await request.post('/api/admin/event-v2', {
+      headers: { ...adminHeaders, 'Content-Type': 'application/json' },
+      data: eventDataLowCapacity,
+    });
+    const eventData = await eventResponse.json();
+    const eventId = eventData.event.id;
+    cleanup.events.push(eventId);
+
+    // Refresh the page to see the new event
+    await page.reload();
+    await page.waitForTimeout(500);
+
+    // Find the event in the list - initially should show (0/2) in blue
+    const eventItem = page.locator(`button:has-text("Low Capacity Event")`).first();
+    await expect(eventItem).toBeVisible();
+
+    // Check initial color (no registrations, should be blue)
+    const initialCount = eventItem.locator('span:has-text("(0/2)")');
+    await expect(initialCount).toBeVisible();
+    await expect(initialCount).toHaveClass(/text-blue-400/);
+
+    // Add 2 registrations to reach capacity
+    const registrationData1 = {
+      eventId,
+      locale: 'en',
+      name: 'Test User 1',
+      age: 25,
+      profession: 'Engineer',
+      email: `test1-${now}@example.com`,
+      referral: 'friend',
+      timestamp: new Date().toISOString(),
+      status: 'confirmed',
+    };
+
+    const registrationData2 = {
+      eventId,
+      locale: 'en',
+      name: 'Test User 2',
+      age: 25,
+      profession: 'Engineer',
+      email: `test2-${now}@example.com`,
+      referral: 'friend',
+      timestamp: new Date().toISOString(),
+      status: 'confirmed',
+    };
+
+    await request.post('/api/admin/registrations', {
+      headers: { ...adminHeaders, 'Content-Type': 'application/json' },
+      data: registrationData1,
+    });
+
+    await request.post('/api/admin/registrations', {
+      headers: { ...adminHeaders, 'Content-Type': 'application/json' },
+      data: registrationData2,
+    });
+
+    // Refresh the page to see updated counts
+    await page.reload();
+    await page.waitForTimeout(500);
+
+    // Find the event again and check the count is now red (at capacity)
+    const updatedEventItem = page.locator(`button:has-text("Low Capacity Event")`).first();
+    await expect(updatedEventItem).toBeVisible();
+
+    const fullCount = updatedEventItem.locator('span:has-text("(2/2)")');
+    await expect(fullCount).toBeVisible();
+    await expect(fullCount).toHaveClass(/text-red-400/);
+  });
 });

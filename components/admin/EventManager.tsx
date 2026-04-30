@@ -406,7 +406,7 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
                 <div className="text-xs text-white/50 mt-1 flex items-center justify-between">
                   <span>{new Date(event.eventDate).toLocaleDateString()} • {event.venueName || VENUE_LOCATIONS[event.venueLocation]?.displayName || event.venueLocation}</span>
                   {event.id !== undefined && (
-                    <span className="text-blue-400 font-medium">
+                    <span className={`font-medium ${regCount >= event.venueCapacity ? 'text-red-400' : 'text-blue-400'}`}>
                       {loadingCounts ? '...' : `(${regCount}/${event.venueCapacity})`}
                     </span>
                   )}
@@ -611,7 +611,7 @@ export default function EventManager({ initialEvents, initialBooks }: EventManag
                     className="w-full rounded-lg border border-white/20 bg-black/20 px-4 py-2 text-white"
                   />
                   {selectedEvent.id !== undefined && registrationCounts[selectedEvent.id] > 0 && (
-                    <p className="mt-1 text-xs text-white/60">
+                    <p className={`mt-1 text-xs ${registrationCounts[selectedEvent.id] >= selectedEvent.venueCapacity ? 'text-red-400' : 'text-white/60'}`}>
                       ({registrationCounts[selectedEvent.id]}/{selectedEvent.venueCapacity})
                       {registrationCounts[selectedEvent.id] > selectedEvent.venueCapacity && (
                         <span className="text-red-400"> - Capacity is less than registrations!</span>
