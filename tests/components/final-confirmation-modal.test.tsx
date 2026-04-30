@@ -81,7 +81,9 @@ describe('FinalConfirmationModal', () => {
 
     expect(screen.getByText(/Send Final Confirmation \(2 recipients\)/)).toBeInTheDocument();
     expect(screen.getByText('Test Event')).toBeInTheDocument();
-    expect(screen.getByText('2 confirmed registrations')).toBeInTheDocument();
+
+    // Check email list is displayed (sorted, comma-separated)
+    expect(screen.getByText('user1@test.com, user2@test.com')).toBeInTheDocument();
 
     // Check template sections exist
     expect(screen.getByText('Chinese Email Template')).toBeInTheDocument();

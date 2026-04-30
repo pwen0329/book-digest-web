@@ -205,9 +205,19 @@ export default function FinalConfirmationModal({
               <p className="text-sm text-white/70">
                 <strong>Event:</strong> {event.title}
               </p>
-              <p className="text-sm text-white/70 mt-1">
-                <strong>Recipients:</strong> {registrations.length} confirmed registrations
-              </p>
+              <div className="mt-3">
+                <p className="text-sm text-white/70 mb-1">
+                  <strong>Recipients:</strong>
+                </p>
+                <div className="rounded-lg bg-black/20 p-3 max-h-32 overflow-y-auto">
+                  <p className="text-xs text-white/60 font-mono break-all">
+                    {registrations
+                      .map((r) => r.email)
+                      .sort()
+                      .join(', ')}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Chinese Template */}

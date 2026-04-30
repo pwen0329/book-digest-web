@@ -287,7 +287,13 @@ test.describe('Batch Final Confirmation Email', () => {
     // Check event info is displayed
     await expect(page.locator('strong:has-text("Event:")')).toBeVisible();
     await expect(page.locator('strong:has-text("Recipients:")')).toBeVisible();
-    await expect(page.locator('text=3 confirmed registrations')).toBeVisible();
+
+    // Should show email list (comma-separated, sorted)
+    const emailList = page.locator('.font-mono.text-xs');
+    await expect(emailList).toBeVisible();
+    const emailText = await emailList.textContent();
+    expect(emailText).toContain('@');
+    expect(emailText).toContain(',');
 
     // Check template fields exist
     await expect(page.locator('label:has-text("Subject (ZH)")')).toBeVisible();
