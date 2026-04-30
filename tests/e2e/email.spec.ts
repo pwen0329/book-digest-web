@@ -259,7 +259,10 @@ test.describe('Email notifications', () => {
     // Subject might be RFC 2047 encoded, so check for encoded or decoded forms
     const subject = confirmationEmail.Content.Headers.Subject[0];
     expect(subject).toMatch(/報名|Registration|=E5=A0=B1=E5=90=8D/i);
-    expect(confirmationEmail.Content.Body).toContain(testName);
+    // Body may contain quoted-printable encoding, check for the name in either form
+    const body = confirmationEmail.Content.Body;
+    const hasName = body.includes(testName) || body.includes('=E6=B8=AC=E8=A9=A6=E4=BD=BF=E7=94=A8=E8=80=85');
+    expect(hasName).toBe(true);
     // Verify bank account last 5 digits appears in email
     expect(confirmationEmail.Content.Body).toContain('12345');
 
