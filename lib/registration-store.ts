@@ -6,7 +6,7 @@ import { getSupabaseUrl, getSupabaseHeaders } from '@/lib/supabase-utils';
 import type { VenueLocation } from '@/types/event';
 import { getVenueLocations } from '@/lib/venue-locations';
 
-export const REGISTRATION_STATUSES = ['pending', 'confirmed', 'cancelled'] as const;
+export const REGISTRATION_STATUSES = ['pending', 'confirmed', 'cancelled', 'ready'] as const;
 export type RegistrationRecordStatus = typeof REGISTRATION_STATUSES[number];
 
 export type RegistrationAuditEntry = {
@@ -93,7 +93,6 @@ type SupabaseRegistrationRow = {
 };
 
 const SUPABASE_REGISTRATIONS_TABLE = SUPABASE_CONFIG.TABLES.REGISTRATIONS;
-const PENDING_TTL_MS = 30 * 60 * 1000;
 const OPTIONAL_SUPABASE_MUTATION_COLUMNS = new Set([
   'instagram',
   'referral_other',
@@ -351,11 +350,10 @@ export async function updateRegistrationReservation(id: string, patch: UpdateReg
 }
 
 export async function countActiveRegistrationsByEventId(eventId: number): Promise<number> {
-  const pendingCutoff = new Date(Date.now() - PENDING_TTL_MS).toISOString();
   const query = buildSupabaseQuery({
     select: 'id',
     event_id: `eq.${eventId}`,
-    or: `(status.eq.confirmed,and(status.eq.pending,updated_at.gte.${pendingCutoff}))`,
+    status: `neq.cancelled`,
   });
   const response = await fetch(query, {
     method: 'GET',

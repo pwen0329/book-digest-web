@@ -25,3 +25,9 @@ test-results/
 # Local admin upload artifacts
 /public/uploads/
 /.local/
+
+# Supabase local development
+/supabase/
+
+# Public folder (generated assets)
+/public/

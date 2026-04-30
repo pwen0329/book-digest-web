@@ -378,7 +378,7 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
             ))}
           </div>
 
-          <div className="mt-8">
+          <div className="mt-8 hidden">
             <button
               type="button"
               onClick={() => void handleAction(saveRegistrationEmails)}
@@ -433,7 +433,7 @@ export default function EmailManager({ initialEmailTemplates, events }: EmailMan
             ))}
           </div>
 
-          <div className="mt-8">
+          <div className="mt-8 hidden">
             <button
               type="button"
               onClick={() => void handleAction(savePaymentEmails)}

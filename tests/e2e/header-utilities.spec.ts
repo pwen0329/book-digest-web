@@ -125,17 +125,17 @@ test.describe('Header utilities', () => {
       const eventsButton = page.locator('nav[aria-label="Primary"] button:has-text("Events")');
       await expect(eventsButton).toBeVisible();
 
-      // Dropdown should not be visible initially
-      await expect(page.locator('a[href="/en/events/TW"]')).not.toBeVisible();
+      // Dropdown should not be visible initially - target header nav dropdown specifically
+      await expect(page.locator('nav[aria-label="Primary"] a[href="/en/events/TW"]')).not.toBeVisible();
 
       // Hover over events button and wait for dropdown
       await eventsButton.hover();
       await page.waitForTimeout(200); // Allow time for dropdown animation
 
       // Dropdown should appear
-      await expect(page.locator('a[href="/en/events/TW"]')).toBeVisible({ timeout: 2000 });
-      await expect(page.locator('a[href="/en/events/NL"]')).toBeVisible();
-      await expect(page.locator('a[href="/en/events/ONLINE"]')).toBeVisible();
+      await expect(page.locator('nav[aria-label="Primary"] a[href="/en/events/TW"]')).toBeVisible({ timeout: 2000 });
+      await expect(page.locator('nav[aria-label="Primary"] a[href="/en/events/NL"]')).toBeVisible();
+      await expect(page.locator('nav[aria-label="Primary"] a[href="/en/events/ONLINE"]')).toBeVisible();
     });
 
     test('should navigate to correct venue page when clicking dropdown option', async ({ page }) => {
@@ -146,7 +146,7 @@ test.describe('Header utilities', () => {
       await eventsButton.hover();
       await page.waitForTimeout(200);
 
-      const taiwanLink = page.locator('a[href="/en/events/TW"]');
+      const taiwanLink = page.locator('nav[aria-label="Primary"] a[href="/en/events/TW"]');
       await taiwanLink.waitFor({ state: 'visible', timeout: 2000 });
 
       await taiwanLink.click();
@@ -166,7 +166,7 @@ test.describe('Header utilities', () => {
       await eventsButton.hover();
       await page.waitForTimeout(200);
 
-      const nlLink = page.locator('a[href="/en/events/NL"]');
+      const nlLink = page.locator('nav[aria-label="Primary"] a[href="/en/events/NL"]');
       await nlLink.waitFor({ state: 'visible', timeout: 2000 });
       await nlLink.click();
 
@@ -183,18 +183,18 @@ test.describe('Header utilities', () => {
       await menuButton.click();
       await page.waitForTimeout(200); // Allow mobile menu animation
 
-      const eventsButton = page.locator('button:has-text("Events")').last();
+      const eventsButton = page.locator('nav[aria-label="Primary mobile"] button:has-text("Events")');
       await expect(eventsButton).toBeVisible();
 
-      // Dropdown should not be visible initially
-      await expect(page.locator('a[href="/en/events/TW"]').last()).not.toBeVisible();
+      // Dropdown should not be visible initially - target mobile nav specifically
+      await expect(page.locator('nav[aria-label="Primary mobile"] a[href="/en/events/TW"]')).not.toBeVisible();
 
       // Click events button
       await eventsButton.click();
       await page.waitForTimeout(200); // Allow dropdown animation
 
       // Dropdown should appear
-      await expect(page.locator('a[href="/en/events/TW"]').last()).toBeVisible({ timeout: 2000 });
+      await expect(page.locator('nav[aria-label="Primary mobile"] a[href="/en/events/TW"]')).toBeVisible({ timeout: 2000 });
     });
   });
 });

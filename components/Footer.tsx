@@ -45,8 +45,8 @@ export default function Footer({ locale, messages }: { locale: Locale; messages:
         <div>
           <div className="font-semibold text-white font-outfit uppercase tracking-wider text-xs">{messages.events}</div>
           <ul className="mt-3 space-y-2">
-            <li><Link className="hover:underline hover:text-brand-pink transition-colors" href={`/${locale}/events`}>{messages.bookClub}</Link></li>
-            <li><Link className="hover:underline hover:text-brand-pink transition-colors" href={`/${locale}/events#detox`}>{messages.unplugProject}</Link></li>
+            <li><Link className="hover:underline hover:text-brand-pink transition-colors" href={`/${locale}/events/TW`}>{messages.bookClub}</Link></li>
+            <li><Link className="hover:underline hover:text-brand-pink transition-colors" href={`/${locale}/events/TW?type=DETOX`}>{messages.unplugProject}</Link></li>
           </ul>
         </div>
         <div>

@@ -127,12 +127,12 @@ describe('VenueEventsClient URL Parameter Behavior', () => {
       />
     );
 
-    // Should show Detox button as active (first in reordered list: DETOX, MANDARIN, ENGLISH, FAMILY)
-    const detoxButton = screen.getByRole('button', { name: 'Detox' });
-    expect(detoxButton).toHaveClass('bg-white/20');
+    // Should show Mandarin button as active (first in reordered list with events: MANDARIN, ENGLISH, DETOX, FAMILY)
+    const mandarinButton = screen.getByRole('button', { name: 'Mandarin Book Club' });
+    expect(mandarinButton).toHaveClass('bg-white/20');
 
-    // Should display Detox event
-    expect(screen.getByText('Detox Event 1')).toBeInTheDocument();
+    // Should display Mandarin event
+    expect(screen.getByText('Mandarin Event 1')).toBeInTheDocument();
   });
 
   it('updates URL when clicking event type tab', async () => {
@@ -206,7 +206,7 @@ describe('VenueEventsClient URL Parameter Behavior', () => {
     expect(screen.getByRole('button', { name: '數位排毒' })).toBeInTheDocument();
   });
 
-  it('displays event type tabs in correct order: DETOX, MANDARIN, ENGLISH, FAMILY', () => {
+  it('displays event type tabs in correct order: MANDARIN, ENGLISH, DETOX, FAMILY', () => {
     render(
       <VenueEventsClient
         locale="en"
@@ -223,10 +223,10 @@ describe('VenueEventsClient URL Parameter Behavior', () => {
     // Tab buttons are the first 4 buttons
     const tabButtons = buttons.slice(0, 4);
 
-    // Verify order: Detox, Mandarin Book Club, English Book Club, Family Reading Club
-    expect(tabButtons[0]).toHaveTextContent('Detox');
-    expect(tabButtons[1]).toHaveTextContent('Mandarin Book Club');
-    expect(tabButtons[2]).toHaveTextContent('English Book Club');
+    // Verify order: Mandarin Book Club, English Book Club, Detox, Family Reading Club
+    expect(tabButtons[0]).toHaveTextContent('Mandarin Book Club');
+    expect(tabButtons[1]).toHaveTextContent('English Book Club');
+    expect(tabButtons[2]).toHaveTextContent('Detox');
     expect(tabButtons[3]).toHaveTextContent('Family Reading Club');
   });
 
