@@ -9,6 +9,33 @@ import libmime from 'libmime';
 
 const MAILHOG_API_URL = process.env.MAILHOG_API_URL || 'http://localhost:8025/api/v2';
 
+/**
+ * Decode quoted-printable encoded string
+ */
+function decodeQuotedPrintable(str: string): string {
+  // Decode quoted-printable: =XX where XX is hex byte value
+  const decoded = str
+    .replace(/=\r?\n/g, '') // Remove soft line breaks
+    .replace(/=([0-9A-F]{2})/gi, (_, hex) => {
+      return String.fromCharCode(parseInt(hex, 16));
+    });
+
+  // The decoded bytes need to be interpreted as UTF-8
+  // Convert the Latin-1 string (byte values) to UTF-8
+  try {
+    // Create a Uint8Array from the decoded string
+    const bytes = new Uint8Array(decoded.length);
+    for (let i = 0; i < decoded.length; i++) {
+      bytes[i] = decoded.charCodeAt(i);
+    }
+    // Decode as UTF-8
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch (error) {
+    console.warn('Failed to decode UTF-8:', error);
+    return decoded;
+  }
+}
+
 export type MailHogMessage = {
   ID: string;
   From: { Relays: null; Mailbox: string; Domain: string; Params: string };
@@ -51,7 +78,7 @@ export async function getMailHogMessages(): Promise<MailHogMessagesResponse> {
 
 /**
  * Find the most recent email sent to a specific recipient
- * Automatically decodes base64 encoded bodies and RFC 2047 encoded subjects
+ * Automatically decodes base64/quoted-printable bodies and RFC 2047 encoded subjects
  */
 export async function findEmailByRecipient(email: string): Promise<MailHogMessage | null> {
   const messages = await getMailHogMessages();
@@ -60,12 +87,23 @@ export async function findEmailByRecipient(email: string): Promise<MailHogMessag
   ) || null;
 
   if (msg) {
-    // Decode body if it's base64 encoded (common for non-ASCII content)
-    if (msg.Content?.Body && msg.Content?.Headers?.['Content-Transfer-Encoding']?.[0] === 'base64') {
-      try {
-        msg.Content.Body = Buffer.from(msg.Content.Body, 'base64').toString('utf-8');
-      } catch (error) {
-        console.warn('Failed to decode base64 email body:', error);
+    // Decode body based on Content-Transfer-Encoding
+    const encoding = msg.Content?.Headers?.['Content-Transfer-Encoding']?.[0];
+
+    if (msg.Content?.Body) {
+      if (encoding === 'base64') {
+        try {
+          msg.Content.Body = Buffer.from(msg.Content.Body, 'base64').toString('utf-8');
+        } catch (error) {
+          console.warn('Failed to decode base64 email body:', error);
+        }
+      } else if (encoding === 'quoted-printable') {
+        try {
+          // Decode quoted-printable encoding
+          msg.Content.Body = decodeQuotedPrintable(msg.Content.Body);
+        } catch (error) {
+          console.warn('Failed to decode quoted-printable email body:', error);
+        }
       }
     }
 

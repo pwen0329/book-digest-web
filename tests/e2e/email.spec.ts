@@ -181,6 +181,12 @@ test.describe('Email notifications', () => {
     expect(confirmationEmail.Content.Body).toContain('Test Event EN');
     // Verify bank account last 5 digits appears in email
     expect(confirmationEmail.Content.Body).toContain('12345');
+    // Verify email signature is present
+    expect(confirmationEmail.Content.Body).toContain('Book Digest｜吃書反芻');
+    expect(confirmationEmail.Content.Body).toContain('創辦人｜Viola 家柔');
+    expect(confirmationEmail.Content.Body).toContain('<a href="https://bookdigest.dev">Book Digest Website</a>');
+    expect(confirmationEmail.Content.Body).toContain('<a href="https://www.instagram.com/bookdigest_tw/">Book Digest IG</a>');
+    expect(confirmationEmail.Content.Body).toContain('<a href="https://www.threads.net/bookdigest_tw">BD threads</a>');
 
     // Clear MailHog for next email
     await clearMailHogMessages();
@@ -262,6 +268,12 @@ test.describe('Email notifications', () => {
     expect(confirmationEmail.Content.Body).toContain(testName);
     // Verify bank account last 5 digits appears in email
     expect(confirmationEmail.Content.Body).toContain('12345');
+    // Verify email signature is present
+    expect(confirmationEmail.Content.Body).toContain('Book Digest｜吃書反芻');
+    expect(confirmationEmail.Content.Body).toContain('創辦人｜Viola 家柔');
+    expect(confirmationEmail.Content.Body).toContain('<a href="https://bookdigest.dev">Book Digest Website</a>');
+    expect(confirmationEmail.Content.Body).toContain('<a href="https://www.instagram.com/bookdigest_tw/">Book Digest IG</a>');
+    expect(confirmationEmail.Content.Body).toContain('<a href="https://www.threads.net/bookdigest_tw">BD threads</a>');
 
     await clearMailHogMessages();
 
