@@ -206,7 +206,7 @@ test.describe('Signup Flow', () => {
     cleanup.events.push(eventData.event.id);
 
     // First: Navigate to events page and verify button shows "Sign Up"
-    await page.goto(`/en/events/TW`, { waitUntil: 'networkidle' });
+    await page.goto(`/en/events/TW?type=${eventTypeCode}`, { waitUntil: 'networkidle' });
 
     // Find the event card and verify Sign Up button is visible and enabled
     const signUpButton = page.locator(`a[href="/en/signup/${eventSlug}"]`).first();
@@ -240,7 +240,7 @@ test.describe('Signup Flow', () => {
     await expect(page.locator('text=/success|成功/i')).toBeVisible({ timeout: 10000 });
 
     // Manually navigate to events page to check Full button (no auto-redirect anymore)
-    await page.goto(`/en/events/TW`, { waitUntil: 'networkidle' });
+    await page.goto(`/en/events/TW?type=${eventTypeCode}`, { waitUntil: 'networkidle' });
 
     // Page is now on events page - should show "Full" button that is disabled
     const fullButton = page.locator('button:has-text("Full")').first();
