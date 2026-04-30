@@ -259,7 +259,7 @@ export default function RegistrationsPage() {
             <div>
               <h2 className="text-xl font-semibold font-outfit">Registrations</h2>
               <p className="mt-2 max-w-3xl text-sm text-white/70">
-                This viewer supports filtering by event, status, date range, and CSV export. Batch mail button is only availble when event filter is applied during search.
+                This viewer supports filtering by event, status, date range, and CSV export. Batch mail button/selection is only availble for confirmed registrations when Event filter is applied on a single event.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
